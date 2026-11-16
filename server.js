@@ -247,6 +247,22 @@ app.use(cookieSession({ name: 'desk', keys: [process.env.SESSION_SECRET || crypt
 app.use(express.json({ limit: '200kb' }));
 const baseUrl = req => (process.env.BASE_URL || req.protocol + '://' + req.get('host')).replace(/\/$/, '');
 
+const PAGE_ESC = v => String(v).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+async function legalPage(res, title, body) {
+  const b = await getKV(pool, 'brand', DEFAULT_BRAND), co = PAGE_ESC(b.company || b.mark), mail = PAGE_ESC(process.env.CONTACT_EMAIL || process.env.ADMIN_EMAIL || '');
+  res.send('<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>' + title + ' · ' + co + '</title><link rel="stylesheet" href="/style.css"></head><body><div class="solo" style="max-width:720px"><div class="card stack"><h1>' + title + '</h1>' + body(co, mail) + '<p><a href="/">Back to Client Desk</a></p></div></div></body></html>');
+}
+app.get('/privacy', (req, res) => legalPage(res, 'Privacy Policy', (co, mail) =>
+  '<p>Client Desk is the client portal of ' + co + '. It is used by our team and by clients we work with.</p>' +
+  '<h2>What we collect</h2><p>When you sign in with Google, we receive your name and email address. We use your email only to recognise you and show you the workspace you are entitled to. We also store what you enter in the portal: contact details, comments, approvals and links you share.</p>' +
+  '<h2>How we use it</h2><p>Only to run the client portal and the services we provide to you: showing your quotations, invoices and tasks, recording approvals, and notifying the people working on your account.</p>' +
+  '<h2>Sharing</h2><p>We do not sell your information or share it with third parties, apart from the hosting provider that runs the portal on our behalf. We handle personal data in line with Singapore\'s Personal Data Protection Act (PDPA).</p>' +
+  '<h2>Google user data</h2><p>Our use of information received from Google is limited to the purposes above and follows the Google API Services User Data Policy, including its Limited Use requirements.</p>' +
+  '<h2>Your choices</h2><p>You can ask us to correct or delete your information at any time' + (mail ? ' by writing to <a href="mailto:' + mail + '">' + mail + '</a> (' + mail + ')' : '') + '.</p>'));
+app.get('/terms', (req, res) => legalPage(res, 'Terms of Use', (co, mail) =>
+  '<p>Client Desk is provided by ' + co + ' to its team and clients. Access is by invitation only, using the Google account we have on record for you.</p>' +
+  '<p>The services themselves are governed by the quotation and terms you agreed with ' + co + '. This portal is a tool for tracking that work, and the agreed quotation prevails over anything shown here.</p>' +
+  '<p>Please keep your Google account secure, and tell us if someone else may have access to it' + (mail ? ' at <a href="mailto:' + mail + '">' + mail + '</a> (' + mail + ')' : '') + '.</p>'));
 app.get('/healthz', (req, res) => res.send('ok'));
 app.get('/auth/google', (req, res) => {
   if (!GOOGLE_ID || !GOOGLE_SECRET) return res.status(503).send('Google sign-in is not set up yet.');
