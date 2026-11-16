@@ -1,0 +1,14 @@
+{
+  "name": "client-desk",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Client desk: clients, quotations, invoices, workspaces and approvals",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "cookie-session": "^2.1.0",
+    "express": "^4.21.2",
+    "pg": "^8.13.1"
+  }
+}
