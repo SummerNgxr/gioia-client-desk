@@ -12,7 +12,13 @@
   function ym(c, m) { const [y, mo] = c.quote.start.split('-').map(Number); const d = new Date(y, mo - 1 + (m - 1), 1); return { y: d.getFullYear(), mo: d.getMonth() }; }
   const mName = (c, m) => { const x = ym(c, m); return MONTHS[x.mo] + ' ' + x.y; };
   const due = (c, m) => { const x = ym(c, m); return '1 ' + MONTHS[x.mo].slice(0, 3) + ' ' + x.y; };
-  const ql = (c, id) => c.quote.lines.find(s => s.id === id) || c.extra.find(s => s.id === id);
+  const ql = (c, id) => c.quote.lines.find(s => s.id === id) || c.extra.find(s => s.id === id) || renewLines(c).find(s => s.id === id);
+  /* renewals: each accepted renewal adds months to the project, with its own services, prices and discounts for those months */
+  const renewals = c => (c.quote && c.quote.renewals) || [];
+  const renewLines = c => renewals(c).filter(r => r.status === 'accepted').flatMap(r => r.lines).filter((s, i, a) => !c.quote.lines.some(b => b.id === s.id) && a.findIndex(z => z.id === s.id) === i);
+  const monthKey = (c, m) => { const x = ym(c, m); return x.y + '-' + pad(x.mo + 1); };
+  const rnFrom = (c, r) => r.from || c.quote.months + 1;
+  function pseudo(c, r) { return Object.assign({}, c, { quote: { no: r.no, date: r.date, status: r.status, version: r.version || 1, welcome: r.welcome || '', responses: r.responses || [], acceptedBy: r.acceptedBy, lines: r.lines, discounts: r.discounts || [], discount: 0, months: r.months, committed: r.months, renewed: true, start: monthKey(c, rnFrom(c, r)), renewal: true } }); }
   const adhocOf = (c, id) => c.adhoc.find(a => a.id === id);
   /* discounts: a fixed amount or a percentage, on the whole invoice or one service, one-off / every month / a range of months */
   function discounts(c) { const q = c.quote; if (Array.isArray(q.discounts)) return q.discounts; return q.discount > 0 ? [{ id: 'd0', label: '', type: 'amount', value: q.discount, scope: 'all', when: 'range', from: 2, to: q.months }] : []; }
@@ -23,6 +29,8 @@
     return (Array.isArray(arr) ? arr : []).map(d => { const from = Math.min(months, Math.max(1, Math.floor(+d.from || 1))); return { id: String(d.id || ''), label: String(d.label || '').trim().slice(0, 80), type: d.type === 'pct' ? 'pct' : 'amount', value: d.type === 'pct' ? Math.min(100, Math.max(0, Number(d.value) || 0)) : Math.max(0, Math.floor(Number(d.value) || 0)), scope: ids.includes(d.scope) ? d.scope : 'all', when: ['once', 'every', 'range'].includes(d.when) ? d.when : 'range', from, to: Math.min(months, Math.max(from, Math.floor(+d.to || months))) }; }).filter(d => d.value > 0).slice(0, 10);
   }
   function invLines(c, m) {
+    const rr = renewals(c).find(r => r.status === 'accepted' && m >= r.from && m <= r.to);
+    if (rr) return invLines(pseudo(c, rr), m - rr.from + 1);
     const out = [];
     c.quote.lines.forEach(s => { if (s.billing === 'monthly' || m === 1) out.push({ s, name: s.name, amount: s.price }); });
     discounts(c).forEach(d => {
@@ -63,15 +71,18 @@
     const curStage = t => staged(t) && t.stage < t.stages.length ? t.stages[t.stage] : null;
   function syncStage(t) { if (!staged(t)) return; if (t.stage >= t.stages.length) { t.stage = t.stages.length; t.status = 'done'; return; } const s = t.stages[t.stage]; if (s.owner === 'client') t.status = STEP_STATUS[s.kind] || 'cdraft'; else if (!['progress', 'changes'].includes(t.status)) t.status = 'todo'; }
   function normalizeClient(c) { if (c.quote && c.quote.discount > 0 && !Array.isArray(c.quote.discounts)) { c.quote.discounts = discounts(c); c.quote.discount = 0; } c.adhoc = c.adhoc || []; c.extra = c.extra || []; c.files = c.files || []; (c.tasks || []).forEach(t => { (t.comments || []).forEach((m, i) => { if (!m.id) m.id = t.id + '-m' + i; }); t.desc = t.desc || ''; t.due = t.due || ''; t.history = t.history || []; t.comments = t.comments || []; t.files = t.files || []; if (t.owner === 'client' && t.status === 'todo') t.status = 'cdraft'; }); return c; }
+  function taskFromDef(c, id, s, m, def) {
+    const t = newTask(id, s.id, m, def), o = def[4] || {};
+    // set-up from the New project form: who does it, which day of the month it is due, and the fee for doing it
+    if (o.assignee && t.owner === 'gioia') { t.assignee = o.assignee; if (o.fee > 0) t.feeDraft = { member: o.assignee, amount: o.fee }; }
+    if (o.dueDay) { const x = ym(c, m), last = new Date(x.y, x.mo + 1, 0).getDate(); t.due = x.y + '-' + pad(x.mo + 1) + '-' + pad(Math.min(last, Math.max(1, +o.dueDay))); }
+    return t;
+  }
   function buildTasks(c) {
     let n = 0; const out = [];
     c.quote.lines.forEach(s => {
       const months = s.billing === 'once' ? [1] : Array.from({ length: c.quote.months }, (_, i) => i + 1);
-      months.forEach(m => s.tasks.forEach(def => { const t = newTask(c.id + '-t' + (++n), s.id, m, def), o = def[4] || {};
-        // set-up from the New project form: who does it, and which day of the month it is due
-        if (o.assignee && t.owner === 'gioia') { t.assignee = o.assignee; if (o.fee > 0) t.feeDraft = { member: o.assignee, amount: o.fee }; }
-        if (o.dueDay) { const x = ym(c, m), last = new Date(x.y, x.mo + 1, 0).getDate(); t.due = x.y + '-' + pad(x.mo + 1) + '-' + pad(Math.min(last, Math.max(1, +o.dueDay))); }
-        out.push(t); }));
+      months.forEach(m => s.tasks.forEach(def => out.push(taskFromDef(c, c.id + '-t' + (++n), s, m, def))));
     });
     return out;
   }
@@ -122,5 +133,5 @@
     out.total = [...out.own, ...out.share].reduce((a, x) => a + x.amount, 0); return out;
   }
   const feeBase = (c, s) => !s ? 0 : s.adhoc ? ((adhocOf(c, s.adhoc) || {}).amount || s.price) : s.price;
-  return { MONTHS, pad, clone, money, short, ym, mName, due, ql, adhocOf, invLines, invTotal, inv, invLocked, taskOpen, hasAccess, newTask, buildTasks, acceptQuote, statusOptions, STATUS, freeWs, shared, invNo, discounts, discLabel, discWhen, cleanDiscounts, schedule, findMember, stageMine, feeSvc, feeTasks, feeEarned, feeOwed, feeState, feeBase, taskValue, taskCost, parseSteps, stepsText, toStages, staged, curStage, syncStage, normalizeClient };
+  return { MONTHS, pad, clone, money, short, ym, mName, due, ql, adhocOf, invLines, invTotal, inv, invLocked, taskOpen, hasAccess, newTask, buildTasks, acceptQuote, statusOptions, STATUS, freeWs, shared, invNo, renewals, renewLines, pseudo, monthKey, rnFrom, taskFromDef, discounts, discLabel, discWhen, cleanDiscounts, schedule, findMember, stageMine, feeSvc, feeTasks, feeEarned, feeOwed, feeState, feeBase, taskValue, taskCost, parseSteps, stepsText, toStages, staged, curStage, syncStage, normalizeClient };
 });

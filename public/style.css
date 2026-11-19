@@ -428,3 +428,4 @@ textarea.grow{resize:vertical;overflow:hidden;min-height:64px}
 .svcval{display:flex;flex-direction:column;align-items:flex-end;gap:2px;text-align:right}
 .svcval b{font:600 22px var(--display)}
 .small.crit{color:var(--crit);font-weight:600}
+.periodrow{padding:8px 0;border-top:1px solid var(--line)}
