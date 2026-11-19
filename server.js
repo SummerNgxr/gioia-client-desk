@@ -24,7 +24,7 @@ const refuse = msg => { throw new Refuse(msg); };
 /* ---------- storage ---------- */
 const getKV = async (cl, k, d) => { const r = await cl.query('select v from kv where k=$1', [k]); return r.rows[0] ? r.rows[0].v : d; };
 const setKV = (cl, k, v) => cl.query('insert into kv(k,v) values($1,$2) on conflict(k) do update set v=excluded.v', [k, JSON.stringify(v)]);
-const getClient = async (cl, id) => { const r = await cl.query('select v from clients where id=$1', [id]); return r.rows[0] ? r.rows[0].v : null; };
+const getClient = async (cl, id) => { const r = await cl.query('select v from clients where id=$1', [id]); return r.rows[0] ? L.normalizeClient(r.rows[0].v) : null; };
 const saveClient = (cl, c) => cl.query('insert into clients(id,v) values($1,$2) on conflict(id) do update set v=excluded.v', [c.id, JSON.stringify(c)]);
 async function tx(fn) {
   const cl = await pool.connect();
@@ -95,7 +95,7 @@ async function buildState(cl, me) {
   const staff = me.role !== 'client';
   let clients = (await cl.query(staff ? 'select v from clients order by v->>\'company\'' : 'select v from clients where id=$1', staff ? [] : [me.cid])).rows.map(r => r.v);
   let feed = (await cl.query(staff ? 'select v,cid from feed order by id desc limit 400' : 'select v,cid from feed where cid=$1 order by id desc limit 400', staff ? [] : [me.cid])).rows.map(r => Object.assign({ cid: r.cid }, r.v));
-  clients.forEach(c => { c.adhoc = c.adhoc || []; c.extra = c.extra || []; c.files = c.files || []; c.tasks.forEach(t => { t.desc = t.desc || ''; t.due = t.due || ''; t.history = t.history || []; t.comments = t.comments || []; t.files = t.files || []; }); });
+  clients.forEach(L.normalizeClient);
   let fees = await getKV(cl, 'fees', []);
   if (me.role === 'team') { fees = fees.filter(f => f.member === me.id).map(f => Object.assign({}, f, { base: 0, pct: 0 })); feed = feed.filter(e => !e.priv || e.priv === me.id); }
   if (me.role === 'client') fees = [];
@@ -113,10 +113,115 @@ async function buildState(cl, me) {
   };
 }
 
+/* ---------- project import: a plan Claude drafts, previewed before anything is created ---------- */
+const lc = v => str(v, 200).toLowerCase();
+const monthList = (spec, s, c) => {
+  if (s.adhoc || s.billing === 'general') return [0];
+  if (s.billing !== 'monthly') return [1];
+  const all = Array.from({ length: c.quote.months }, (_, i) => i + 1);
+  if (spec === undefined || spec === null || spec === 'all') return all;
+  const arr = (Array.isArray(spec) ? spec : [spec]).map(int).filter(m => m >= 1 && m <= c.quote.months);
+  if (!arr.length) refuse('Month ' + JSON.stringify(spec) + ' is outside the ' + c.quote.months + '-month term.');
+  return [...new Set(arr)];
+};
+function dueFor(pt, c, m) {
+  if (pt.due) { const d = str(pt.due, 10); if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) refuse('Due date "' + pt.due + '" must look like 2026-12-15.'); return d; }
+  if (pt.dueDay && m) { const x = L.ym(c, m), last = new Date(x.y, x.mo + 1, 0).getDate(), day = Math.min(last, Math.max(1, int(pt.dueDay))); return x.y + '-' + L.pad(x.mo + 1) + '-' + L.pad(day); }
+  return '';
+}
+async function applyPlan(x, plan, dry) {
+  plan = plan && typeof plan === 'object' ? plan : refuse('The plan is empty.');
+  const out = { warnings: [], tasks: [], fees: [] };
+  const person = name => { const n = lc(name); if (!n) return null; return x.team.find(m => lc(m.name) === n || m.email === n || lc(m.name).split(' ')[0] === n) || refuse('There is no team member called "' + name + '". The team is: ' + x.team.map(m => m.name).join(', ') + '.'); };
+  const k = plan.client || refuse('The plan needs a "client".');
+  let c, isNew = false, next = await getKV(x.cl, 'nextQuote', 1001);
+  if (k.existing) {
+    const all = (await x.cl.query('select v from clients')).rows.map(r => L.normalizeClient(r.v));
+    c = all.find(v => lc(v.company) === lc(k.existing)) || refuse('There is no client called "' + k.existing + '". Clients: ' + all.map(v => v.company).join(', ') + '.');
+  } else {
+    const company = str(k.company) || refuse('The client needs a "company" name, or use "existing" to add to a current client.');
+    c = makeClient({ company, contact: str(k.contact), email: str(k.email).toLowerCase(), phone: str(k.phone), website: str(k.website), notes: str(k.notes, 5000) }, next); isNew = true;
+  }
+  const q = plan.quotation;
+  if (q) {
+    if (c.quote.status === 'accepted') refuse(c.company + ' already has an accepted quotation. Leave "quotation" out of the plan to add tasks and fees to it.');
+    const lines = (Array.isArray(q.lines) ? q.lines : []).map((ln, i) => {
+      let s;
+      if (ln.service) { const base = x.catalogue.find(z => z.id === ln.service || lc(z.name) === lc(ln.service) || lc(L.short(z)) === lc(ln.service)) || refuse('There is no service "' + ln.service + '" in the catalogue. Services: ' + x.catalogue.map(z => z.id + ' (' + L.short(z) + ')').join(', ') + '.'); s = L.clone(base); }
+      else { s = { id: 'p' + crypto.randomBytes(3).toString('hex') + i, name: str(ln.name, 120) || refuse('Each custom line needs a "name".'), price: 0, billing: 'monthly', note: '', bullets: [], tasks: [] }; }
+      if (ln.name) s.name = str(ln.name, 120);
+      if (ln.price !== undefined) s.price = Math.max(0, int(ln.price));
+      if (ln.billing) s.billing = ln.billing === 'once' ? 'once' : 'monthly';
+      if (Array.isArray(ln.bullets)) s.bullets = ln.bullets.map(b => str(b)).filter(Boolean).slice(0, 12);
+      if (ln.note !== undefined) s.note = str(ln.note);
+      if (ln.templateTasks === false) s.tasks = [];
+      return s;
+    });
+    if (!lines.length) refuse('The quotation needs at least one line.');
+    const ids = new Set(); lines.forEach(s => { if (ids.has(s.id)) refuse('"' + L.short(s) + '" appears twice in the quotation.'); ids.add(s.id); });
+    Object.assign(c.quote, { lines, date: today() });
+    if (q.start) { if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(q.start)) refuse('Quotation "start" must look like 2026-12.'); c.quote.start = q.start; }
+    c.quote.months = Math.min(24, Math.max(1, int(q.months) || c.quote.months)); c.quote.committed = Math.min(c.quote.months, Math.max(1, int(q.committed) || c.quote.months)); c.quote.discount = Math.max(0, int(q.discount));
+    const st = q.status || 'draft'; if (!['draft', 'sent', 'accepted'].includes(st)) refuse('Quotation "status" must be draft, sent or accepted.');
+    if (st === 'sent') c.quote.status = 'sent';
+    if (st === 'accepted') L.acceptQuote(c);
+    out.quote = { no: c.quote.no, status: c.quote.status, start: L.mName(c, 1), end: L.mName(c, c.quote.months), months: c.quote.months, committed: c.quote.committed, discount: c.quote.discount, lines: lines.map(s => ({ name: s.name, billing: s.billing, price: s.price, templateTasks: s.tasks.length })), month1: L.invTotal(c, 1), month2: c.quote.months > 1 ? L.invTotal(c, 2) : 0, invoices: c.invoices.length };
+  }
+  for (const m of Array.isArray(plan.paid) ? plan.paid : []) { const i = L.inv(c, int(m)) || refuse('Can\'t mark month ' + m + ' as paid: ' + (c.invoices.length ? 'there is no such invoice.' : 'the quotation is not accepted.')); i.status = 'paid'; }
+  const findWs = name => { if (lc(name) === 'general') return ensureGeneral(c); const list = [...c.quote.lines, ...c.extra]; return list.find(s => s.id === name || lc(s.name) === lc(name) || lc(L.short(s)) === lc(name)) || refuse('"' + name + '" is not one of ' + c.company + '\'s workspaces: ' + list.map(s => L.short(s)).join(', ') + ', or "general".'); };
+  const untouched = t => ['todo', 'cdraft'].includes(t.status) && !t.comments.length && !t.files.length && (t.history || []).length === 0 && !(t.stage > 0);
+  for (const r of Array.isArray(plan.replaceTemplateTasks) ? plan.replaceTemplateTasks : []) {
+    const s = findWs(r.service || r), months = monthList(r.months, s, c), before = c.tasks.length;
+    c.tasks = c.tasks.filter(t => !(t.svc === s.id && months.includes(t.m) && untouched(t)));
+    out.warnings.push('Removed ' + (before - c.tasks.length) + ' untouched template tasks from ' + L.short(s) + '. Tasks with progress were kept.');
+  }
+  let n = 0;
+  for (const pt of Array.isArray(plan.tasks) ? plan.tasks : []) {
+    const s = findWs(pt.service || 'general'), months = monthList(pt.month !== undefined ? pt.month : pt.months, s, c), title = str(pt.title, 160) || refuse('Every task needs a "title".');
+    const steps = L.toStages(Array.isArray(pt.steps) ? pt.steps.join('\n') : str(pt.steps, 4000)), owner = steps.length ? 'gioia' : pt.owner === 'client' ? 'client' : 'gioia';
+    const who = owner === 'gioia' ? person(pt.assignee) : null;
+    for (const m of months) {
+      const t = L.newTask(c.id + '-i' + crypto.randomBytes(4).toString('hex'), s.id, m, [title, owner, owner === 'gioia' && !steps.length && pt.approve !== false, steps], s.adhoc || '');
+      Object.assign(t, { desc: str(pt.desc, 3000), assignee: who ? who.id : '', due: dueFor(pt, c, m) }); hist(x, t, 'Created from a project plan'); c.tasks.push(t); n++;
+    }
+    out.tasks.push({ ws: L.short(s), title, months: months.length, when: s.billing === 'monthly' && !s.adhoc ? (months.length === c.quote.months ? 'every month' : months.map(m => L.mName(c, m)).join(', ')) : '', owner: owner === 'client' ? 'Client' : who ? who.name : 'Unassigned', steps: steps.length, due: pt.due || (pt.dueDay ? 'day ' + int(pt.dueDay) + ' of the month' : '') });
+  }
+  const fees = [];
+  for (const pf of Array.isArray(plan.fees) ? plan.fees : []) {
+    const m = person(pf.member) || refuse('Every fee needs a "member".'), custom = !!pf.item, s = custom ? null : findWs(pf.service || refuse('Every fee needs a "service" or an "item".'));
+    const months = custom ? [0] : monthList(pf.month !== undefined ? pf.month : pf.months, s, c);
+    const pct = !custom && pf.percent !== undefined ? Math.min(100, Math.max(0, Number(pf.percent) || 0)) : 0, base = s ? L.feeBase(c, s) : 0;
+    const amount = pct ? Math.round(base * pct / 100) : Math.floor(Number(pf.amount) || 0);
+    if (!(amount > 0)) refuse('The fee for ' + m.name + ' on ' + (custom ? pf.item : L.short(s)) + ' works out to $0. Give an "amount" or a "percent" of a priced service.');
+    months.forEach(mm => fees.push({ id: rid('f'), member: m.id, cid: c.id, svc: custom ? '' : s.id, item: custom ? str(pf.item, 120) : '', m: mm, amount, pct, base: pct ? base : 0, note: str(pf.note, 300), status: 'pending', payable: custom, created: x.now }));
+    out.fees.push({ member: m.name, label: custom ? str(pf.item, 120) : L.short(s), each: amount, months: months.length, pct, total: amount * months.length });
+  }
+  const months = c.quote.renewed ? c.quote.months : c.quote.committed;
+  const value = c.quote.lines.reduce((a, s) => a + s.price * (s.billing === 'once' ? 1 : months), 0) - (c.quote.discount && c.quote.lines.some(s => s.billing === 'monthly') ? c.quote.discount * Math.max(0, months - 1) : 0);
+  const feeTotal = fees.reduce((a, f) => a + f.amount, 0) + x.fees.filter(f => f.cid === c.id).reduce((a, f) => a + f.amount, 0);
+  Object.assign(out, { client: { company: c.company, contact: c.contact, email: c.email, isNew }, newTasks: n, costing: { value, fees: feeTotal, margin: value - feeTotal, months } });
+  if (!dry) {
+    if (isNew) await setKV(x.cl, 'nextQuote', next + 1);
+    x.c = c; fees.forEach(f => x.fees.push(f)); if (fees.length) x.save.fees = true;
+    fees.forEach(f => x.log('Assigned you a fee of ' + L.money(f.amount) + ' for ' + (f.item || L.short(L.ql(c, f.svc))) + (f.m ? ', ' + L.mName(c, f.m) : ''), { internal: true, priv: f.member, cid: c.id }));
+    x.log((isNew ? 'Project created for ' : 'Project plan added to ') + c.company + ': ' + n + ' tasks' + (fees.length ? ', ' + fees.length + ' team fees' : '') + (out.quote ? ', quotation ' + out.quote.no + ' (' + L.STATUS[c.quote.status] + ')' : ''), { internal: true });
+    out.cid = c.id;
+  }
+  return out;
+}
+
 /* ---------- actions ---------- */
 const ADMIN = ['admin'], STAFF = ['admin', 'team'], ALL = ['admin', 'team', 'client'];
 const task = (x, id) => x.c.tasks.find(t => t.id === id) || refuse('That task no longer exists.');
 const openTask = (x, id) => { const t = task(x, id); if (!L.taskOpen(x.c, t)) refuse('That task is locked until its invoice is paid.'); return t; };
+function ensureGeneral(c) { if (!c.extra.find(s => s.id === 'general')) c.extra.push({ id: 'general', name: 'General (ad-hoc)', billing: 'general', price: 0, note: '', bullets: ['Ad-hoc tasks outside the quoted services'], tasks: [] }); return c.extra.find(s => s.id === 'general'); }
+function advance(x, t, approved) {
+  const s = t.stages[t.stage], n = t.stage + 1, total = t.stages.length;
+  s.done = true; s.by = x.staff ? x.me.name : (x.c.contact || 'Client'); s.at = x.now; t.stage = n; t.status = 'todo'; L.syncStage(t);
+  hist(x, t, (approved ? 'Approved step ' : 'Completed step ') + n + ' of ' + total + ': ' + s.title);
+  const nx = L.curStage(t);
+  x.log((approved ? 'Approved' : 'Completed') + ' step ' + n + ' of ' + total + ' on "' + t.title + '"' + (nx ? '. Next: ' + nx.title + (nx.owner === 'client' ? ' (client)' : ' (team)') : '. All steps completed'));
+}
 const hist = (x, t, text) => { (t.history = t.history || []).push({ text, by: x.staff ? x.me.name : (x.c.contact || 'Client'), at: x.now }); };
 const draftQuote = x => { if (x.c.quote.status === 'accepted') refuse('This quotation is already accepted.'); return x.c.quote; };
 const A = {
@@ -163,27 +268,50 @@ const A = {
   } },
   'ah-sent': { roles: ADMIN, client: true, fn(x, p) { const a = L.adhocOf(x.c, p.id) || refuse('Invoice not found.'); if (a.status === 'pending') a.status = 'sent'; x.log('Invoice ' + a.no + ' (' + L.money(a.amount) + ') sent', { fin: true }); } },
   'ah-paid': { roles: ADMIN, client: true, fn(x, p) { const a = L.adhocOf(x.c, p.id) || refuse('Invoice not found.'); a.status = 'paid'; x.log('Invoice ' + a.no + ' marked as paid' + (a.s ? '. The "' + L.short(a.s) + '" workspace is active' : ''), { fin: true }); } },
-  't-submit': { roles: STAFF, client: true, fn(x, p) { const t = openTask(x, p.id); if (t.owner !== 'gioia' || !t.approve) refuse('This task does not need approval.'); t.status = 'awaiting'; if (!t.assignee) t.assignee = x.me.id; hist(x, t, 'Submitted for client review'); x.log('Submitted "' + t.title + '" for client review'); } },
-  't-done': { roles: STAFF, client: true, fn(x, p) { const t = openTask(x, p.id); t.status = 'done'; hist(x, t, t.owner === 'client' ? 'Marked as received' : 'Marked as completed'); x.log('Marked "' + t.title + '" as ' + (t.owner === 'client' ? 'received' : 'completed')); } },
-  't-status': { roles: STAFF, client: true, fn(x, p) { const t = openTask(x, p.id); if (!L.statusOptions(t).includes(p.status)) refuse('That status does not apply to this task.'); if (t.status === p.status) return; t.status = p.status; hist(x, t, 'Status changed to ' + L.STATUS[t.status]); x.log('Changed "' + t.title + '" to ' + L.STATUS[t.status]); } },
+  't-submit': { roles: STAFF, client: true, fn(x, p) { const t = openTask(x, p.id); if (L.staged(t)) refuse('This task moves step by step. Complete the current step instead.'); if (t.owner !== 'gioia' || !t.approve) refuse('This task does not need approval.'); t.status = 'awaiting'; if (!t.assignee) t.assignee = x.me.id; hist(x, t, 'Submitted for client review'); x.log('Submitted "' + t.title + '" for client review'); } },
+  't-done': { roles: STAFF, client: true, fn(x, p) { const t = openTask(x, p.id); if (L.staged(t)) { t.stages.forEach(s => { s.done = true; }); t.stage = t.stages.length; } t.status = 'done'; hist(x, t, t.owner === 'client' ? 'Marked as received' : 'Marked as completed'); x.log('Marked "' + t.title + '" as ' + (t.owner === 'client' ? 'received' : 'completed')); } },
+  't-status': { roles: STAFF, client: true, fn(x, p) { const t = openTask(x, p.id); if (!L.statusOptions(t).includes(p.status)) refuse(L.staged(t) ? 'This task follows its steps. Change the current step instead.' : 'That status does not apply to this task.'); if (t.status === p.status) return; t.status = p.status; hist(x, t, 'Status changed to ' + L.STATUS[t.status]); x.log('Changed "' + t.title + '" to ' + L.STATUS[t.status]); } },
   't-due': { roles: STAFF, client: true, fn(x, p) { const t = task(x, p.id), d = str(p.due, 10); if (d && !/^\d{4}-\d{2}-\d{2}$/.test(d)) refuse('That is not a valid date.'); t.due = d; x.log(d ? 'Set the due date for "' + t.title + '" to ' + d : 'Cleared the due date for "' + t.title + '"'); } },
   't-desc': { roles: STAFF, client: true, fn(x, p) { const t = task(x, p.id); t.desc = str(p.desc, 3000); } },
   'task-create': { roles: STAFF, client: true, fn(x, p) {
+    if (p.svc === 'general') ensureGeneral(x.c);
     const s = L.ql(x.c, str(p.svc, 80)) || refuse('That workspace no longer exists.'), title = str(p.title, 160) || refuse('Give the task a name.');
-    const m = s.adhoc ? 0 : s.billing === 'monthly' ? Math.min(x.c.quote.months, Math.max(1, int(p.m))) : 1, owner = p.owner === 'client' ? 'client' : 'gioia';
-    const assignee = owner === 'gioia' && p.assignee ? (x.team.find(mm => mm.id === p.assignee) || refuse('That team member no longer exists.')).id : '';
+    const m = s.adhoc || s.billing === 'general' ? 0 : s.billing === 'monthly' ? Math.min(x.c.quote.months, Math.max(1, int(p.m))) : 1, owner = p.owner === 'client' ? 'client' : 'gioia';
+    const assignee = p.assignee ? (x.team.find(mm => mm.id === p.assignee) || refuse('That team member no longer exists.')).id : '';
     const d = str(p.due, 10); if (d && !/^\d{4}-\d{2}-\d{2}$/.test(d)) refuse('That is not a valid due date.');
-    const t = L.newTask(x.c.id + '-n' + crypto.randomBytes(4).toString('hex'), s.id, m, [title, owner, owner === 'gioia' && !!p.approve], s.adhoc || '');
-    Object.assign(t, { desc: str(p.desc, 3000), assignee, due: d }); hist(x, t, 'Task added'); x.c.tasks.push(t); x.log('Added task "' + title + '"');
+    const steps = L.toStages(str(p.steps, 4000));
+    const t = L.newTask(x.c.id + '-n' + crypto.randomBytes(4).toString('hex'), s.id, m, [title, steps.length ? 'gioia' : owner, owner === 'gioia' && !!p.approve, steps], s.adhoc || '');
+    Object.assign(t, { desc: str(p.desc, 3000), assignee: t.owner === 'gioia' ? assignee : '', due: d }); hist(x, t, 'Task added'); x.c.tasks.push(t); x.log('Added task "' + title + '"');
+    return { id: t.id, svc: s.id, m };
   } },
   't-assign': { roles: STAFF, client: true, fn(x, p) { const t = task(x, p.id), m = p.assignee ? (x.team.find(m => m.id === p.assignee) || refuse('That team member no longer exists.')) : null; t.assignee = m ? m.id : ''; x.log(m ? 'Assigned "' + t.title + '" to ' + m.name : 'Unassigned "' + t.title + '"', { internal: true }); } },
-  't-approve': { roles: ['client'], client: true, fn(x, p) { const t = openTask(x, p.id), text = str(p.text, 3000); if (t.status !== 'awaiting') refuse('This task is not waiting for approval.'); if (text) t.comments.push({ by: 'Client', client: true, text, at: x.now }); t.status = 'approved'; hist(x, t, 'Client approved'); x.log('Approved "' + t.title + '"'); } },
-  't-sent': { roles: ['client'], client: true, fn(x, p) { const t = openTask(x, p.id); if (t.owner !== 'client' || t.status !== 'todo') refuse('This item is not waiting on you.'); t.status = 'submitted'; hist(x, t, 'Client sent this'); x.log('Sent "' + t.title + '"'); } },
+  't-step': { roles: ALL, client: true, fn(x, p) {
+    // Complete the current step and pass the task to whoever owns the next one.
+    const t = openTask(x, p.id), s = L.curStage(t) || refuse('This task has no step waiting.'), text = str(p.text, 3000);
+    if (x.staff ? s.owner !== 'gioia' : s.owner !== 'client') refuse(x.staff ? 'This step is with the client.' : 'This step is with the team.');
+    if (!x.staff && s.kind === 'approve') refuse('Approve or request changes on this step.');
+    if (text) t.comments.push({ by: x.staff ? x.me.name : 'Client', client: !x.staff, text, at: x.now });
+    advance(x, t);
+  } },
+  't-stage-set': { roles: STAFF, client: true, fn(x, p) {
+    const t = task(x, p.id); if (!L.staged(t)) refuse('This task has no steps.');
+    const n = Math.max(0, Math.min(t.stages.length, int(p.stage))); t.stages.forEach((s, i) => { s.done = i < n; }); t.stage = n; t.status = 'todo'; L.syncStage(t);
+    hist(x, t, n >= t.stages.length ? 'Moved to completed' : 'Moved to step ' + (n + 1) + ': ' + t.stages[n].title); x.log('Moved "' + t.title + '" to ' + (n >= t.stages.length ? 'Completed' : 'step ' + (n + 1) + ' of ' + t.stages.length));
+  } },
+  't-approve': { roles: ['client'], client: true, fn(x, p) {
+    const t = openTask(x, p.id), text = str(p.text, 3000); if (t.status !== 'awaiting') refuse('This task is not waiting for approval.');
+    if (text) t.comments.push({ by: 'Client', client: true, text, at: x.now });
+    if (L.staged(t)) return advance(x, t, true);
+    t.status = 'approved'; hist(x, t, 'Client approved'); x.log('Approved "' + t.title + '"');
+  } },
+  't-sent': { roles: ['client'], client: true, fn(x, p) { const t = openTask(x, p.id); if (L.staged(t)) refuse('Complete the current step instead.'); if (t.owner !== 'client' || !['cdraft', 'todo'].includes(t.status)) refuse('This item is not waiting on you.'); t.status = 'submitted'; hist(x, t, 'Client sent this'); x.log('Sent "' + t.title + '"'); } },
   't-changes': { roles: ['client'], client: true, fn(x, p) {
     const t = openTask(x, p.id), text = str(p.text, 3000) || refuse('Describe the change you need, then request it.');
     if (t.status !== 'awaiting') refuse('This task is not waiting for approval.');
     if (t.rounds >= 2) refuse('Both included revision rounds are used. Further changes are quoted separately.');
-    t.rounds++; t.status = 'changes'; t.comments.push({ by: 'Client', client: true, text, at: x.now }); hist(x, t, 'Client requested changes');
+    t.rounds++; t.comments.push({ by: 'Client', client: true, text, at: x.now });
+    if (L.staged(t)) { let i = t.stage - 1; while (i > 0 && t.stages[i].owner !== 'gioia') i--; t.stages.forEach((s, k) => { if (k >= i) s.done = false; }); t.stage = Math.max(0, i); }
+    t.status = 'changes'; hist(x, t, 'Client requested changes' + (L.staged(t) ? ', back to step ' + (t.stage + 1) : ''));
     x.log('Requested changes on "' + t.title + '" (round ' + t.rounds + ' of 2)');
   } },
   't-comment': { roles: ALL, client: true, fn(x, p) { const t = x.staff ? task(x, p.id) : openTask(x, p.id), text = str(p.text, 3000) || refuse('Write a comment first.'); t.comments.push({ by: x.staff ? x.me.name : 'Client', client: !x.staff, text, at: x.now }); x.log('Commented on "' + t.title + '"'); } },
@@ -234,7 +362,7 @@ const A = {
     const d = p.svc || {}, name = str(d.name) || refuse('Give the service a name.');
     const s = { id: str(d.id, 40) || rid('s'), name, price: Math.max(0, int(d.price)), billing: d.billing === 'once' ? 'once' : 'monthly', note: str(d.note),
       bullets: (Array.isArray(d.bullets) ? d.bullets : []).map(b => str(b)).filter(Boolean).slice(0, 12),
-      tasks: (Array.isArray(d.tasks) ? d.tasks : []).map(t => [str(t[0], 160), t[1] === 'client' ? 'client' : 'gioia', !!t[2] && t[1] !== 'client']).filter(t => t[0]).slice(0, 40) };
+      tasks: (Array.isArray(d.tasks) ? d.tasks : []).map(t => { const st = L.parseSteps(Array.isArray(t[3]) ? L.stepsText(t[3]) : str(t[3], 4000)); return st.length ? [str(t[0], 160), 'gioia', st.some(z => z[2] === 'approve'), st] : [str(t[0], 160), t[1] === 'client' ? 'client' : 'gioia', !!t[2] && t[1] !== 'client']; }).filter(t => t[0]).slice(0, 40) };
     const i = x.catalogue.findIndex(c => c.id === s.id);
     if (i >= 0) x.catalogue[i] = s; else x.catalogue.push(s);
     x.save.catalogue = true;
@@ -258,6 +386,8 @@ const A = {
     const rows = (await x.cl.query('select v from clients')).rows;
     for (const r of rows) { let hit = false; r.v.tasks.forEach(t => { if (t.assignee === p.id) { t.assignee = ''; hit = true; } }); if (hit) await saveClient(x.cl, r.v); }
   } },
+  'import-preview': { roles: ADMIN, fn(x, p) { return applyPlan(x, p.plan, true); } },
+  'import-create': { roles: ADMIN, fn(x, p) { return applyPlan(x, p.plan, false); } },
   'brand-save': { roles: ADMIN, async fn(x, p) { const b = p.brand || {}; await setKV(x.cl, 'brand', { mark: str(b.mark, 40) || 'CLIENT DESK', tagline: str(b.tagline, 80), company: str(b.company, 120), address: str(b.address, 400), terms: str(b.terms, 30000) }); } },
   'seen': { roles: ALL, async fn(x) { const seen = await getKV(x.cl, 'seen', {}); seen[x.me.key] = x.now; await setKV(x.cl, 'seen', seen); } }
 };

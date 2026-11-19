@@ -112,7 +112,7 @@ h3{font:600 15px/1.3 var(--body)}
 
 /* workspace board */
 .wsgrid{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:18px;align-items:start}
-.board{display:grid;grid-template-columns:repeat(4,minmax(210px,1fr));gap:12px;overflow-x:auto;padding-bottom:4px}
+.board{display:grid;grid-template-columns:repeat(6,minmax(200px,1fr));gap:12px;overflow-x:auto;padding-bottom:4px}
 .col{background:#efe8da;border-radius:var(--r);padding:10px;display:flex;flex-direction:column;gap:10px;min-height:160px;border:1px solid transparent}
 .col.over{border-color:var(--gold);background:#f1e6cf}
 .col.c-done{background:#e5ede3}
@@ -334,3 +334,17 @@ textarea{min-height:76px;resize:vertical}
   .doc{border:0;min-width:0;padding:0}
   .doc .page2{page-break-before:always;border:0;margin-top:0;padding-top:0}
 }
+
+/* steps, import */
+.steps{display:flex;flex-direction:column;padding:6px 16px}
+.stp{display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:12px;align-items:center;padding:9px 0;border-top:1px solid var(--line)}
+.stp:first-child{border-top:0}
+.stp .dot{font:700 12px var(--body);color:var(--muted)}
+.stp.now{background:#fbf3e3;margin:0 -16px;padding:9px 16px}
+.stp.done b{color:var(--muted)}
+.mono,.code{font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.code{white-space:pre-wrap;background:var(--card-2);border:1px solid var(--line);border-radius:9px;padding:12px;margin:10px 0 0;max-height:420px;overflow:auto}
+details > summary{list-style:revert}
+.col.c-client{background:#e8eef4}
+.tcard.k-cdraft,.tcard.k-creview{border-left-color:var(--info)}
+.stp .dot.on{color:#fff}
