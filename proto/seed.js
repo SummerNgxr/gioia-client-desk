@@ -17,6 +17,8 @@
     const team = s.team, id = n => team.find(m => m.name.startsWith(n)).id;
     const yc = s.clients.find(c => /Yu Cheng/.test(c.company));
     await run(A, 'save-details', { company: yc.company, contact: yc.contact, website: yc.website, phone: '9123 4567', email: 'yokliang@yucheng.example', notes: 'Prefers WhatsApp. Articles are written in Chinese first.' }, yc.id);
+    await run(A, 'note-add', { aid: yc.aid, text: 'Prefers WhatsApp for quick questions, email for anything with files.' });
+    await run(MEL, 'note-add', { aid: yc.aid, text: 'Articles are written in Chinese first by Mr Tan.\nHe reviews English drafts over the weekend, so send them by Thursday.\nAvoid red in designs for the January posts.' });
     await run(A, 'i-sent', { m: 1 }, yc.id);
     await run(A, 'i-paid', { m: 1 }, yc.id);
     // Yu Cheng: a 9-step article workflow in November

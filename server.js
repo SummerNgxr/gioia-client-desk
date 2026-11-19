@@ -14,7 +14,7 @@ const GOOGLE_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 const str = (v, max) => String(v == null ? '' : v).trim().slice(0, max || 300);
-const Core = require('./lib/core.js')(pool, L, { randomBytes: n => crypto.randomBytes(n), seedJson: process.env.SEED_JSON, adminEmail: process.env.ADMIN_EMAIL, adminName: process.env.ADMIN_NAME, googleReady: !!(GOOGLE_ID && GOOGLE_SECRET), devLogin: DEV_LOGIN });
+const Core = require('./lib/core.js')(pool, L, { randomBytes: n => crypto.randomBytes(n), seedJson: process.env.SEED_JSON, adminEmail: process.env.ADMIN_EMAIL, adminName: process.env.ADMIN_NAME, googleReady: !!(GOOGLE_ID && GOOGLE_SECRET), devLogin: DEV_LOGIN, appUrl: (process.env.BASE_URL || '').replace(/\/$/, '') });
 const { init, identify, buildState, runAction, getKV, Refuse, DEFAULT_BRAND } = Core;
 
 /* ---------- web ---------- */
