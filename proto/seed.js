@@ -23,6 +23,8 @@
     const art = yc.tasks.find(t => t.svc === 'articles' && t.m === 1 && /Article 1: draft/.test(t.title));
     await run(A, 't-steps-set', { id: art.id, steps: ['Client: Write the original content in Chinese', 'Jo: Translate and develop the English article', 'Jo: Optimise for SEO, GEO and AEO', 'Client reviews: Review the English draft', 'Shi Han: Final edits and headlines', 'Client approves: Approve the final article', 'Jo: Design the article images', 'Jo: Upload to the website', 'Shi Han: Share the link with the client'].join('\n') }, yc.id);
     await run(A, 't-stage-set', { id: art.id, stage: 2 }, yc.id);
+    await run(A, 'tpl-save', { name: 'Bilingual article', steps: ['Client: Write the original content in Chinese', 'Jo: Translate and develop the English article', 'Jo: Optimise for SEO, GEO and AEO', 'Client reviews: Review the English draft', 'Shi Han: Final edits and headlines', 'Client approves: Approve the final article', 'Jo: Design the article images', 'Jo: Upload to the website', 'Shi Han: Share the link with the client'].join('\n') });
+    await run(A, 'tpl-save', { name: 'Social post with approval', steps: 'Team: Draft caption and design\nClient approves: Approve the post\nTeam: Schedule and publish' });
     await run(A, 't-stage-due', { id: art.id, i: 2, due: '2026-11-24' }, yc.id);
     await run(A, 't-stage-due', { id: art.id, i: 4, due: '2026-11-27' }, yc.id);
     await run(A, 't-stage-due', { id: art.id, i: 7, due: '2026-11-30' }, yc.id);

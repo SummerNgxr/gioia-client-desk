@@ -199,7 +199,7 @@ textarea{min-height:76px;resize:vertical}
 .doc .sub{display:flex;justify-content:flex-end;gap:60px;padding:8px 12px;font:700 10.5px var(--doc-label);letter-spacing:.2em;text-transform:uppercase}
 .doc h4{font:400 15px var(--doc-label);letter-spacing:.1em;margin:20px 0 6px}
 
-@media (max-width:1560px){.wsgrid{grid-template-columns:1fr}.wsgrid aside{max-width:none}}
+@media (max-width:1560px){.wsgrid{grid-template-columns:minmax(0,1fr)}.wsgrid aside{max-width:none}}
 @media (max-width:820px){
   .app{grid-template-columns:1fr;height:auto}
   .side{flex-direction:row;overflow-x:auto;padding:10px;gap:2px;position:sticky;top:0;z-index:6}
@@ -368,7 +368,12 @@ details > summary{list-style:revert}
 .stpctl input.late{border-color:var(--crit);color:var(--crit)}
 .paycard{gap:10px}
 .vcgrid{align-items:start}
-.proto-bar{position:fixed;right:16px;bottom:16px;z-index:999;background:#1d3a2b;color:#f4efe5;border-radius:14px;padding:10px 12px;display:flex;gap:10px;align-items:center;box-shadow:0 10px 30px rgba(0,0,0,.25);font:500 13px 'DM Sans',sans-serif}
-.proto-bar select{width:auto;color:#1d3a2b;background:#f4efe5;border-radius:8px;padding:6px 8px;font:600 13px 'DM Sans',sans-serif}
+.proto-bar{position:fixed;left:12px;bottom:12px;width:222px;z-index:999;background:#2a4d3a;color:#f4efe5;border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px;align-items:stretch;border:1px solid rgba(244,239,229,.25);box-shadow:0 10px 30px rgba(0,0,0,.25);font:500 13px 'DM Sans',sans-serif}
+.proto-bar select{width:100%;color:#1d3a2b;background:#f4efe5;border-radius:8px;padding:6px 8px;font:600 13px 'DM Sans',sans-serif}
 .proto-bar button{background:transparent;border:1px solid rgba(244,239,229,.4);color:inherit;border-radius:8px;padding:6px 10px;cursor:pointer;font:inherit}
 @media print{.proto-bar{display:none}}
+
+.wsgrid>section{min-width:0}
+.tplbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.tplbar select{width:auto;max-width:100%}
+.tplsteps{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:6px}
