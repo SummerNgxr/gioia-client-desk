@@ -8,6 +8,8 @@
     const st = async who => Core.buildState(await Core.pool.connect(), await (async () => { const cl = await Core.pool.connect(); return Core.identify(cl, who); })());
     await run(A, 'team-add', { name: 'Melissa Wee', email: MEL, admin: true });
     await run(A, 'team-add', { name: 'Jo Lim', email: JO, admin: false });
+    const b0 = (await st(A)).brand;
+    await run(A, 'brand-save', { brand: Object.assign({}, b0, { terms: b0.terms || '1. FEES AND PAYMENT\nSample terms for the prototype. Your own Terms & Conditions from Settings appear here.\n\n2. TERM\nThe committed months are payable in full. Further months continue when both parties confirm.', welcome: 'Dear {name},\n\nThank you for taking the time to share your plans for {company} with us. We have put together the proposal below around what you told us matters most.\n\nTake your time to read through it. If anything needs adjusting, ask us below and we will send an updated version.\n\nWarmly,\nShi Han' }) });
     // catalogue prep tasks
     let s = await st(A);
     const web = s.catalogue.find(x => x.id === 'web'), social = s.catalogue.find(x => x.id === 'social');
@@ -50,6 +52,6 @@
     const r = await run(A, 'q-save', { aid: yc.aid, cid: 'new', name: '2027 Website Redesign', q: { ids: ['web', 'social'], start: '2027-01', months: 3, committed: 3, discount: 0 }, then: 'sent' });
     await run(A, 'prep-start', {}, r.out.cid);
     // a prospect with a draft quotation
-    await run(A, 'q-save', { aid: 'new', cid: 'new', name: '2027 Social Media Retainer', client: { company: 'Lumen Wellness Studio', contact: 'Grace Ong', email: 'grace@lumen.example', website: 'lumenwellness.sg' }, q: { ids: ['social', 'ads'], start: '2027-02', months: 6, committed: 3, discount: 100 }, then: 'draft' });
+    await run(A, 'q-save', { aid: 'new', cid: 'new', name: '2027 Social Media Retainer', client: { company: 'Lumen Wellness Studio', contact: 'Grace Ong', email: 'grace@lumen.example', website: 'lumenwellness.sg' }, q: { ids: ['social', 'ads'], start: '2027-02', months: 6, committed: 3, discount: 100 }, then: 'sent', welcome: '' });
   };
 });

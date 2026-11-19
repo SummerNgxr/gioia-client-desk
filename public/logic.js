@@ -26,6 +26,8 @@
   const invLocked = (c, m) => m > c.quote.committed && !c.quote.renewed;
   const freeWs = s => !!s && (s.billing === 'general' || s.billing === 'prep');
   const taskOpen = (c, t) => { if (t.svc === 'general') return true; if (t.svc === 'prep') return c.prep === 'open'; const i = t.adhoc ? adhocOf(c, t.adhoc) : inv(c, t.m); return !!i && i.status === 'paid'; };
+  /* a quotation the client can see in the portal before any work opens */
+  const shared = c => ['sent', 'accepted', 'declined'].includes(c.quote.status);
   const hasAccess = c => c.prep === 'open' || c.invoices.some(i => i.status === 'paid') || c.adhoc.some(a => a.status === 'paid');
   const newTask = (id, svc, m, def, adhoc) => { const t = { id, svc, m, adhoc: adhoc || '', title: def[0], owner: def[1], approve: !!def[2], status: def[1] === 'client' ? 'cdraft' : 'todo', rounds: 0, assignee: '', desc: '', due: '', comments: [], files: [], history: [] }; const st = toStages(def[3]); if (st.length) { t.stages = st; t.stage = 0; t.owner = 'gioia'; t.approve = st.some(x => x.kind === 'approve'); syncStage(t); } return t; };
   const staged = t => !!(t.stages && t.stages.length);
@@ -46,7 +48,7 @@
   const stageMine = (t, id) => staged(t) && t.stages.some(s => !s.done && s.assignee === id);
     const curStage = t => staged(t) && t.stage < t.stages.length ? t.stages[t.stage] : null;
   function syncStage(t) { if (!staged(t)) return; if (t.stage >= t.stages.length) { t.stage = t.stages.length; t.status = 'done'; return; } const s = t.stages[t.stage]; if (s.owner === 'client') t.status = STEP_STATUS[s.kind] || 'cdraft'; else if (!['progress', 'changes'].includes(t.status)) t.status = 'todo'; }
-  function normalizeClient(c) { c.adhoc = c.adhoc || []; c.extra = c.extra || []; c.files = c.files || []; (c.tasks || []).forEach(t => { t.desc = t.desc || ''; t.due = t.due || ''; t.history = t.history || []; t.comments = t.comments || []; t.files = t.files || []; if (t.owner === 'client' && t.status === 'todo') t.status = 'cdraft'; }); return c; }
+  function normalizeClient(c) { c.adhoc = c.adhoc || []; c.extra = c.extra || []; c.files = c.files || []; (c.tasks || []).forEach(t => { (t.comments || []).forEach((m, i) => { if (!m.id) m.id = t.id + '-m' + i; }); t.desc = t.desc || ''; t.due = t.due || ''; t.history = t.history || []; t.comments = t.comments || []; t.files = t.files || []; if (t.owner === 'client' && t.status === 'todo') t.status = 'cdraft'; }); return c; }
   function buildTasks(c) {
     let n = 0; const out = [];
     c.quote.lines.forEach(s => {
@@ -62,7 +64,7 @@
     c.tasks = buildTasks(c);
   }
   const statusOptions = t => staged(t) ? (curStage(t) && curStage(t).owner === 'gioia' ? ['todo', 'progress'] : [t.status]) : t.owner === 'client' ? ['cdraft', 'submitted', 'done'] : t.approve ? ['todo', 'progress', 'cdraft', 'creview', 'awaiting', 'changes', 'approved', 'done'] : ['todo', 'progress', 'cdraft', 'creview', 'done'];
-  const STATUS = { pending: 'Pending', sent: 'Sent', paid: 'Paid', accepted: 'Accepted', cancelled: 'Cancelled', void: 'Void', locked: 'Awaiting renewal', todo: 'Pending action', progress: 'In progress', cdraft: 'Pending client draft', creview: 'Pending client review', awaiting: 'Awaiting client approval', changes: 'Changes requested', approved: 'Approved by client', submitted: 'Sent by client', done: 'Completed' };
+  const STATUS = { pending: 'Pending', sent: 'Sent', paid: 'Paid', accepted: 'Accepted', cancelled: 'Cancelled', declined: 'Declined', void: 'Void', locked: 'Awaiting renewal', todo: 'Pending action', progress: 'In progress', cdraft: 'Pending client draft', creview: 'Pending client review', awaiting: 'Awaiting client approval', changes: 'Changes requested', approved: 'Approved by client', submitted: 'Sent by client', done: 'Completed' };
   /* team fees, paid for work done whether or not the client has paid:
      month: a monthly sum for a service, "all" = earned when all their tasks that month are completed, "prorata" = earned per completed task
      task: one task, or one step of a task, earned when it is completed
@@ -102,5 +104,5 @@
     out.total = [...out.own, ...out.share].reduce((a, x) => a + x.amount, 0); return out;
   }
   const feeBase = (c, s) => !s ? 0 : s.adhoc ? ((adhocOf(c, s.adhoc) || {}).amount || s.price) : s.price;
-  return { MONTHS, pad, clone, money, short, ym, mName, due, ql, adhocOf, invLines, invTotal, inv, invLocked, taskOpen, hasAccess, newTask, buildTasks, acceptQuote, statusOptions, STATUS, freeWs, invNo, findMember, stageMine, feeSvc, feeTasks, feeEarned, feeOwed, feeState, feeBase, taskValue, taskCost, parseSteps, stepsText, toStages, staged, curStage, syncStage, normalizeClient };
+  return { MONTHS, pad, clone, money, short, ym, mName, due, ql, adhocOf, invLines, invTotal, inv, invLocked, taskOpen, hasAccess, newTask, buildTasks, acceptQuote, statusOptions, STATUS, freeWs, shared, invNo, findMember, stageMine, feeSvc, feeTasks, feeEarned, feeOwed, feeState, feeBase, taskValue, taskCost, parseSteps, stepsText, toStages, staged, curStage, syncStage, normalizeClient };
 });

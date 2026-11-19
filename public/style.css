@@ -388,3 +388,14 @@ textarea.grow{resize:vertical;overflow:hidden;min-height:64px}
 .metarow>.vccell{cursor:pointer;border-radius:0 10px 10px 0}
 .metarow>.vccell:hover{background:var(--accent-soft)}
 .vccell .link{font-size:12px;margin-left:4px}
+.vcline{font-size:13.5px}
+.proposal{max-width:980px}
+.phero{display:flex;flex-direction:column;gap:8px;padding:8px 0 4px}
+.phero h1{font-size:40px}
+.welcome{background:#fbf8f1;border-left:4px solid var(--accent);font-size:15.5px;line-height:1.65}
+.pcard{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:10px}
+.pcard h3{margin:2px 0 0;font:600 20px var(--display)}
+.pcard ul{margin:0;padding-left:18px;line-height:1.6}
+.nextsteps{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:10px}
+.nextsteps li b{display:block}
+.accept{border:2px solid var(--accent)}
