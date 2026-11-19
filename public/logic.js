@@ -27,7 +27,7 @@
   const freeWs = s => !!s && (s.billing === 'general' || s.billing === 'prep');
   const taskOpen = (c, t) => { if (t.svc === 'general') return true; if (t.svc === 'prep') return c.prep === 'open'; const i = t.adhoc ? adhocOf(c, t.adhoc) : inv(c, t.m); return !!i && i.status === 'paid'; };
   /* a quotation the client can see in the portal before any work opens */
-  const shared = c => ['sent', 'accepted', 'declined'].includes(c.quote.status);
+  const shared = c => ['sent', 'accepted', 'declined', 'changes'].includes(c.quote.status);
   const hasAccess = c => c.prep === 'open' || c.invoices.some(i => i.status === 'paid') || c.adhoc.some(a => a.status === 'paid');
   const newTask = (id, svc, m, def, adhoc) => { const t = { id, svc, m, adhoc: adhoc || '', title: def[0], owner: def[1], approve: !!def[2], status: def[1] === 'client' ? 'cdraft' : 'todo', rounds: 0, assignee: '', desc: '', due: '', comments: [], files: [], history: [] }; const st = toStages(def[3]); if (st.length) { t.stages = st; t.stage = 0; t.owner = 'gioia'; t.approve = st.some(x => x.kind === 'approve'); syncStage(t); } return t; };
   const staged = t => !!(t.stages && t.stages.length);
