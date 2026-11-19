@@ -10,6 +10,7 @@
       'commit': () => { snap = null; return out([]); },
       'rollback': () => { if (snap) db = JSON.parse(snap); snap = null; return out([]); },
       'select pg_advisory_xact_lock(7)': () => out([]),
+      'select k, v from kv': () => out(Object.entries(db.kv).map(([k, v]) => ({ k, v: JSON.parse(v) }))),
       'select v from kv where k=$1': ([k]) => out(k in db.kv ? [{ v: JSON.parse(db.kv[k]) }] : []),
       'insert into kv(k,v) values($1,$2) on conflict(k) do update set v=excluded.v': ([k, v]) => { db.kv[k] = v; return out([]); },
       'select v from clients where id=$1': ([id]) => out(id in db.clients ? [{ v: JSON.parse(db.clients[id]) }] : []),
