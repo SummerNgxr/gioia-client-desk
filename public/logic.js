@@ -14,13 +14,27 @@
   const due = (c, m) => { const x = ym(c, m); return '1 ' + MONTHS[x.mo].slice(0, 3) + ' ' + x.y; };
   const ql = (c, id) => c.quote.lines.find(s => s.id === id) || c.extra.find(s => s.id === id);
   const adhocOf = (c, id) => c.adhoc.find(a => a.id === id);
+  /* discounts: a fixed amount or a percentage, on the whole invoice or one service, one-off / every month / a range of months */
+  function discounts(c) { const q = c.quote; if (Array.isArray(q.discounts)) return q.discounts; return q.discount > 0 ? [{ id: 'd0', label: '', type: 'amount', value: q.discount, scope: 'all', when: 'range', from: 2, to: q.months }] : []; }
+  const discIn = (d, m, months) => d.when === 'every' ? m <= months : d.when === 'once' ? m === (+d.from || 1) : m >= (+d.from || 1) && m <= (+d.to || months);
+  function discWhen(d, c) { const n = c.quote.months; return d.when === 'every' ? 'every month' : d.when === 'once' ? 'Month ' + (+d.from || 1) + ' only' : (+d.from || 1) === (+d.to || n) ? 'Month ' + (+d.from || 1) : 'Months ' + (+d.from || 1) + ' to ' + (+d.to || n); }
+  function discLabel(d, c) { const s = d.scope !== 'all' && ql(c, d.scope); return (d.label || 'Discount' + (d.type === 'pct' ? ' ' + d.value + '%' : '')) + (s ? ' on ' + short(s) : '') + ' (' + discWhen(d, c) + ')'; }
+  function cleanDiscounts(arr, months, ids) {
+    return (Array.isArray(arr) ? arr : []).map(d => { const from = Math.min(months, Math.max(1, Math.floor(+d.from || 1))); return { id: String(d.id || ''), label: String(d.label || '').trim().slice(0, 80), type: d.type === 'pct' ? 'pct' : 'amount', value: d.type === 'pct' ? Math.min(100, Math.max(0, Number(d.value) || 0)) : Math.max(0, Math.floor(Number(d.value) || 0)), scope: ids.includes(d.scope) ? d.scope : 'all', when: ['once', 'every', 'range'].includes(d.when) ? d.when : 'range', from, to: Math.min(months, Math.max(from, Math.floor(+d.to || months))) }; }).filter(d => d.value > 0).slice(0, 10);
+  }
   function invLines(c, m) {
     const out = [];
     c.quote.lines.forEach(s => { if (s.billing === 'monthly' || m === 1) out.push({ s, name: s.name, amount: s.price }); });
-    if (m >= 2 && c.quote.discount > 0 && c.quote.lines.some(s => s.billing === 'monthly'))
-      out.push({ name: 'Monthly discount (Month 2 to Month ' + c.quote.months + ')', amount: -c.quote.discount });
+    discounts(c).forEach(d => {
+      if (!discIn(d, m, c.quote.months)) return;
+      const base = d.scope === 'all' ? out.filter(l => l.s).reduce((a, l) => a + l.amount, 0) : (out.find(l => l.s && l.s.id === d.scope) || {}).amount || 0;
+      const amt = Math.min(base, d.type === 'pct' ? Math.round(base * d.value / 100) : +d.value || 0);
+      if (amt > 0) out.push({ name: discLabel(d, c), amount: -amt, disc: d.id });
+    });
     return out;
   }
+  /* months grouped by what is billed: "Month 1: $1,180", "Months 2 to 6: $680 a month" */
+  function schedule(c) { const g = []; for (let m = 1; m <= c.quote.months; m++) { const t = invTotal(c, m), last = g[g.length - 1]; if (last && last.total === t && m > 1 && last.from > 1) last.to = m; else g.push({ from: m, to: m, total: t }); } return g; }
   const invTotal = (c, m) => invLines(c, m).reduce((a, l) => a + l.amount, 0);
   const inv = (c, m) => c.invoices.find(i => i.m === m);
   const invLocked = (c, m) => m > c.quote.committed && !c.quote.renewed;
@@ -48,7 +62,7 @@
   const stageMine = (t, id) => staged(t) && t.stages.some(s => !s.done && s.assignee === id);
     const curStage = t => staged(t) && t.stage < t.stages.length ? t.stages[t.stage] : null;
   function syncStage(t) { if (!staged(t)) return; if (t.stage >= t.stages.length) { t.stage = t.stages.length; t.status = 'done'; return; } const s = t.stages[t.stage]; if (s.owner === 'client') t.status = STEP_STATUS[s.kind] || 'cdraft'; else if (!['progress', 'changes'].includes(t.status)) t.status = 'todo'; }
-  function normalizeClient(c) { c.adhoc = c.adhoc || []; c.extra = c.extra || []; c.files = c.files || []; (c.tasks || []).forEach(t => { (t.comments || []).forEach((m, i) => { if (!m.id) m.id = t.id + '-m' + i; }); t.desc = t.desc || ''; t.due = t.due || ''; t.history = t.history || []; t.comments = t.comments || []; t.files = t.files || []; if (t.owner === 'client' && t.status === 'todo') t.status = 'cdraft'; }); return c; }
+  function normalizeClient(c) { if (c.quote && c.quote.discount > 0 && !Array.isArray(c.quote.discounts)) { c.quote.discounts = discounts(c); c.quote.discount = 0; } c.adhoc = c.adhoc || []; c.extra = c.extra || []; c.files = c.files || []; (c.tasks || []).forEach(t => { (t.comments || []).forEach((m, i) => { if (!m.id) m.id = t.id + '-m' + i; }); t.desc = t.desc || ''; t.due = t.due || ''; t.history = t.history || []; t.comments = t.comments || []; t.files = t.files || []; if (t.owner === 'client' && t.status === 'todo') t.status = 'cdraft'; }); return c; }
   function buildTasks(c) {
     let n = 0; const out = [];
     c.quote.lines.forEach(s => {
@@ -108,5 +122,5 @@
     out.total = [...out.own, ...out.share].reduce((a, x) => a + x.amount, 0); return out;
   }
   const feeBase = (c, s) => !s ? 0 : s.adhoc ? ((adhocOf(c, s.adhoc) || {}).amount || s.price) : s.price;
-  return { MONTHS, pad, clone, money, short, ym, mName, due, ql, adhocOf, invLines, invTotal, inv, invLocked, taskOpen, hasAccess, newTask, buildTasks, acceptQuote, statusOptions, STATUS, freeWs, shared, invNo, findMember, stageMine, feeSvc, feeTasks, feeEarned, feeOwed, feeState, feeBase, taskValue, taskCost, parseSteps, stepsText, toStages, staged, curStage, syncStage, normalizeClient };
+  return { MONTHS, pad, clone, money, short, ym, mName, due, ql, adhocOf, invLines, invTotal, inv, invLocked, taskOpen, hasAccess, newTask, buildTasks, acceptQuote, statusOptions, STATUS, freeWs, shared, invNo, discounts, discLabel, discWhen, cleanDiscounts, schedule, findMember, stageMine, feeSvc, feeTasks, feeEarned, feeOwed, feeState, feeBase, taskValue, taskCost, parseSteps, stepsText, toStages, staged, curStage, syncStage, normalizeClient };
 });

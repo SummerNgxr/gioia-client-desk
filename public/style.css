@@ -418,3 +418,9 @@ textarea.grow{resize:vertical;overflow:hidden;min-height:64px}
 .issue.warn{background:#fbf3df;border-color:#ead9a8}
 .issue .ico-wrap{display:grid;place-items:center}
 .sumgrid>div{display:flex;flex-direction:column;gap:2px}
+.drow{display:flex;flex-direction:column;gap:8px;border:1px solid var(--line);border-radius:10px;background:#fff;padding:10px}
+.drow .dline{display:grid;gap:8px;align-items:center}
+.drow .dline:nth-child(1){grid-template-columns:minmax(0,1fr) 36px}
+.drow .dline:nth-child(2){grid-template-columns:76px 110px minmax(0,1fr)}
+.drow .dline:nth-child(3){grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto minmax(0,1fr)}
+.drow input,.drow select{padding:7px 9px;min-height:0;width:100%}

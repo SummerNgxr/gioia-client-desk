@@ -52,6 +52,6 @@
     const r = await run(A, 'q-save', { aid: yc.aid, cid: 'new', name: '2027 Website Redesign', q: { ids: ['web', 'social'], start: '2027-01', months: 3, committed: 3, discount: 0 }, then: 'sent' });
     await run(A, 'prep-start', {}, r.out.cid);
     // a prospect with a draft quotation
-    await run(A, 'q-save', { aid: 'new', cid: 'new', name: '2027 Social Media Retainer', client: { company: 'Lumen Wellness Studio', contact: 'Grace Ong', email: 'grace@lumen.example', website: 'lumenwellness.sg' }, q: { ids: ['social', 'ads'], start: '2027-02', months: 6, committed: 3, discount: 100 }, then: 'sent', welcome: '' });
+    await run(A, 'q-save', { aid: 'new', cid: 'new', name: '2027 Social Media Retainer', client: { company: 'Lumen Wellness Studio', contact: 'Grace Ong', email: 'grace@lumen.example', website: 'lumenwellness.sg' }, q: { ids: ['social', 'ads'], start: '2027-02', months: 6, committed: 3, discounts: [{ label: 'Launch discount', type: 'pct', value: 15, scope: 'all', when: 'once', from: 1 }, { label: 'Retainer discount', type: 'amount', value: 100, scope: 'all', when: 'range', from: 2, to: 6 }] }, then: 'sent', welcome: '' });
   };
 });
