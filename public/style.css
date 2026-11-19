@@ -384,3 +384,7 @@ textarea.grow{resize:vertical;overflow:hidden;min-height:64px}
 .notetext{white-space:pre-wrap;line-height:1.55}
 .cmt.internal{background:#fbf3df;margin:0 -16px;padding-left:16px!important;padding-right:16px!important}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+.metarow>.vccell{cursor:pointer;border-radius:0 10px 10px 0}
+.metarow>.vccell:hover{background:var(--accent-soft)}
+.vccell .link{font-size:12px;margin-left:4px}
