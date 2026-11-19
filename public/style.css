@@ -348,3 +348,27 @@ details > summary{list-style:revert}
 .col.c-client{background:#e8eef4}
 .tcard.k-cdraft,.tcard.k-creview{border-left-color:var(--info)}
 .stp .dot.on{color:#fff}
+
+/* ---------- v2: projects, preparation, step controls, fees and payouts ---------- */
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media (max-width:900px){.g3{grid-template-columns:1fr}}
+.pswitch{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:2px 4px 2px 12px;background:var(--card)}
+.pswitch select{border:0;background:transparent;font-weight:600;padding:6px 8px 6px 0;width:auto;max-width:320px}
+.ctable .arow td{background:var(--card-2);border-top:1px solid var(--line)}
+.ctable .prow td{border-top:1px solid var(--line)}
+.ctable .prow:hover td{background:var(--accent-soft)}
+.prepcard{border-color:#d9cfbd;background:#fbf8f1}
+.danger h2{color:var(--crit)}
+.danger .row.between{padding:10px 0;border-top:1px solid var(--line)}
+.btn.danger{background:var(--crit);border-color:var(--crit);color:#fff}
+.btn.sm{padding:6px 12px;font-size:13px;min-height:0}
+.stp{grid-template-columns:30px minmax(0,1fr) auto}
+.stpctl{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap}
+.stpctl select,.stpctl input{width:auto;padding:5px 8px;font-size:13px;min-height:0}
+.stpctl input.late{border-color:var(--crit);color:var(--crit)}
+.paycard{gap:10px}
+.vcgrid{align-items:start}
+.proto-bar{position:fixed;right:16px;bottom:16px;z-index:999;background:#1d3a2b;color:#f4efe5;border-radius:14px;padding:10px 12px;display:flex;gap:10px;align-items:center;box-shadow:0 10px 30px rgba(0,0,0,.25);font:500 13px 'DM Sans',sans-serif}
+.proto-bar select{width:auto;color:#1d3a2b;background:#f4efe5;border-radius:8px;padding:6px 8px;font:600 13px 'DM Sans',sans-serif}
+.proto-bar button{background:transparent;border:1px solid rgba(244,239,229,.4);color:inherit;border-radius:8px;padding:6px 10px;cursor:pointer;font:inherit}
+@media print{.proto-bar{display:none}}

@@ -24,19 +24,27 @@
   const invTotal = (c, m) => invLines(c, m).reduce((a, l) => a + l.amount, 0);
   const inv = (c, m) => c.invoices.find(i => i.m === m);
   const invLocked = (c, m) => m > c.quote.committed && !c.quote.renewed;
-  const taskOpen = (c, t) => { if (t.svc === 'general') return true; const i = t.adhoc ? adhocOf(c, t.adhoc) : inv(c, t.m); return !!i && i.status === 'paid'; };
-  const hasAccess = c => c.invoices.some(i => i.status === 'paid') || c.adhoc.some(a => a.status === 'paid');
+  const freeWs = s => !!s && (s.billing === 'general' || s.billing === 'prep');
+  const taskOpen = (c, t) => { if (t.svc === 'general') return true; if (t.svc === 'prep') return c.prep === 'open'; const i = t.adhoc ? adhocOf(c, t.adhoc) : inv(c, t.m); return !!i && i.status === 'paid'; };
+  const hasAccess = c => c.prep === 'open' || c.invoices.some(i => i.status === 'paid') || c.adhoc.some(a => a.status === 'paid');
   const newTask = (id, svc, m, def, adhoc) => { const t = { id, svc, m, adhoc: adhoc || '', title: def[0], owner: def[1], approve: !!def[2], status: def[1] === 'client' ? 'cdraft' : 'todo', rounds: 0, assignee: '', desc: '', due: '', comments: [], files: [], history: [] }; const st = toStages(def[3]); if (st.length) { t.stages = st; t.stage = 0; t.owner = 'gioia'; t.approve = st.some(x => x.kind === 'approve'); syncStage(t); } return t; };
+  const staged = t => !!(t.stages && t.stages.length);
   /* step workflows: one task, several steps that pass between the team and the client */
   const STEP_STATUS = { draft: 'cdraft', review: 'creview', approve: 'awaiting' };
   const STEP_PREFIX = [[/^client\s+approves?\s*:/i, 'client', 'approve'], [/^client\s+reviews?\s*:/i, 'client', 'review'], [/^client\s*:/i, 'client', 'draft'], [/^team\s*:/i, 'gioia', 'work']];
-  function parseSteps(text) {
-    return String(text || '').split('\n').map(l => l.trim()).filter(Boolean).map(l => { for (const [re, owner, kind] of STEP_PREFIX) if (re.test(l)) return [l.replace(re, '').trim(), owner, kind]; return [l, 'gioia', 'work']; }).filter(x => x[0]).slice(0, 20);
+  /* "Jo: Draft the article" assigns a team step to Jo, matching a team member's full or first name */
+  const findMember = (team, name) => { const n = String(name || '').trim().toLowerCase(); if (!n) return null; return (team || []).find(m => m.name.toLowerCase() === n) || (team || []).find(m => m.name.toLowerCase().split(' ')[0] === n) || null; };
+  function parseSteps(text, team) {
+    return String(text || '').split('\n').map(l => l.trim()).filter(Boolean).map(l => {
+      for (const [re, owner, kind] of STEP_PREFIX) if (re.test(l)) return [l.replace(re, '').trim(), owner, kind];
+      const mm = /^([^:]{1,40}):\s*(.+)$/.exec(l), who = mm && findMember(team, mm[1]);
+      return who ? [mm[2].trim(), 'gioia', 'work', who.id] : [l, 'gioia', 'work'];
+    }).filter(x => x[0]).slice(0, 20);
   }
-  const stepsText = steps => (steps || []).map(([t, o, k]) => (o === 'client' ? (k === 'approve' ? 'Client approves: ' : k === 'review' ? 'Client reviews: ' : 'Client: ') : 'Team: ') + t).join('\n');
-  function toStages(raw) { const arr = typeof raw === 'string' ? parseSteps(raw) : Array.isArray(raw) ? raw : []; return arr.map(x => Array.isArray(x) ? { title: String(x[0] || '').slice(0, 160), owner: x[1] === 'client' ? 'client' : 'gioia', kind: x[1] === 'client' ? (['draft', 'review', 'approve'].includes(x[2]) ? x[2] : 'draft') : 'work', done: false } : x).filter(x => x && x.title).slice(0, 20); }
-  const staged = t => !!(t.stages && t.stages.length);
-  const curStage = t => staged(t) && t.stage < t.stages.length ? t.stages[t.stage] : null;
+  const stepsText = (steps, team) => (steps || []).map(x => Array.isArray(x) ? x : [x.title, x.owner, x.kind, x.assignee]).map(([t, o, k, a]) => { const who = a && (team || []).find(m => m.id === a); return (o === 'client' ? (k === 'approve' ? 'Client approves: ' : k === 'review' ? 'Client reviews: ' : 'Client: ') : who ? who.name + ': ' : 'Team: ') + t; }).join('\n');
+  function toStages(raw, team) { const arr = typeof raw === 'string' ? parseSteps(raw, team) : Array.isArray(raw) ? raw : []; return arr.map(x => Array.isArray(x) ? { title: String(x[0] || '').slice(0, 160), owner: x[1] === 'client' ? 'client' : 'gioia', kind: x[1] === 'client' ? (['draft', 'review', 'approve'].includes(x[2]) ? x[2] : 'draft') : 'work', assignee: x[1] === 'client' ? '' : (x[3] || ''), due: '', done: false } : x).filter(x => x && x.title).slice(0, 20); }
+  const stageMine = (t, id) => staged(t) && t.stages.some(s => !s.done && s.assignee === id);
+    const curStage = t => staged(t) && t.stage < t.stages.length ? t.stages[t.stage] : null;
   function syncStage(t) { if (!staged(t)) return; if (t.stage >= t.stages.length) { t.stage = t.stages.length; t.status = 'done'; return; } const s = t.stages[t.stage]; if (s.owner === 'client') t.status = STEP_STATUS[s.kind] || 'cdraft'; else if (!['progress', 'changes'].includes(t.status)) t.status = 'todo'; }
   function normalizeClient(c) { c.adhoc = c.adhoc || []; c.extra = c.extra || []; c.files = c.files || []; (c.tasks || []).forEach(t => { t.desc = t.desc || ''; t.due = t.due || ''; t.history = t.history || []; t.comments = t.comments || []; t.files = t.files || []; if (t.owner === 'client' && t.status === 'todo') t.status = 'cdraft'; }); return c; }
   function buildTasks(c) {
@@ -47,17 +55,52 @@
     });
     return out;
   }
-  function acceptQuote(c) {
+  const invNo = (fmt, quoteNo, n) => String(fmt || '{quote}-{nn}').replace(/\{quote\}/g, quoteNo).replace(/\{nn\}/g, pad(n)).replace(/\{n\}/g, n);
+  function acceptQuote(c, fmt) {
     c.quote.status = 'accepted';
-    c.invoices = Array.from({ length: c.quote.months }, (_, i) => ({ m: i + 1, no: c.quote.no + '-' + pad(i + 1), status: 'pending' }));
+    c.invoices = Array.from({ length: c.quote.months }, (_, i) => ({ m: i + 1, no: invNo(fmt, c.quote.no, i + 1), status: 'pending' }));
     c.tasks = buildTasks(c);
   }
   const statusOptions = t => staged(t) ? (curStage(t) && curStage(t).owner === 'gioia' ? ['todo', 'progress'] : [t.status]) : t.owner === 'client' ? ['cdraft', 'submitted', 'done'] : t.approve ? ['todo', 'progress', 'cdraft', 'creview', 'awaiting', 'changes', 'approved', 'done'] : ['todo', 'progress', 'cdraft', 'creview', 'done'];
-  const STATUS = { pending: 'Pending', sent: 'Sent', paid: 'Paid', accepted: 'Accepted', locked: 'Awaiting renewal', todo: 'Pending action', progress: 'In progress', cdraft: 'Pending client draft', creview: 'Pending client review', awaiting: 'Awaiting client approval', changes: 'Changes requested', approved: 'Approved by client', submitted: 'Sent by client', done: 'Completed' };
-  /* team fees: a fee is payable once the client has paid that month and the person's tasks there are completed */
+  const STATUS = { pending: 'Pending', sent: 'Sent', paid: 'Paid', accepted: 'Accepted', cancelled: 'Cancelled', void: 'Void', locked: 'Awaiting renewal', todo: 'Pending action', progress: 'In progress', cdraft: 'Pending client draft', creview: 'Pending client review', awaiting: 'Awaiting client approval', changes: 'Changes requested', approved: 'Approved by client', submitted: 'Sent by client', done: 'Completed' };
+  /* team fees, paid for work done whether or not the client has paid:
+     month: a monthly sum for a service, "all" = earned when all their tasks that month are completed, "prorata" = earned per completed task
+     task: one task, or one step of a task, earned when it is completed
+     item: one-off work, earned straight away */
   const feeSvc = (c, f) => f.svc ? ql(c, f.svc) : null;
-  function feeTasks(c, f) { const s = feeSvc(c, f); if (!s) return []; const m = s.adhoc || s.billing === 'general' ? 0 : s.billing === 'monthly' ? f.m : 1, all = c.tasks.filter(t => t.svc === s.id && t.m === m), mine = all.filter(t => t.assignee === f.member); return mine.length ? mine : all; }
-  function feeUpcoming(c, f) { if (!c || f.status === 'paid' || f.item) return false; const s = feeSvc(c, f); if (!s) return false; if (s.billing === 'general') return feeTasks(c, f).some(t => t.status !== 'done'); const i = s.adhoc ? adhocOf(c, s.adhoc) : inv(c, f.m || 1); if (!i || i.status !== 'paid') return true; return feeTasks(c, f).some(t => t.status !== 'done'); }
+  function feeTasks(c, f) {
+    if (!c) return [];
+    if (f.kind === 'task') { const t = c.tasks.find(x => x.id === f.taskId); return t ? [t] : []; }
+    if (f.kind === 'item') return [];
+    const s = feeSvc(c, f); if (!s) return [];
+    const m = s.adhoc || freeWs(s) ? 0 : s.billing === 'monthly' ? f.m : 1, all = c.tasks.filter(t => t.svc === s.id && t.m === m);
+    const mine = all.filter(t => t.assignee === f.member || (t.stages || []).some(x => x.assignee === f.member));
+    return mine.length ? mine : all;
+  }
+  function feeEarned(c, f) {
+    if (f.kind === 'item') return f.amount;
+    if (f.kind === 'task') { const t = c && c.tasks.find(x => x.id === f.taskId); if (!t) return 0; if (f.stage !== null && f.stage !== undefined && f.stage !== '') { const st = (t.stages || [])[f.stage]; return st && st.done ? f.amount : 0; } return t.status === 'done' ? f.amount : 0; }
+    const ts = feeTasks(c, f); if (!ts.length) return 0; const d = ts.filter(t => t.status === 'done').length;
+    return f.rule === 'all' ? (d === ts.length ? f.amount : 0) : Math.round(f.amount * d / ts.length);
+  }
+  const feeOwed = (c, f) => Math.max(0, feeEarned(c, f) - (f.paid || 0));
+  const feeState = (c, f) => (f.paid || 0) >= f.amount ? 'paid' : feeOwed(c, f) > 0 ? 'owed' : 'upcoming';
+  /* what a task is worth to the client: the service's price for that month, split evenly, unless an admin set the value */
+  function taskValue(c, t) {
+    if (t.value !== undefined && t.value !== null && t.value !== '') return Number(t.value) || 0;
+    const s = ql(c, t.svc); if (!s || freeWs(s)) return 0;
+    const sib = c.tasks.filter(x => x.svc === t.svc && x.m === t.m), set = sib.filter(x => x.value !== undefined && x.value !== null && x.value !== '');
+    const rest = Math.max(0, feeBase(c, s) - set.reduce((a, x) => a + (Number(x.value) || 0), 0)), n = sib.length - set.length;
+    return n ? Math.round(rest / n) : 0;
+  }
+  function taskCost(c, fees, t) {
+    const out = { own: [], share: [] };
+    fees.filter(f => f.cid === c.id).forEach(f => {
+      if (f.kind === 'task' && f.taskId === t.id) out.own.push({ f, amount: f.amount });
+      else if (f.kind === 'month' || !f.kind) { const ts = feeTasks(c, f); if (ts.some(x => x.id === t.id)) out.share.push({ f, amount: Math.round(f.amount / ts.length) }); }
+    });
+    out.total = [...out.own, ...out.share].reduce((a, x) => a + x.amount, 0); return out;
+  }
   const feeBase = (c, s) => !s ? 0 : s.adhoc ? ((adhocOf(c, s.adhoc) || {}).amount || s.price) : s.price;
-  return { MONTHS, pad, clone, money, short, ym, mName, due, ql, adhocOf, invLines, invTotal, inv, invLocked, taskOpen, hasAccess, newTask, buildTasks, acceptQuote, statusOptions, STATUS, feeSvc, feeTasks, feeUpcoming, feeBase, parseSteps, stepsText, toStages, staged, curStage, syncStage, normalizeClient };
+  return { MONTHS, pad, clone, money, short, ym, mName, due, ql, adhocOf, invLines, invTotal, inv, invLocked, taskOpen, hasAccess, newTask, buildTasks, acceptQuote, statusOptions, STATUS, freeWs, invNo, findMember, stageMine, feeSvc, feeTasks, feeEarned, feeOwed, feeState, feeBase, taskValue, taskCost, parseSteps, stepsText, toStages, staged, curStage, syncStage, normalizeClient };
 });
