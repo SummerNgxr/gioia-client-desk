@@ -53,7 +53,11 @@
     let n = 0; const out = [];
     c.quote.lines.forEach(s => {
       const months = s.billing === 'once' ? [1] : Array.from({ length: c.quote.months }, (_, i) => i + 1);
-      months.forEach(m => s.tasks.forEach(def => out.push(newTask(c.id + '-t' + (++n), s.id, m, def))));
+      months.forEach(m => s.tasks.forEach(def => { const t = newTask(c.id + '-t' + (++n), s.id, m, def), o = def[4] || {};
+        // set-up from the New project form: who does it, and which day of the month it is due
+        if (o.assignee && t.owner === 'gioia') t.assignee = o.assignee;
+        if (o.dueDay) { const x = ym(c, m), last = new Date(x.y, x.mo + 1, 0).getDate(); t.due = x.y + '-' + pad(x.mo + 1) + '-' + pad(Math.min(last, Math.max(1, +o.dueDay))); }
+        out.push(t); }));
     });
     return out;
   }

@@ -167,7 +167,7 @@ function projectSwitch(c) {
 }
 function clientHeader(c, tabs, cur, act) {
   const a = acct(c.aid) || {};
-  return '<div class="head"><div class="row" style="gap:16px"><div class="tilelogo">' + initials(c.company) + '</div><div class="stack" style="gap:6px"><h1>' + esc(c.company) + (a.archived ? ' <span class="chip">Archived</span>' : '') + '</h1><div class="row" style="gap:8px">' + projectSwitch(c) + (isAdmin() ? btn(I('plus', 'sm') + 'New project', 'quote-open', { id: 'new', aid: c.aid }, 'quiet') : '') + '<span class="small muted">' + esc(c.contact) + (c.website ? ' · ' + esc(c.website) : '') + '</span></div></div></div><nav class="tabs" role="tablist">' + tabs.map(([k, l]) => '<button role="tab" data-a="' + act + '" data-t="' + k + '" aria-selected="' + (cur === k) + '">' + l + '</button>').join('') + '</nav></div>';
+  return '<div class="head"><div class="row" style="gap:16px"><div class="tilelogo">' + initials(c.company) + '</div><div class="stack" style="gap:6px"><h1>' + esc(c.company) + (a.archived ? ' <span class="chip">Archived</span>' : '') + '</h1><div class="row" style="gap:8px">' + projectSwitch(c) + (isAdmin() ? btn(I('plus', 'sm') + 'New project', 'wz-new', { aid: c.aid }, 'quiet') : '') + '<span class="small muted">' + esc(c.contact) + (c.website ? ' · ' + esc(c.website) : '') + '</span></div></div></div><nav class="tabs" role="tablist">' + tabs.map(([k, l]) => '<button role="tab" data-a="' + act + '" data-t="' + k + '" aria-selected="' + (cur === k) + '">' + l + '</button>').join('') + '</nav></div>';
 }
 function wsCards(c) {
   return '<div class="grid g2">' + wsList(c).filter(s => s.billing !== 'prep' || c.prep === 'open').map(s => { const m = s.adhoc || freeWs(s) ? 0 : s.billing === 'monthly' ? currentMonth(c) : 1, list = wsTasks(c, s.id, m), i = wsInvoice(c, s, m), open = wsOpenFor(c, s, m), done = list.filter(t => t.status === 'done').length, pct = list.length ? Math.round(done / list.length * 100) : 0, need = open ? list.filter(staff() ? needsTeam : needsClient).length : 0;
@@ -197,7 +197,7 @@ function inviteCard(c) {
 }
 function inviteText(c) {
   const url = (D.appUrl || location.origin), from = (S.brand.company || 'Gioia').replace(/ PRIVATE LIMITED| PTE\.? LTD\.?/i, '');
-  return 'Hi ' + (c.contact || 'there') + ',\n\nYour ' + c.company + ' workspace with ' + from + ' is ready on our Client Desk. It is where you can follow the work, send us your materials, review and approve each piece, and see your invoices.\n\nTo sign in:\n1. Open ' + url + '\n2. Click "Sign in with Google"\n3. Choose this Google account: ' + c.email + '\n\nIf you would rather use a different Google account, just reply and we will update it.\n\nWarm regards,\n' + (member(S.me) || {}).name + '\n' + from;
+  return 'Hi ' + (c.contact || 'there') + ',\n\nYour ' + c.company + ' workspace with ' + from + ' is ready on our client portal. It is where you can follow the work, send us your materials, review and approve each piece, and see your invoices.\n\nTo sign in:\n1. Open ' + url + '\n2. Click "Sign in with Google"\n3. Choose this Google account: ' + c.email + '\n\nIf you would rather use a different Google account, just reply and we will update it.\n\nWarm regards,\n' + (member(S.me) || {}).name + '\n' + from;
 }
 function dangerZone(c) {
   const a = acct(c.aid) || {}, paid = projectsOf(c.aid).some(x => x.invoices.some(i => i.status === 'paid') || x.adhoc.some(i => i.status === 'paid'));
@@ -250,8 +250,8 @@ function clientsPage() {
   const prow = c => { const open = c.tasks.filter(t => taskOpen(c, t)), d = open.filter(t => t.status === 'done').length, pct = open.length ? Math.round(d / open.length * 100) : 0, nt = open.filter(needsTeam).length, nc = open.filter(needsClient).length;
     return '<tr class="click prow" data-a="open-client" data-id="' + c.id + '"><td><div class="row" style="flex-wrap:nowrap;gap:10px;padding-left:48px">' + I('layers', 'sm') + '<div><b>' + esc(pname(c)) + '</b>' + (c.prep === 'open' && !hasAccessPaid(c) ? ' <span class="chip">Preparing</span>' : '') + '</div></div></td><td class="num">' + esc(c.quote.no) + ' ' + pill(c.quote.status) + '</td><td style="min-width:160px">' + (open.length ? '<div class="bar"><i style="width:' + pct + '%"></i></div><span class="small muted">' + d + ' of ' + open.length + ' tasks</span>' : '<span class="small muted">No open work yet</span>') + '</td><td>' + (nt ? '<span class="pill warn">' + nt + '</span>' : '<span class="muted">None</span>') + '</td><td>' + (nc ? '<span class="pill info">' + nc + '</span>' : '<span class="muted">None</span>') + '</td></tr>'; };
   const arow = a => { const ps = projectsOf(a.id);
-    return '<tr class="arow"><td colspan="5"><div class="row between" style="flex-wrap:nowrap"><div class="row" style="flex-wrap:nowrap"><span class="tilelogo" style="width:38px;height:38px;font-size:14px;border-radius:9px">' + initials(a.company) + '</span><div><b>' + esc(a.company) + '</b>' + (a.archived ? ' <span class="chip">Archived</span>' : '') + '<div class="small muted">' + esc(a.contact) + ' · ' + ps.length + (ps.length === 1 ? ' project' : ' projects') + '</div></div></div>' + (isAdmin() ? btn(I('plus', 'sm') + 'New project', 'quote-open', { id: 'new', aid: a.id }, 'quiet') : '') + '</div></td></tr>' + ps.map(prow).join(''); };
-  return '<div class="row between"><div><h1>Clients</h1><p class="muted" style="margin:4px 0 0">' + list.length + ' client' + (list.length === 1 ? '' : 's') + ', ' + S.clients.filter(c => list.some(a => a.id === c.aid)).length + ' projects' + (nArch ? ' · <button class="link" data-a="arch-toggle">' + (S.showArchived ? 'Hide' : 'Show') + ' ' + nArch + ' archived</button>' : '') + '</p></div>' + '<div class="row">' + (isAdmin() ? btn(I('upload', 'sm') + 'Import project', 'nav', { v: 'import' }, 'ghost') + btn(I('plus', 'sm') + 'New quotation', 'quote-open', { id: 'new' }, 'ghost') : '') + '</div></div>' +
+    return '<tr class="arow"><td colspan="5"><div class="row between" style="flex-wrap:nowrap"><div class="row" style="flex-wrap:nowrap"><span class="tilelogo" style="width:38px;height:38px;font-size:14px;border-radius:9px">' + initials(a.company) + '</span><div><b>' + esc(a.company) + '</b>' + (a.archived ? ' <span class="chip">Archived</span>' : '') + '<div class="small muted">' + esc(a.contact) + ' · ' + ps.length + (ps.length === 1 ? ' project' : ' projects') + '</div></div></div>' + (isAdmin() ? btn(I('plus', 'sm') + 'New project', 'wz-new', { aid: a.id }, 'quiet') : '') + '</div></td></tr>' + ps.map(prow).join(''); };
+  return '<div class="row between"><div><h1>Clients</h1><p class="muted" style="margin:4px 0 0">' + list.length + ' client' + (list.length === 1 ? '' : 's') + ', ' + S.clients.filter(c => list.some(a => a.id === c.aid)).length + ' projects' + (nArch ? ' · <button class="link" data-a="arch-toggle">' + (S.showArchived ? 'Hide' : 'Show') + ' ' + nArch + ' archived</button>' : '') + '</p></div>' + '<div class="row">' + (isAdmin() ? btn(I('plus', 'sm') + 'New project', 'wz-new', {}) : '') + '</div></div>' +
     '<div class="card scroll" style="padding:4px 8px"><table class="tbl ctable"><thead><tr><th>Client and project</th><th>Quotation</th><th>Progress</th><th>Needs the team</th><th>Waiting on client</th></tr></thead><tbody>' + (list.map(arow).join('') || '<tr><td colspan="5" class="muted">No clients yet.</td></tr>') + '</tbody></table></div>';
 }
 const hasAccessPaid = c => c.invoices.some(i => i.status === 'paid') || c.adhoc.some(a => a.status === 'paid');
@@ -353,7 +353,7 @@ function billingPage() {
     return '<div class="tli ca-row' + (open ? ' sel' : '') + '" data-a="bill-toggle" data-id="' + c.id + '" aria-expanded="' + open + '"><span class="ticon">' + I('building') + '</span><span><b>' + esc(c.company) + '</b><br><span class="small muted">' + esc(pname(c)) + '</span></span><span class="num">' + esc(c.quote.no) + ' <span class="small muted">' + STATUS[c.quote.status] + '</span></span><span><span class="pill ' + st[0] + '">' + I(st[1], 'sm') + st[2] + '</span></span><span class="num">' + (owing ? '<span class="pill gold" style="font-size:13px">' + sm(owing) + '</span>' : '<b>S$0</b>') + '</span><span class="right">' + btn(open ? 'Hide' : 'View', 'bill-toggle', { id: c.id }, 'ghost') + '</span></div>' +
       (open ? '<div class="accbody"><div class="row between"><span class="small muted">' + (c.quote.lines.length ? esc(c.quote.lines.map(short).join(' · ')) + ' · ' + mName(c, 1) + ' to ' + mName(c, c.quote.months) : 'Draft quotation, no services yet') + '</span><div class="row" style="gap:6px">' + btn('View quotation', 'doc', { type: 'quote', cid: c.id }, 'quiet', !c.quote.lines.length) + (!['accepted', 'cancelled'].includes(c.quote.status) ? btn('Edit quotation', 'quote-open', { id: c.id }, 'ghost') : '') + btn('Open project', 'open-client-tab', { id: c.id, t: 'invoices' }, 'ghost') + '</div></div>' + (c.invoices.length ? invoiceRows(rowsFor(c, false), false) + costingHtml(c) : '') + '</div>' : ''); };
   const people = S.team.map(m => { const mine = S.fees.filter(f => f.member === m.id), owed = mine.reduce((a, f) => a + fx(f).owed, 0), up = mine.reduce((a, f) => a + Math.max(0, f.amount - fx(f).earned), 0); return { m, owed, up, n: mine.length }; }).filter(x => x.n);
-  return '<div class="row between"><div><h1>Accounts</h1><p class="muted" style="margin:4px 0 0">Client invoices, quotations and team payments.</p></div><div class="row">' + btn(I('doc', 'sm') + 'New quotation', 'quote-open', { id: 'new' }, 'ghost') + btn(I('doc', 'sm') + 'New invoice', 'inv-new') + '</div></div>' +
+  return '<div class="row between"><div><h1>Accounts</h1><p class="muted" style="margin:4px 0 0">Client invoices, quotations and team payments.</p></div><div class="row">' + btn(I('plus', 'sm') + 'New project', 'wz-new', {}, 'ghost') + btn(I('doc', 'sm') + 'New invoice', 'inv-new') + '</div></div>' +
     '<div class="grid g4">' + ktile('coins', 'g', 'Outstanding client invoices', sum(['pending', 'sent'])) + ktile('check', 'o', 'Client payments received', sum(['paid'])) + ktile('hourglass', 'g', 'Team fees owing now', owedAll) + ktile('coins', 'o', 'Team fees paid', paidAll) + '</div>' +
     '<div class="row between" style="align-items:flex-end"><div><h2 style="font-size:26px">Client accounts</h2><p class="muted" style="margin:2px 0 0">One row per project. Click to see its invoices and costing.</p></div><div class="row"><div class="search" style="width:300px">' + I('search') + '<input id="ac-q" type="search" data-acq="1" placeholder="Search clients, projects or numbers…" value="' + esc(S.acq) + '" aria-label="Search client accounts"></div><select data-acs="1" aria-label="Invoice status" style="width:auto"><option value="">All statuses</option>' + [['pending', 'Pending'], ['sent', 'Sent'], ['paid', 'Paid'], ['none', 'No invoices yet']].map(([k, l]) => '<option value="' + k + '"' + (S.acs === k ? ' selected' : '') + '>' + l + '</option>').join('') + '</select></div></div>' +
     '<div class="tlist"><div class="tlh ca-row"><span></span><span>Client and project</span><span>Quotation</span><span>Invoice status</span><span>Outstanding</span><span></span></div>' + (clients.map(crow).join('') || '<p class="muted" style="padding:16px;margin:0">No clients match.</p>') + '</div>' +
@@ -428,8 +428,8 @@ function settingsPage() {
 function myOpenCount() { let n = 0; S.clients.forEach(c => c.tasks.forEach(t => { if ((t.assignee === S.me || L.stageMine(t, S.me)) && taskOpen(c, t) && !['done', 'awaiting'].includes(t.status)) n++; })); return n; }
 function sidebar() {
   const nav = [['clients', 'Clients', 'building'], ['billing', 'Accounts', 'coins', 'admin'], ['catalogue', 'Service catalogue', 'layers', 'admin'], ['mytasks', 'My tasks', 'check'], ['earnings', 'My earnings', 'coins'], ['templates', 'Step templates', 'list'], ['files', 'Files', 'folder'], ['team', 'Team', 'users', 'admin']];
-  const bv = S.view === 'import' ? 'clients' : S.view === 'task' ? (S.back || {}).view : S.view, cur = bv === 'client' ? 'clients' : bv === 'ws' || bv === 'workspaces' ? 'clients' : bv, n = myOpenCount();
-  return '<aside class="side"><div class="logo">' + logoImg('white', 46) + '<span class="desk">Client Desk</span></div><div class="sidelab">' + (isAdmin() ? 'Admin' : 'Team') + '</div>' + nav.filter(x => !x[3] || (x[3] === 'admin' ? isAdmin() : !isAdmin())).map(([k, l, ic]) => '<button class="nav" data-a="nav" data-v="' + k + '" aria-current="' + (cur === k) + '">' + I(ic) + '<span class="lbl">' + l + '</span>' + (k === 'mytasks' && n ? '<span class="badge">' + n + '</span>' : '') + '</button>').join('') +
+  const bv = ['import', 'newproj'].includes(S.view) ? 'clients' : S.view === 'task' ? (S.back || {}).view : S.view, cur = bv === 'client' ? 'clients' : bv === 'ws' || bv === 'workspaces' ? 'clients' : bv, n = myOpenCount();
+  return '<aside class="side"><div class="logo">' + logoImg('white', 46) + '<span class="desk">Dashboard</span></div><div class="sidelab">' + (isAdmin() ? 'Admin' : 'Team') + '</div>' + nav.filter(x => !x[3] || (x[3] === 'admin' ? isAdmin() : !isAdmin())).map(([k, l, ic]) => '<button class="nav" data-a="nav" data-v="' + k + '" aria-current="' + (cur === k) + '">' + I(ic) + '<span class="lbl">' + l + '</span>' + (k === 'mytasks' && n ? '<span class="badge">' + n + '</span>' : '') + '</button>').join('') +
     (isAdmin() ? '<div class="foot"><button class="nav" data-a="nav" data-v="settings" aria-current="' + (cur === 'settings') + '">' + I('cog') + '<span class="lbl">Settings</span></button></div>' : '') + '</aside>';
 }
 function bellMenu() {
@@ -441,7 +441,7 @@ function topRight() {
   return '<div class="row" style="gap:6px;margin-left:auto;position:relative"><div style="position:relative"><button class="iconbtn" data-a="menu" data-m="bell" aria-label="Notifications">' + I('bell') + (n ? '<span class="badge">' + n + '</span>' : '') + '</button>' + (S.menu === 'bell' ? bellMenu() : '') + '</div><div style="position:relative"><button class="me" data-a="menu" data-m="me" aria-label="Account and view switcher"><span class="av lg">' + initials(who) + '</span>' + I('down', 'sm') + '</button>' + (S.menu === 'me' ? meMenu() : '') + '</div></div>';
 }
 function staffShell() {
-  const c = client(), page = { task: () => taskPage(c, c.tasks.find(x => x.id === S.tid)), clients: clientsPage, client: () => c ? clientPage(c) : clientsPage(), ws: () => c ? workspacePage(c) : clientsPage(), workspaces: workspacesPage, mytasks: myTasksPage, files: filesPage, billing: billingPage, import: importPage, earnings: earningsPage, templates: templatesPage, catalogue: cataloguePage, team: teamPage, settings: settingsPage }[S.view]();
+  const c = client(), page = { task: () => taskPage(c, c.tasks.find(x => x.id === S.tid)), clients: clientsPage, client: () => c ? clientPage(c) : clientsPage(), ws: () => c ? workspacePage(c) : clientsPage(), workspaces: workspacesPage, mytasks: myTasksPage, files: filesPage, billing: billingPage, import: importPage, earnings: earningsPage, templates: templatesPage, newproj: wizardPage, catalogue: cataloguePage, team: teamPage, settings: settingsPage }[S.view]();
   return '<div class="app">' + sidebar() + '<div class="main"><header class="topbar"><div class="search">' + I('search') + '<input id="gsearch" type="search" placeholder="Search clients, workspaces, tasks, files…" value="' + esc(S.q) + '" autocomplete="off" aria-label="Search"><div id="sres"></div></div>' + topRight() + '</header><main class="page">' + page + '</main></div></div>';
 }
 
@@ -738,6 +738,107 @@ function readPlan() {
   try { return JSON.parse(raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1)); } catch (e) { toast('That doesn\'t look like a complete plan. Copy the whole code block from Claude and try again.'); return null; }
 }
 
+/* ---------- New project: one guided form for client, quotation, tasks and team fees ---------- */
+const WSTEPS = ['Client', 'Project and services', 'Tasks', 'Team fees', 'Check'];
+function wizNew(aid) {
+  const nx = new Date(); nx.setMonth(nx.getMonth() + 1);
+  S.wiz = { step: 1, aid: aid || 'new', client: { company: '', contact: '', email: '', phone: '', website: '' }, name: '', no: String(S.nextQuote), ids: [], start: nx.toISOString().slice(0, 7), months: 6, committed: 3, discount: 0, welcome: '', tasks: [], fees: [], seeded: [], open: [], seq: 0 };
+  S.view = 'newproj'; S.drawer = null; S.modal = null;
+}
+function wizSync() {
+  const w = S.wiz; if (!w) return; const g = id => document.getElementById(id), v = id => g(id) ? g(id).value.trim() : null;
+  ['company', 'contact', 'email', 'phone', 'website'].forEach(k => { if (v('wz-' + k) !== null) w.client[k] = v('wz-' + k); });
+  ['name', 'no', 'start', 'welcome'].forEach(k => { if (v('wz-' + k) !== null) w[k] = v('wz-' + k); });
+  ['months', 'committed', 'discount'].forEach(k => { if (v('wz-' + k) !== null) w[k] = Math.max(k === 'discount' ? 0 : 1, Math.floor(+v('wz-' + k) || 0)); });
+  w.months = Math.min(24, w.months); w.committed = Math.min(w.committed, w.months);
+  if (document.querySelector('[data-wzsvc]')) w.ids = [...document.querySelectorAll('[data-wzsvc]')].filter(e => e.checked).map(e => e.dataset.wzsvc);
+  w.tasks.forEach(t => { const k = t.key; if (v('wt-title-' + k) === null) return; t.title = v('wt-title-' + k); t.owner = v('wt-owner-' + k); t.assignee = t.owner === 'client' ? '' : v('wt-as-' + k); if (v('wt-due-' + k) !== null) t.dueDay = v('wt-due-' + k); if (g('wt-steps-' + k)) t.steps = g('wt-steps-' + k).value; });
+  w.fees.forEach(f => { const k = f.key; if (v('wf-member-' + k) === null) return; f.member = v('wf-member-' + k); f.svc = v('wf-svc-' + k); ['rule', 'type', 'amount', 'pct', 'item'].forEach(z => { if (v('wf-' + z + '-' + k) !== null) f[z] = v('wf-' + z + '-' + k); }); });
+}
+function wizSeed() {
+  const w = S.wiz;
+  w.ids.forEach(id => { if (w.seeded.includes(id)) return; const s = svc(id); if (!s) return; s.tasks.forEach(t => w.tasks.push({ key: ++w.seq, svc: id, title: t[0], owner: t[1], approve: !!t[2], steps: Array.isArray(t[3]) && t[3].length ? L.stepsText(t[3], S.team) : '', assignee: '', dueDay: '' })); w.seeded.push(id); });
+  w.tasks = w.tasks.filter(t => t.svc === 'general' || w.ids.includes(t.svc)); w.seeded = w.seeded.filter(id => w.ids.includes(id));
+  w.fees = w.fees.filter(f => f.svc === '__item' || !f.svc || w.ids.includes(f.svc));
+}
+function wizClient() { const w = S.wiz, a = w.aid !== 'new' && acct(w.aid); return a ? { company: a.company, contact: a.contact, email: a.email || w.client.email, website: a.website } : w.client; }
+function wizTemp() { const w = S.wiz, k = wizClient(); return { id: 'wiz', company: k.company, contact: k.contact, website: k.website, quote: { no: w.no, start: w.start, months: w.months, committed: w.committed, discount: w.discount, lines: w.ids.map(svc).filter(Boolean), status: 'pending' }, invoices: [], adhoc: [], extra: [], tasks: [], files: [] }; }
+function wizMoney() {
+  const w = S.wiz, lines = w.ids.map(svc).filter(Boolean), n = w.committed, monthly = lines.some(s => s.billing === 'monthly');
+  const value = lines.reduce((a, s) => a + s.price * (s.billing === 'once' ? 1 : n), 0) - (w.discount && monthly && n > 1 ? w.discount * (n - 1) : 0);
+  const feeOf = f => { if (!f.member) return 0; if (f.svc === '__item') return +f.amount || 0; const s = svc(f.svc); if (!s) return 0; const amt = f.type === 'pct' ? Math.round(s.price * (+f.pct || 0) / 100) : +f.amount || 0; return amt * (s.billing === 'monthly' ? n : 1); };
+  const fees = w.fees.reduce((a, f) => a + feeOf(f), 0);
+  return { value, fees, margin: value - fees, n, feeOf };
+}
+function wizIssues() {
+  const w = S.wiz, k = wizClient(), out = [], lines = w.ids.map(svc).filter(Boolean);
+  if (w.aid === 'new' && !k.company) out.push(['block', 'The client has no company name.', 1]);
+  if (!w.name) out.push(['block', 'The project has no name.', 2]);
+  if (!lines.length) out.push(['block', 'No services are chosen yet.', 2]);
+  if (!w.no) out.push(['block', 'The quotation has no number.', 2]);
+  if (!k.email) out.push(['warn', 'No Google email, so ' + (k.contact || 'the client') + ' can\'t sign in to see the proposal or their workspace.', 1]);
+  if (w.start && w.start < TODAY.slice(0, 7)) out.push(['warn', 'The first month (' + w.start + ') is already in the past.', 2]);
+  lines.forEach(s => {
+    const ts = w.tasks.filter(t => t.svc === s.id && t.title), un = ts.filter(t => t.owner !== 'client' && !t.assignee && !L.parseSteps(t.steps, S.team).some(x => x[3]));
+    if (!ts.length) out.push(['warn', short(s) + ' has no tasks, so its workspace will be empty.', 3]);
+    else if (un.length) out.push(['warn', un.length + ' of ' + ts.length + ' tasks in ' + short(s) + ' have no one assigned.', 3]);
+    if (s.billing === 'monthly' && ts.some(t => !t.dueDay)) out.push(['info', ts.filter(t => !t.dueDay).length + ' tasks in ' + short(s) + ' have no due day.', 3]);
+    if (!w.fees.some(f => f.member && f.svc === s.id)) out.push(['warn', short(s) + ' has no team fee, so its cost shows as S$0.', 4]);
+  });
+  w.fees.forEach(f => { if (f.member && !(wizMoney().feeOf(f) > 0)) out.push(['block', 'A team fee for ' + ((member(f.member) || {}).name || 'someone') + ' has no amount.', 4]); if (f.svc === '__item' && f.member && !f.item) out.push(['block', 'A one-off item fee has no name.', 4]); });
+  if (!w.welcome && !S.brand.welcome) out.push(['info', 'No welcome note, and there is no standard one in Settings. The proposal page will open straight at the services.', 2]);
+  else if (!w.welcome) out.push(['info', 'No personal welcome note: your standard message from Settings will be used.', 2]);
+  return out;
+}
+function wizardPage() {
+  const w = S.wiz; if (!w) { S.view = 'clients'; return clientsPage(); }
+  const step = w.step, issues = step === 5 ? wizIssues() : [];
+  const stepper = '<ol class="wsteps">' + WSTEPS.map((l, i) => '<li class="' + (i + 1 === step ? 'on' : i + 1 < step ? 'done' : '') + '"><button data-a="wz-go" data-s="' + (i + 1) + '"><span class="n">' + (i + 1 < step ? I('tick', 'sm') : i + 1) + '</span>' + l + '</button></li>').join('') + '</ol>';
+  let body = '';
+  if (step === 1) {
+    const a = w.aid !== 'new' && acct(w.aid);
+    body = '<div class="card stack"><h2>Who is this project for?</h2><div class="field"><label for="wz-aid">Client</label><select id="wz-aid" data-wzaid="1"><option value="new"' + (w.aid === 'new' ? ' selected' : '') + '>New client…</option>' + S.accounts.filter(x => !x.archived).sort((x, y) => x.company.localeCompare(y.company)).map(x => '<option value="' + x.id + '"' + (x.id === w.aid ? ' selected' : '') + '>' + esc(x.company) + '</option>').join('') + '</select></div>' +
+      (a ? '<div class="card" style="background:var(--card-2)"><b>' + esc(a.company) + '</b><div class="small muted">' + esc(a.contact || 'No contact name') + (a.website ? ' · ' + esc(a.website) : '') + ' · ' + projectsOf(a.id).length + ' project(s) already</div>' + (a.email ? '<div class="small" style="margin-top:6px">Signs in with ' + esc(a.email) + '</div>' : field('wz-email', 'Google email (they have none yet; used to sign in)', w.client.email, 'email')) + '</div>' :
+        '<div class="meta">' + field('wz-company', 'Company', w.client.company, 'text', true) + field('wz-contact', 'Contact person', w.client.contact) + field('wz-email', 'Google email (used to sign in)', w.client.email, 'email') + field('wz-phone', 'Phone', w.client.phone) + field('wz-website', 'Website', w.client.website) + '</div>') + '</div>';
+  }
+  if (step === 2) {
+    const tmp = wizTemp(), m1 = invTotal(tmp, 1), m2 = w.months > 1 ? invTotal(tmp, 2) : 0;
+    body = '<div class="card stack"><h2>Project</h2><div class="meta">' + field('wz-name', 'Project name', w.name, 'text', true) + field('wz-no', 'Quotation number', w.no, 'text', true) + '</div></div>' +
+      '<div class="card stack"><h2>Services</h2>' + S.catalogue.map(s => '<label class="opt ' + (w.ids.includes(s.id) ? 'on' : '') + '"><input type="checkbox" data-wzsvc="' + s.id + '" data-wzr="1"' + (w.ids.includes(s.id) ? ' checked' : '') + '><span style="flex:1"><b>' + esc(s.name) + '</b><br><span class="small muted">' + esc(s.bullets[0] || '') + ' · ' + s.tasks.length + ' tasks' + (s.billing === 'monthly' ? ' a month' : '') + '</span></span><span class="num"><b>' + money(s.price) + '</b><br><span class="small muted">' + (s.billing === 'once' ? 'one-time' : 'per month') + '</span></span></label>').join('') + '</div>' +
+      '<div class="card stack"><h2>Timing and price</h2><div class="meta"><div class="field"><label for="wz-start">First month</label><input id="wz-start" type="month" data-wzr="1" value="' + esc(w.start) + '"></div>' + field('wz-months', 'Total months', w.months, 'number') + field('wz-committed', 'Committed months', w.committed, 'number') + field('wz-discount', 'Monthly discount from Month 2 (S$)', w.discount, 'number') + '</div>' +
+      (w.ids.length ? '<div class="card" style="background:var(--card-2)"><div class="row between"><span>Month 1</span><b class="num" style="font:600 20px var(--display)">' + sm(m1) + '</b></div>' + (w.months > 1 ? '<div class="row between"><span>Month 2 onward</span><b class="num">' + sm(m2) + ' / month</b></div>' : '') + '<div class="row between small muted"><span>Full term, ' + w.months + ' months</span><span class="num">' + sm(m1 + m2 * Math.max(0, w.months - 1)) + '</span></div></div>' : '') + '</div>' +
+      '<div class="card stack"><h2>Welcome note</h2><div class="field"><label for="wz-welcome">Shown at the top of the proposal page (optional)</label><textarea id="wz-welcome" class="grow" placeholder="' + esc(S.brand.welcome ? 'Leave empty to use your standard message from Settings' : 'A personal note to the client') + '">' + esc(w.welcome) + '</textarea></div></div>';
+  }
+  if (step === 3) {
+    const lines = w.ids.map(svc).filter(Boolean);
+    const row = t => { const k = t.key, n = L.parseSteps(t.steps, S.team).length, op = w.open.includes(k), s = svc(t.svc), monthly = s && s.billing === 'monthly';
+      return '<div class="wtask"><div class="wtrow"><input id="wt-title-' + k + '" value="' + esc(t.title) + '" placeholder="Task" aria-label="Task"><select id="wt-owner-' + k + '" data-wzr="1" aria-label="Who does it"><option value="gioia"' + (t.owner !== 'client' ? ' selected' : '') + '>Team</option><option value="client"' + (t.owner === 'client' ? ' selected' : '') + '>Client sends</option></select><select id="wt-as-' + k + '" aria-label="Assigned to"' + (t.owner === 'client' ? ' disabled' : '') + '><option value="">' + (t.owner === 'client' ? '—' : 'Unassigned') + '</option>' + S.team.map(m => '<option value="' + m.id + '"' + (t.assignee === m.id ? ' selected' : '') + '>' + esc(m.name) + '</option>').join('') + '</select>' + (monthly ? '<input id="wt-due-' + k + '" type="number" min="1" max="31" value="' + esc(t.dueDay) + '" placeholder="Due day" aria-label="Due day of the month">' : '<span></span>') + '<span class="row" style="gap:10px;flex-wrap:nowrap"><button class="link" data-a="wz-steps" data-k="' + k + '">' + (n ? n + ' steps' : 'Steps') + '</button><button class="iconbtn" data-a="wz-task-del" data-k="' + k + '" aria-label="Remove task">' + I('x', 'sm') + '</button></span></div>' +
+        (op ? '<div class="stack" style="gap:6px;padding:4px 0 6px"><textarea id="wt-steps-' + k + '" class="grow" rows="3" placeholder="Client: …&#10;Jo: …&#10;Client approves: …">' + esc(t.steps) + '</textarea>' + tplBar('wt-steps-' + k) + '</div>' : '') + '</div>'; };
+    body = lines.map(s => '<div class="card stack"><div class="row between"><h2>' + esc(short(s)) + '</h2><span class="chip">' + (s.billing === 'monthly' ? 'Every month, ' + w.months + ' months' : 'Once, in ' + mName(wizTemp(), 1)) + '</span></div><div class="wthead"><span>Task</span><span>Who does it</span><span>Assigned to</span><span>' + (s.billing === 'monthly' ? 'Due day' : '') + '</span><span></span></div>' + w.tasks.filter(t => t.svc === s.id).map(row).join('') + '<div>' + btn(I('plus', 'sm') + 'Add task', 'wz-task-add', { svc: s.id }, 'quiet') + '</div></div>').join('') +
+      '<div class="card stack"><div class="row between"><h2>Other one-off tasks</h2><span class="chip">Not tied to a service</span></div><p class="small muted" style="margin:0">Such as a kick-off call. These go to the General workspace and are open straight away.</p>' + w.tasks.filter(t => t.svc === 'general').map(row).join('') + '<div>' + btn(I('plus', 'sm') + 'Add task', 'wz-task-add', { svc: 'general' }, 'quiet') + '</div></div>' +
+      '<p class="small muted" style="margin:0">Steps: one per line, starting with Client:, Client reviews:, Client approves:, Team: or a team member\'s name. Monthly tasks are created for every month and open as each invoice is paid.</p>';
+  }
+  if (step === 4) {
+    const lines = w.ids.map(svc).filter(Boolean), M = wizMoney();
+    const row = f => { const k = f.key, s = f.svc && f.svc !== '__item' ? svc(f.svc) : null;
+      return '<div class="wfee"><select id="wf-member-' + k + '" aria-label="Team member"><option value="">Team member…</option>' + S.team.map(m => '<option value="' + m.id + '"' + (f.member === m.id ? ' selected' : '') + '>' + esc(m.name) + '</option>').join('') + '</select><select id="wf-svc-' + k + '" data-wzr="1" aria-label="For"><option value="">For…</option>' + lines.map(x => '<option value="' + x.id + '"' + (f.svc === x.id ? ' selected' : '') + '>' + esc(short(x)) + '</option>').join('') + '<option value="__item"' + (f.svc === '__item' ? ' selected' : '') + '>One-off item…</option></select>' +
+        (f.svc === '__item' ? '<input id="wf-item-' + k + '" value="' + esc(f.item || '') + '" placeholder="Item, e.g. Photoshoot" aria-label="Item name">' : s && s.billing === 'monthly' ? '<select id="wf-rule-' + k + '" aria-label="When it is paid"><option value="prorata"' + (f.rule !== 'all' ? ' selected' : '') + '>Pro-rata, per task done</option><option value="all"' + (f.rule === 'all' ? ' selected' : '') + '>When all tasks are done</option></select>' : '<span class="small muted">' + (s ? 'Paid as its tasks are done' : '') + '</span>') +
+        (s ? '<select id="wf-type-' + k + '" data-wzr="1" aria-label="Amount type"><option value="fixed"' + (f.type !== 'pct' ? ' selected' : '') + '>S$</option><option value="pct"' + (f.type === 'pct' ? ' selected' : '') + '>% of price</option></select>' : '<span></span>') +
+        (f.type === 'pct' && s ? '<input id="wf-pct-' + k + '" data-wzr="1" type="number" min="0" max="100" value="' + esc(f.pct || '') + '" placeholder="%" aria-label="Percentage">' : '<input id="wf-amount-' + k + '" data-wzr="1" type="number" min="0" value="' + esc(f.amount || '') + '" placeholder="Amount" aria-label="Amount">') +
+        '<span class="small muted num">' + (s && s.billing === 'monthly' ? 'a month' : '') + '</span><button class="iconbtn" data-a="wz-fee-del" data-k="' + k + '" aria-label="Remove fee">' + I('x', 'sm') + '</button></div>'; };
+    body = '<div class="card stack"><h2>Who is paid, and how</h2><p class="small muted" style="margin:0">Monthly fees repeat for each month of a monthly service. Per-task fees can be added later on any task.</p>' + (w.fees.map(row).join('') || '<p class="muted" style="margin:0">No team fees yet.</p>') + '<div>' + btn(I('plus', 'sm') + 'Add team fee', 'wz-fee-add', {}, 'quiet') + '</div></div>' +
+      '<div class="grid g3">' + ktile('coins', 'g', 'Client pays (' + M.n + ' committed months)', M.value) + ktile('hourglass', 'o', 'Team fees, same months', M.fees) + ktile('check', 'g', 'Margin', M.margin) + '</div>';
+  }
+  if (step === 5) {
+    const k = wizClient(), lines = w.ids.map(svc).filter(Boolean), M = wizMoney(), blocks = issues.filter(x => x[0] === 'block');
+    body = '<div class="card stack"><h2>Summary</h2><div class="grid g2 sumgrid"><div><span class="lab">Client</span><b>' + esc(k.company || '—') + '</b><span class="small muted">' + esc(k.contact || '') + (k.email ? ' · ' + esc(k.email) : '') + '</span></div><div><span class="lab">Project</span><b>' + esc(w.name || '—') + '</b><span class="small muted">Quotation ' + esc(w.no) + ' · ' + w.start + ', ' + w.months + ' months, ' + w.committed + ' committed</span></div><div><span class="lab">Services</span><b>' + (lines.map(short).join(', ') || '—') + '</b><span class="small muted">' + w.tasks.filter(t => t.title).length + ' tasks set up</span></div><div><span class="lab">Value and team fees (committed months)</span><b>' + sm(M.value) + ' · ' + sm(M.fees) + '</b><span class="small muted">' + w.fees.filter(f => f.member).length + ' team fees</span></div></div></div>' +
+      '<div class="card stack"><h2>' + (issues.length ? 'Worth checking' : 'Everything is covered') + '</h2>' + (issues.length ? issues.map(([lv, t, s]) => '<div class="issue ' + lv + '"><span class="ico-wrap">' + I(lv === 'block' ? 'x' : lv === 'warn' ? 'clock' : 'circle', 'sm') + '</span><span style="flex:1">' + esc(t) + '</span><button class="link" data-a="wz-go" data-s="' + s + '">Fix</button></div>').join('') : '<p class="muted" style="margin:0">Client, services, tasks, assignees and fees are all filled in.</p>') + '</div>' +
+      '<div class="card row between"><span class="small muted" style="max-width:560px">' + (blocks.length ? 'Fix the items marked with a cross first.' : '<b>Send</b> puts the proposal in the client\'s portal for them to accept. <b>Save as draft</b> keeps it to yourselves for now. Tasks are created when the proposal is accepted.') + '</span><div class="row">' + btn('Save as draft', 'wz-save', { then: 'draft' }, 'ghost', !!blocks.length) + btn(I('send', 'sm') + 'Send', 'wz-save', { then: 'sent' }, 'bigbtn', !!blocks.length) + '</div></div>';
+  }
+  return '<div class="crumbs"><button data-a="nav" data-v="clients">Clients</button>' + I('chev', 'sm') + '<b>New project</b></div><div class="row between"><h1>New project</h1>' + btn('Cancel', 'wz-cancel', {}, 'quiet') + '</div>' + stepper + '<div class="stack wizbody">' + body + '</div>' +
+    (step < 5 ? '<div class="row between">' + (step > 1 ? btn(I('back', 'sm') + 'Back', 'wz-go', { s: step - 1 }, 'quiet') : '<span></span>') + btn('Next: ' + WSTEPS[step] + ' ' + I('chev', 'sm'), 'wz-go', { s: step + 1 }) + '</div>' : '<div>' + btn(I('back', 'sm') + 'Back', 'wz-go', { s: 4 }, 'quiet') + '</div>');
+}
+
 /* ---------- talking to the server ---------- */
 let D = null;
 function checkFees() {}
@@ -773,7 +874,7 @@ function gateHtml() {
   if (!D.me) body = '<p>Sign in with the Google account your invitation was sent to.</p>' + (failed ? '<p class="pill crit" style="align-self:center">Sign-in did not complete. Please try again.</p>' : '') + (D.googleReady ? '<a class="btn bigbtn" href="/auth/google">Sign in with Google</a>' : '<p class="muted">Google sign-in is being set up. Please check back shortly.</p>') + (D.devLogin ? '<p class="small muted">Local testing: open /auth/dev?email=you@example.com</p>' : '');
   else if (D.me.role === 'pending') body = '<p>You are signed in as <b>' + esc(D.me.email) + '</b>.</p><p>Your proposal is being prepared. We will let you know as soon as it is ready to view here.</p><a class="btn ghost" href="/auth/logout">Sign out</a>';
   else body = '<p>You are signed in as <b>' + esc(D.me.email) + '</b>, but this account is not on the client or team list.</p><p class="muted">Ask your contact to add this email, or sign in with a different Google account.</p><a class="btn ghost" href="/auth/logout">Use a different account</a>';
-  return '<div class="gate"><div class="gatelogo">' + logoImg('green', 72) + '</div><div class="card stack" style="text-align:center;align-items:center;gap:14px;padding:30px"><h2>Client Desk</h2>' + body + '</div></div>';
+  return '<div class="gate"><div class="gatelogo">' + logoImg('green', 72) + '</div><div class="card stack" style="text-align:center;align-items:center;gap:14px;padding:30px"><h2>Client Portal</h2>' + body + '</div></div>';
 }
 function meMenu() {
   return '<div class="menu" style="width:270px"><div style="padding:8px 10px 10px"><b>' + esc(D.me.name || '') + '</b><br><span class="small muted">' + esc(D.me.email) + '</span><br><span class="small muted">' + (S.role === 'client' ? 'Client' : isAdmin() ? 'Admin' : 'Team member') + '</span></div><a class="mi" href="/auth/logout">' + I('out') + '<span>Sign out</span></a></div>';
@@ -863,6 +964,19 @@ const ACT = {
   async 'num-save'() { const M = S.modal, o = document.getElementById('nm-over'); const r = await api(M.k === 'q' ? 'q-number' : 'i-number', { no: val('nm-no'), override: !!(o && o.checked), m: M.m, id: M.id }, { cid: M.cid, msg: 'Number changed.' }); if (r) S.modal = null; },
   'prep-start'(d) { return api('prep-start', {}, { cid: d.cid || S.cid }); },
   'vc-open'(d) { S.modal = { kind: 'vc', id: d.id }; },
+  'wz-new'(d) { wizNew(d.aid); window.scrollTo(0, 0); },
+  'wz-cancel'() { S.wiz = null; S.view = 'clients'; },
+  'wz-go'(d) { wizSync(); const s = Math.min(5, Math.max(1, +d.s)); if (s >= 3) wizSeed(); S.wiz.step = s; window.scrollTo(0, 0); const mn = document.querySelector('.main'); if (mn) mn.scrollTop = 0; },
+  'wz-task-add'(d) { wizSync(); const w = S.wiz, k = ++w.seq; w.tasks.push({ key: k, svc: d.svc, title: '', owner: 'gioia', approve: true, steps: '', assignee: '', dueDay: '' }); setTimeout(() => { const e = document.getElementById('wt-title-' + k); if (e) e.focus(); }, 30); },
+  'wz-task-del'(d) { wizSync(); S.wiz.tasks = S.wiz.tasks.filter(t => t.key !== +d.k); },
+  'wz-steps'(d) { wizSync(); const o = S.wiz.open, k = +d.k; S.wiz.open = o.includes(k) ? o.filter(x => x !== k) : [...o, k]; },
+  'wz-fee-add'() { wizSync(); const w = S.wiz; w.fees.push({ key: ++w.seq, member: '', svc: w.ids[0] || '', rule: 'prorata', type: 'fixed', amount: '', pct: '', item: '' }); },
+  'wz-fee-del'(d) { wizSync(); S.wiz.fees = S.wiz.fees.filter(f => f.key !== +d.k); },
+  async 'wz-save'(d) {
+    wizSync(); const w = S.wiz, payload = { aid: w.aid, client: w.aid === 'new' ? w.client : { email: w.client.email }, name: w.name, no: w.no, ids: w.ids, start: w.start, months: w.months, committed: w.committed, discount: w.discount, welcome: w.welcome, tasks: w.tasks.filter(t => t.title).map(t => ({ svc: t.svc, title: t.title, owner: t.owner, approve: t.approve, steps: t.steps, assignee: t.assignee, dueDay: t.dueDay })), fees: w.fees.filter(f => f.member) };
+    const r = await api('project-create', { w: payload, then: d.then }, { msg: d.then === 'sent' ? 'Project created and the proposal is in the client\'s portal.' : 'Project saved as a draft.' });
+    if (r && r.out) { S.wiz = null; S.cid = r.out.cid; S.view = 'client'; S.ctab = 'overview'; }
+  },
   'cat-mode'(d) { S.catMode = d.m; },
   'tpl-open'(d) { S.modal = { kind: 'tpl', id: d.id || '' }; },
   'tpl-save-open'(d) { const el = document.getElementById(d.ta), txt = el ? el.value.trim() : ''; if (!txt) { toast('Write the steps first, then save them as a template.'); return 'skip'; } if (S.drawer && S.drawer.kind === 'newtask') syncNewTask(); if (S.drawer && S.drawer.kind === 'svc') syncSvc(); S.modal = { kind: 'tpl', id: '', name: '', steps: txt }; },
@@ -938,6 +1052,8 @@ document.addEventListener('change', async e => {
   else if (d.nt) { syncNewTask(); S.drawer[d.nt] = e.target.value; if (d.nt === 'cid') { S.drawer.svc = ''; S.drawer.m = 1; } }
   else if (d.stage) await api('t-stage-set', { id: d.stage, stage: +e.target.value });
   else if (d.tpl !== undefined && d.tpl) { const t = S.templates.find(x => x.id === e.target.value), ta = document.getElementById(d.tpl); if (t && ta) { ta.value = t.steps; if (d.tpl === 'nt-steps' && S.drawer) S.drawer.steps = t.steps; toast('Steps from "' + t.name + '" filled in. Adjust them, then save.'); } e.target.value = ''; return; }
+  else if (d.wzaid) { wizSync(); S.wiz.aid = e.target.value; }
+  else if (e.target.dataset.wzr) { wizSync(); }
   else if (d.sas) { const [id, i] = d.sas.split('|'); await api('t-stage-assign', { id, i: +i, assignee: e.target.value }); }
   else if (d.sdue) { const [id, i] = d.sdue.split('|'); await api('t-stage-due', { id, i: +i, due: e.target.value }); }
   else if (d.tval) await api('t-value', { id: d.tval, value: e.target.value }, { msg: e.target.value === '' ? 'Value split evenly again.' : 'Task value saved.' });
