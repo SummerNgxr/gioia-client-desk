@@ -298,6 +298,16 @@ const A = {
     const n = Math.max(0, Math.min(t.stages.length, int(p.stage))); t.stages.forEach((s, i) => { s.done = i < n; }); t.stage = n; t.status = 'todo'; L.syncStage(t);
     hist(x, t, n >= t.stages.length ? 'Moved to completed' : 'Moved to step ' + (n + 1) + ': ' + t.stages[n].title); x.log('Moved "' + t.title + '" to ' + (n >= t.stages.length ? 'Completed' : 'step ' + (n + 1) + ' of ' + t.stages.length));
   } },
+  't-steps-set': { roles: STAFF, client: true, fn(x, p) {
+    // Add, edit or remove the steps on any task. Steps already done stay done while their position still exists.
+    const t = task(x, p.id), next = L.toStages(str(p.steps, 4000));
+    if (!next.length) { if (!L.staged(t)) return; delete t.stages; delete t.stage; t.status = 'todo'; hist(x, t, 'Steps removed'); x.log('Removed the steps on "' + t.title + '"'); return; }
+    if (t.owner === 'client') t.owner = 'gioia';
+    const at = L.staged(t) ? Math.min(t.stage, next.length) : 0;
+    next.forEach((s, i) => { s.done = i < at; const old = L.staged(t) && t.stages[i]; if (s.done && old && old.done) { s.by = old.by; s.at = old.at; } });
+    t.stages = next; t.stage = at; t.approve = next.some(s => s.kind === 'approve'); if (!['progress', 'changes'].includes(t.status)) t.status = 'todo'; L.syncStage(t);
+    hist(x, t, 'Steps updated (' + next.length + ')'); x.log('Updated the steps on "' + t.title + '" (' + next.length + ' steps)');
+  } },
   't-approve': { roles: ['client'], client: true, fn(x, p) {
     const t = openTask(x, p.id), text = str(p.text, 3000); if (t.status !== 'awaiting') refuse('This task is not waiting for approval.');
     if (text) t.comments.push({ by: 'Client', client: true, text, at: x.now });
