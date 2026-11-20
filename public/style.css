@@ -506,3 +506,8 @@ textarea.grow{resize:vertical;overflow:hidden;min-height:64px}
 .listrow select.inl.pill.info{background:var(--info-bg);color:var(--info)}
 .listrow select.inl.pill.gold{background:#fbe3bd;color:#8a560b}
 .av.cl{background:#fbe3bd;color:#8a560b}
+select.stpill{border:0;border-radius:999px;padding:5px 28px 5px 12px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;width:auto;background-color:var(--card-2);color:var(--ink);appearance:auto}
+select.stpill.ok{background-color:var(--ok-bg);color:var(--ok)} select.stpill.warn{background-color:var(--warn-bg);color:var(--warn)}
+select.stpill.crit{background-color:var(--crit-bg);color:var(--crit)} select.stpill.info{background-color:var(--info-bg);color:var(--info)}
+select.stpill.gold{background-color:#fbe3bd;color:#8a560b} select.stpill.lock{background-color:transparent;border:1px dashed #bdb5a5;color:var(--muted)}
+select.stpill{width:auto!important;flex:none;max-width:260px}
