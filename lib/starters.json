@@ -1,0 +1,103 @@
+{
+ "stepTemplates": [
+  {
+   "name": "Bilingual article",
+   "steps": "Client: Write the original content in Chinese\nJo: Translate and develop the English article\nJo: Optimise for SEO, GEO and AEO\nClient reviews: Review the English draft\nShi Han: Final edits and headlines\nClient approves: Approve the final article\nJo: Design the article images\nJo: Upload to the website\nShi Han: Share the link with the client"
+  },
+  {
+   "name": "Social post with approval",
+   "steps": "Team: Draft caption and design\nClient approves: Approve the post\nTeam: Schedule and publish"
+  },
+  {
+   "name": "Draft then client approves",
+   "steps": "Team: Draft\nClient approves: Approve"
+  }
+ ],
+ "prepTemplates": [
+  {
+   "name": "Digital marketing set-up",
+   "tasks": [
+    {
+     "title": "Kick-off call: goals, audience, tone of voice",
+     "owner": "gioia",
+     "steps": ""
+    },
+    {
+     "title": "Send brand assets (logo, colours, approved photos)",
+     "owner": "client",
+     "steps": ""
+    },
+    {
+     "title": "Agree the monthly approval rhythm",
+     "owner": "gioia",
+     "steps": ""
+    },
+    {
+     "title": "Give Gioia admin access to the website",
+     "owner": "client",
+     "steps": ""
+    },
+    {
+     "title": "Give access to Google Search Console and Analytics",
+     "owner": "client",
+     "steps": ""
+    },
+    {
+     "title": "Website audit (SEO, GEO and AEO)",
+     "owner": "gioia",
+     "steps": "Team: Audit the website\nClient reviews: Review the findings"
+    },
+    {
+     "title": "Article topic list for the first 3 months",
+     "owner": "gioia",
+     "steps": "Team: Draft\nClient approves: Approve"
+    },
+    {
+     "title": "Send the first 4 article drafts",
+     "owner": "client",
+     "steps": ""
+    },
+    {
+     "title": "Add Gioia as admin of the Instagram and Facebook pages",
+     "owner": "client",
+     "steps": ""
+    },
+    {
+     "title": "Content pillars and posting schedule",
+     "owner": "gioia",
+     "steps": "Team: Draft\nClient approves: Approve"
+    },
+    {
+     "title": "Set up the Meta ad account and payment",
+     "owner": "client",
+     "steps": ""
+    },
+    {
+     "title": "Connect the lead form to the Google Sheet, with lead source",
+     "owner": "gioia",
+     "steps": ""
+    },
+    {
+     "title": "Agree the lead funnel stages",
+     "owner": "gioia",
+     "steps": ""
+    },
+    {
+     "title": "WhatsApp follow-up script",
+     "owner": "gioia",
+     "steps": "Team: Write the script\nClient reviews: Review the script"
+    },
+    {
+     "title": "First creatives and ad copy",
+     "owner": "gioia",
+     "steps": "Team: Draft\nClient approves: Approve"
+    },
+    {
+     "title": "Start the reply FAQ doc in Drive",
+     "owner": "gioia",
+     "steps": ""
+    }
+   ]
+  }
+ ]
+}
