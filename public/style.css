@@ -467,3 +467,16 @@ textarea.grow{resize:vertical;overflow:hidden;min-height:64px}
 .doc .terms{font-size:10.5px;line-height:1.55}
 .chead{flex-direction:column;align-items:stretch;gap:14px;padding-bottom:0}
 .chead .tabs{margin-bottom:-1px;margin-left:-14px}
+.mlab{display:none}
+@media (max-width:700px){
+  .invtbl thead{display:none}
+  .invtbl,.invtbl tbody{display:block}
+  .invtbl tr{display:grid;grid-template-columns:1fr auto;grid-template-areas:"no amt" "cl cl" "for st" "due st" "act act";gap:2px 12px;padding:14px 6px;border-bottom:1px solid var(--line)}
+  .invtbl tr:last-child{border-bottom:0}
+  .invtbl td{display:block;border:0;padding:0;text-align:left}
+  .invtbl .ino{grid-area:no}.invtbl .iamt{grid-area:amt;font-weight:600;font-size:16px}.invtbl .icl{grid-area:cl}.invtbl .ifor{grid-area:for}
+  .invtbl .idue{grid-area:due;color:var(--muted);font-size:13px}.invtbl .ist{grid-area:st;align-self:center;text-align:right}
+  .invtbl .iact{grid-area:act;margin-top:10px}.invtbl .iact .row{justify-content:flex-start!important;flex-wrap:wrap}
+  .mlab{display:inline}
+  .doc{min-width:0;padding:20px 14px;font-size:11.5px}
+}
