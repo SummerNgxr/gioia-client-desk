@@ -799,7 +799,8 @@ function accountsCsv(from, to) {
   return [['Date', 'Direction', 'Type', 'Who', 'Invoice no.', 'Description', 'Amount (S$)'], ...rows, ...(undated.length ? [[], ['Paid, date not recorded']].concat(undated) : []), [], ['', '', '', '', '', 'Total in', tin.toFixed(2)], ['', '', '', '', '', 'Total out', tout.toFixed(2)], ['', '', '', '', '', 'Net', (tin + tout).toFixed(2)]].map(r => r.map(q).join(',')).join('\r\n');
 }
 function downloadCsv(name, text) { const u = URL.createObjectURL(new Blob(['\ufeff' + text], { type: 'text/csv' })), a = document.createElement('a'); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 2000); }
-function toast(t) { S.toast = t; clearTimeout(toastT); toastT = setTimeout(() => { S.toast = null; render(); }, 4200); }
+// hiding a toast only removes the toast, never redraws the page, so text being typed or filled in is never lost
+function toast(t) { S.toast = t; clearTimeout(toastT); const app = document.getElementById('app'); if (app) { app.querySelectorAll('.toast').forEach(el => el.remove()); app.insertAdjacentHTML('beforeend', '<div class="toast" role="status">' + I('tick', 'sm') + esc(t) + '</div>'); } toastT = setTimeout(() => { S.toast = null; document.querySelectorAll('.toast').forEach(el => el.remove()); }, 4200); }
 function render() {
   if (!D) return;
   if (!D.me || !['admin', 'team', 'client'].includes(D.me.role)) { document.getElementById('app').innerHTML = gateHtml(); return; }
