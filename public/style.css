@@ -505,3 +505,4 @@ textarea.grow{resize:vertical;overflow:hidden;min-height:64px}
 .listrow select.inl.pill.crit{background:var(--crit-bg);color:var(--crit)}
 .listrow select.inl.pill.info{background:var(--info-bg);color:var(--info)}
 .listrow select.inl.pill.gold{background:#fbe3bd;color:#8a560b}
+.av.cl{background:#fbe3bd;color:#8a560b}
