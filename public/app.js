@@ -91,8 +91,9 @@ const isVendor = m => !!m && m.kind === 'vendor';
 const vendorMe = () => S.role !== 'client' && isVendor(member(S.me));
 const vlabel = m => esc(m.name) + (m.company && m.company !== m.name ? ' · ' + esc(m.company) : '');
 /* one assignee list: the team first, then vendors */
-function teamOpts(sel, adminTag) {
+function teamOpts(sel, adminTag, only) {
   const o = m => '<option value="' + m.id + '"' + (sel === m.id ? ' selected' : '') + '>' + vlabel(m) + (adminTag && m.admin ? ' (admin)' : '') + '</option>', t = S.team.filter(m => !isVendor(m)), v = S.team.filter(isVendor);
+  if (only) return (only === 'vendor' ? v : t).map(o).join('') || '<option value="" disabled>' + (only === 'vendor' ? 'No vendors yet. Add them under Team.' : 'No team members') + '</option>';
   return v.length ? '<optgroup label="Team">' + t.map(o).join('') + '</optgroup><optgroup label="Vendors">' + v.map(o).join('') + '</optgroup>' : t.map(o).join('');
 }
 const viewer = () => S.role === 'client' ? 'client' : S.me;
@@ -450,7 +451,15 @@ function googleCard() {
     '<div class="row between"><span><b>Email</b><br><span class="small muted">' + (g.mail ? 'Sent from ' + esc(g.from) : 'Not connected. Add GOOGLE_SERVICE_ACCOUNT and EMAIL_FROM in Railway.') + '</span></span><span class="row" style="gap:8px">' + st(g.mail, g.mail ? 'Connected' : 'Not connected') + (g.mail ? btn('Send me a test', 'mail-test', {}, 'quiet') : '') + '</span></div>' +
     '<div class="row between"><span><b>Google Drive</b><br><span class="small muted">' + (g.drive ? 'Uploads go to the shared drive, in Clients / company / project / workspace.' : 'Not connected. Add GOOGLE_SERVICE_ACCOUNT and DRIVE_ID in Railway.') + '</span></span>' + st(g.drive, g.drive ? 'Connected' : 'Not connected') + '</div>' +
     '<div class="row between"><span><b>Nightly backup</b><br><span class="small muted">' + (b ? (b.ok ? 'Last backup ' + fmtAt(b.at) + ', saved to Backups in the shared drive. The last 30 are kept.' : 'The last backup failed: ' + esc(b.err || '')) : g.drive ? 'Runs every night after 2am. None yet.' : 'Runs every night once Google Drive is connected.') + '</span></span><span class="row" style="gap:8px">' + (g.drive ? btn('Back up now', 'backup-now', {}, 'quiet') : '') + '<a class="btn ghost" href="/api/backup" data-dl="backup">' + I('download', 'sm') + 'Download a backup</a></span></div>' +
-    '<h3 style="margin:6px 0 0">Emails sent</h3>' + ((g.log || []).length ? '<div class="stack" style="gap:6px">' + g.log.slice(0, 25).map(row).join('') + '</div>' : '<p class="small muted" style="margin:0">None yet.</p>') + '</div>';
+    mailLogHtml(g.log || [], row) + '</div>';
+}
+/* the email log: newest first, 8 at a time, with a status filter and a search */
+function mailLogHtml(log, row) {
+  if (!log.length) return '<h3 style="margin:6px 0 0">Emails sent</h3><p class="small muted" style="margin:0">None yet.</p>';
+  const st = S.mlSt || '', q = (S.mlQ || '').toLowerCase(), n = S.mlN || 8, kind = m => !m.ok ? (m.skipped ? 'skipped' : 'failed') : 'sent';
+  const list = log.filter(m => (!st || kind(m) === st) && (!q || (m.to + ' ' + m.subject).toLowerCase().includes(q))), cnt = k => log.filter(m => kind(m) === k).length;
+  return '<div class="row between" style="margin-top:6px"><h3 style="margin:0">Emails sent</h3><div class="row" style="gap:8px"><div class="search" style="width:220px">' + I('search') + '<input id="ml-q" type="search" data-mlq="1" placeholder="Search recipient or subject…" value="' + esc(S.mlQ || '') + '" aria-label="Search emails"></div><select data-mlst="1" aria-label="Email status" style="width:auto"><option value="">All (' + log.length + ')</option><option value="sent"' + (st === 'sent' ? ' selected' : '') + '>Sent (' + cnt('sent') + ')</option><option value="skipped"' + (st === 'skipped' ? ' selected' : '') + '>Not sent (' + cnt('skipped') + ')</option><option value="failed"' + (st === 'failed' ? ' selected' : '') + '>Failed (' + cnt('failed') + ')</option></select></div></div>' +
+    (list.length ? '<div class="stack" style="gap:6px">' + list.slice(0, n).map(row).join('') + '</div><div class="row between small muted"><span>Showing ' + Math.min(n, list.length) + ' of ' + list.length + '. The app keeps the latest 120.</span>' + (list.length > n ? '<button class="link" data-a="ml-more">Show more</button>' : '') + '</div>' : '<p class="small muted" style="margin:0">No emails match.</p>');
 }
 function settingsPage() {
   const B = S.brand;
@@ -627,7 +636,7 @@ function newTaskDrawer() {
     '<div class="meta"><div class="field"><label for="nt-cid">Client <span class="req">*</span></label><select id="nt-cid" data-nt="cid">' + S.clients.map(x => '<option value="' + x.id + '"' + (c && x.id === c.id ? ' selected' : '') + '>' + esc(cname(x)) + '</option>').join('') + '</select></div><div class="field"><label for="nt-svc">Workspace <span class="req">*</span></label><select id="nt-svc" data-nt="svc"><option value="">Choose…</option>' + list.map(x => '<option value="' + esc(x.id) + '"' + (d.svc === x.id ? ' selected' : '') + '>' + esc(short(x)) + (x.billing === 'general' ? ' (not tied to a service)' : x.billing === 'prep' ? ' (before the first month)' : x.adhoc ? ' (added)' : '') + '</option>').join('') + '</select></div>' +
     (monthly ? '<div class="field"><label for="nt-m">Month</label><select id="nt-m" data-nt="m">' + Array.from({ length: c.quote.months }, (_, i) => i + 1).map(x => '<option value="' + x + '"' + (+d.m === x ? ' selected' : '') + '>' + mName(c, x) + (inv(c, x).status === 'paid' ? '' : ' (locked until paid)') + '</option>').join('') + '</select></div>' : '') + '</div>' +
     field('nt-title', 'Task', d.title || '', 'text', true) + field('nt-desc', 'Description (the client sees this)', d.desc || '', 'area') +
-    '<div class="meta"><div class="field"><label for="nt-owner">Who does it</label><select id="nt-owner"><option value="gioia">The team</option><option value="client">The client sends it</option></select></div><div class="field"><label for="nt-as">Assigned to</label><select id="nt-as"><option value="">Unassigned</option>' + teamOpts(d.assignee) + '</select></div>' + field('nt-due', 'Due date', d.due || '', 'date') + '<label class="opt" style="align-self:end"><input type="checkbox" id="nt-appr" checked> Needs client approval</label></div>' +
+    '<div class="meta"><div class="field"><label for="nt-owner">Who does it</label><select id="nt-owner"><option value="gioia">The team</option>' + (S.team.some(isVendor) ? '<option value="vendor">A vendor</option>' : '') + '<option value="client">The client sends it</option></select></div><div class="field"><label for="nt-as">Assigned to</label><select id="nt-as"><option value="">Unassigned</option>' + teamOpts(d.assignee) + '</select></div>' + field('nt-due', 'Due date', d.due || '', 'date') + '<label class="opt" style="align-self:end"><input type="checkbox" id="nt-appr" checked> Needs client approval</label></div>' +
     '<details class="stack"' + (d.steps ? ' open' : '') + '><summary class="lab" style="cursor:pointer">Steps (optional), for work that passes back and forth with the client</summary><div class="field" style="margin-top:8px"><label for="nt-steps" class="small muted">One step per line. Start each with <b>Client:</b>, <b>Client reviews:</b>, <b>Client approves:</b>, <b>Team:</b> or a team member\'s name to assign that step</label>' + tplBar('nt-steps') + '<textarea id="nt-steps" rows="7" placeholder="Client: Write the original content in Chinese&#10;Jo: Develop the English article and optimise for SEO&#10;Client approves: Approve the final headlines&#10;Team: Publish">' + esc(d.steps || '') + '</textarea></div></details>' +
     '<p class="small muted" style="margin:0">' + (s && s.billing === 'prep' ? 'Preparation tasks are open now, before the first month starts.' : s && s.billing === 'general' ? 'General tasks sit outside the quoted services and are open straight away.' : monthly ? 'Added to the chosen month only. To add it every month, edit the service in the catalogue.' : 'Added to this workspace.') + '</p><div class="row">' + btn('Add task', 'task-create') + btn('Cancel', 'close', {}, 'quiet') + '</div></div></div></div>';
 }
@@ -728,7 +737,7 @@ function render() {
   if (S.modal && S.modal.kind === 'setup') overlay += '<div class="modal" data-a="close-bg-modal"><div class="sheet stack"><h2>Copy this for Claude</h2><p class="small muted" style="margin:0">Your browser blocked automatic copying. Select all the text below and copy it.</p><textarea rows="16" class="mono" readonly>' + esc(S.modal.text) + '</textarea><div>' + btn('Close', 'close-modal', {}, 'quiet') + '</div></div></div>';
   const ae = document.activeElement, fid = ae && ae.id, sel = ae && ae.id && 'selectionStart' in ae ? [ae.selectionStart, ae.selectionEnd] : null;
   document.getElementById('app').innerHTML = (S.role === 'client' ? portalShell() : staffShell()) + overlay + (S.toast ? '<div class="toast" role="status">' + I('tick', 'sm') + esc(S.toast) + '</div>' : '');
-  if (['mt-q', 'gsearch', 'ac-q', 'af-q'].includes(fid)) { const el = document.getElementById(fid); if (el) { el.focus(); try { if (sel) el.setSelectionRange(sel[0], sel[1]); } catch (x) {} } }
+  if (['mt-q', 'gsearch', 'ac-q', 'af-q', 'ml-q'].includes(fid)) { const el = document.getElementById(fid); if (el) { el.focus(); try { if (sel) el.setSelectionRange(sel[0], sel[1]); } catch (x) {} } }
 }
 function renderSearch() {
   const box = document.getElementById('sres'); if (!box) return;
@@ -871,7 +880,7 @@ function wizSync() {
   if (v('wz-months') !== null) w.months = Math.max(1, Math.floor(+v('wz-months') || 0)); discSync('wzd');
   w.months = Math.min(24, w.months); w.committed = w.months;
   if (document.querySelector('[data-wzsvc]')) w.ids = [...document.querySelectorAll('[data-wzsvc]')].filter(e => e.checked).map(e => e.dataset.wzsvc);
-  w.tasks.forEach(t => { const k = t.key; if (v('wt-title-' + k) === null) return; t.title = v('wt-title-' + k); t.owner = v('wt-owner-' + k); t.assignee = t.owner === 'client' ? '' : v('wt-as-' + k); if (v('wt-due-' + k) !== null) t.dueDay = v('wt-due-' + k); if (v('wt-fee-' + k) !== null) t.fee = v('wt-fee-' + k); if (g('wt-steps-' + k)) t.steps = g('wt-steps-' + k).value; });
+  w.tasks.forEach(t => { const k = t.key; if (v('wt-title-' + k) === null) return; t.title = v('wt-title-' + k); const ow = v('wt-owner-' + k); t.who = ow; t.owner = ow === 'client' ? 'client' : 'gioia'; t.assignee = t.owner === 'client' ? '' : v('wt-as-' + k); if (t.assignee && isVendor(member(t.assignee)) !== (ow === 'vendor')) t.assignee = ''; if (v('wt-due-' + k) !== null) t.dueDay = v('wt-due-' + k); if (v('wt-fee-' + k) !== null) t.fee = v('wt-fee-' + k); if (g('wt-steps-' + k)) t.steps = g('wt-steps-' + k).value; });
   if (v('ns-name') !== null) { w.ns = w.ns || {}; ['name', 'price', 'billing', 'bullets'].forEach(z => { w.ns[z] = g('ns-' + z).value; }); }
   w.fees.forEach(f => { const k = f.key; if (v('wf-member-' + k) === null) return; f.member = v('wf-member-' + k); if (v('wf-svc-' + k) !== null) f.svc = v('wf-svc-' + k); ['rule', 'type', 'amount', 'pct', 'item'].forEach(z => { if (v('wf-' + z + '-' + k) !== null) f[z] = v('wf-' + z + '-' + k); }); });
 }
@@ -934,8 +943,8 @@ function wizardPage() {
   }
   if (step === 3) {
     const lines = w.ids.map(wsvc).filter(Boolean), M = wizMoney();
-    const row = t => { const k = t.key, n = L.parseSteps(t.steps, S.team).length, op = w.open.includes(k), s = wsvc(t.svc), monthly = s && s.billing === 'monthly', cl = t.owner === 'client';
-      return '<div class="wtask"><div class="wtrow"><input id="wt-title-' + k + '" value="' + esc(t.title) + '" placeholder="Task" aria-label="Task"><select id="wt-owner-' + k + '" data-wzr="1" aria-label="Who does it"><option value="gioia"' + (!cl ? ' selected' : '') + '>Team</option><option value="client"' + (cl ? ' selected' : '') + '>Client sends</option></select><select id="wt-as-' + k + '" data-wzr="1" aria-label="Assigned to"' + (cl ? ' disabled' : '') + '><option value="">' + (cl ? '—' : 'Unassigned') + '</option>' + teamOpts(t.assignee) + '</select>' +
+    const row = t => { const k = t.key, n = L.parseSteps(t.steps, S.team).length, op = w.open.includes(k), s = wsvc(t.svc), monthly = s && s.billing === 'monthly', cl = t.owner === 'client', wv = cl ? 'client' : (t.who === 'vendor' || isVendor(member(t.assignee))) ? 'vendor' : 'gioia';
+      return '<div class="wtask"><div class="wtrow"><input id="wt-title-' + k + '" value="' + esc(t.title) + '" placeholder="Task" aria-label="Task"><select id="wt-owner-' + k + '" data-wzr="1" aria-label="Who does it"><option value="gioia"' + (wv === 'gioia' ? ' selected' : '') + '>Team</option>' + (S.team.some(isVendor) || wv === 'vendor' ? '<option value="vendor"' + (wv === 'vendor' ? ' selected' : '') + '>Vendor</option>' : '') + '<option value="client"' + (cl ? ' selected' : '') + '>Client sends</option></select><select id="wt-as-' + k + '" data-wzr="1" aria-label="Assigned to"' + (cl ? ' disabled' : '') + '><option value="">' + (cl ? '—' : 'Unassigned') + '</option>' + (cl ? '' : teamOpts(t.assignee, false, wv === 'vendor' ? 'vendor' : 'team')) + '</select>' +
         (cl ? '<span></span>' : '<input id="wt-fee-' + k + '" data-wzr="1" type="number" min="0" value="' + esc(t.fee || '') + '" placeholder="S$" aria-label="Fee for this task">') + (monthly ? '<input id="wt-due-' + k + '" type="number" min="1" max="31" value="' + esc(t.dueDay) + '" placeholder="Day" aria-label="Due day of the month">' : '<span></span>') +
         '<span class="row" style="gap:10px;flex-wrap:nowrap;justify-content:flex-end"><button class="link" data-a="wz-steps" data-k="' + k + '">' + (n ? n + ' steps' : 'Steps') + '</button><button class="iconbtn" data-a="wz-task-del" data-k="' + k + '" aria-label="Remove task">' + I('x', 'sm') + '</button></span></div>' +
         (op ? '<div class="stack" style="gap:6px;padding:4px 0 6px"><textarea id="wt-steps-' + k + '" class="grow" rows="3" placeholder="Client: …&#10;Jo: …&#10;Client approves: …">' + esc(t.steps) + '</textarea>' + tplBar('wt-steps-' + k) + '</div>' : '') + '</div>'; };
@@ -1043,7 +1052,7 @@ const ACT = {
   'task-new'(d) { const c = S.clients.find(x => x.id === (d.cid || S.cid)) || S.clients[0]; if (!c) { toast('Add a client first.'); return; } S.drawer = { kind: 'newtask', cid: c.id, svc: d.svc || '', m: +d.m || currentMonth(c) }; },
   async 'task-create'() {
     syncNewTask(); const d = S.drawer, title = (d.title || '').trim(); if (!d.svc) { toast('Choose the workspace.'); return; } if (!title) { toast('Give the task a name.'); return; }
-    const r = await api('task-create', { svc: d.svc, m: +d.m || 1, title, desc: d.desc, owner: val('nt-owner'), assignee: val('nt-as'), due: d.due, approve: document.getElementById('nt-appr').checked, steps: d.steps }, { cid: d.cid });
+    const r = await api('task-create', { svc: d.svc, m: +d.m || 1, title, desc: d.desc, owner: val('nt-owner') === 'client' ? 'client' : 'gioia', assignee: val('nt-as'), due: d.due, approve: document.getElementById('nt-appr').checked, steps: d.steps }, { cid: d.cid });
     if (r) { S.drawer = null; S.cid = d.cid; }
   },
   'steps-edit'(d) { S.editSteps = d.id; },
@@ -1124,6 +1133,7 @@ const ACT = {
   async 'file-del-go'() { const M = S.modal, r = await api('f-del', { key: M.k }, { cid: M.cid, msg: 'File deleted.' }); if (r) S.modal = null; },
   'mail-test'() { return api('mail-test', {}, { msg: 'Test email sent to ' + D.me.email + '.' }); },
   'invite-send'(d) { return api('invite-send', {}, { cid: d.cid, msg: 'Portal invite emailed.' }); },
+  'ml-more'() { S.mlN = (S.mlN || 8) + 8; },
   'mail-view'(d) { S.modal = { kind: 'mailview', id: d.id }; },
   async 'backup-now'() { const r = await fetch('/api/backup-now', { method: 'POST' }).then(x => x.json()).catch(() => ({ error: 'The backup did not run.' })); if (r.error) toast(r.error); else { toast(r.last && r.last.ok ? 'Backup saved to Google Drive.' : 'The backup failed: ' + ((r.last && r.last.err) || '')); await load(); } return 'skip'; },
   'cat-mode'(d) { S.catMode = d.m; },
@@ -1196,7 +1206,7 @@ document.addEventListener('click', async e => {
 const grow = el => { el.style.height = 'auto'; el.style.height = el.scrollHeight + 2 + 'px'; };
 new MutationObserver(() => document.querySelectorAll('textarea.grow').forEach(grow)).observe(document.getElementById('app'), { childList: true });
 document.addEventListener('input', e => { if (e.target.matches && e.target.matches('textarea.grow')) grow(e.target); });
-document.addEventListener('input', e => { if (e.target.id === 'gsearch') { S.q = e.target.value; renderSearch(); } else if (e.target.dataset.mtq) { S.mtq = e.target.value; render(); } else if (e.target.dataset.acq) { S.acq = e.target.value; render(); } else if (e.target.dataset.afq) { S.afq = e.target.value; render(); } });
+document.addEventListener('input', e => { if (e.target.id === 'gsearch') { S.q = e.target.value; renderSearch(); } else if (e.target.dataset.mtq) { S.mtq = e.target.value; render(); } else if (e.target.dataset.mlq) { S.mlQ = e.target.value; S.mlN = 8; render(); } else if (e.target.dataset.acq) { S.acq = e.target.value; render(); } else if (e.target.dataset.afq) { S.afq = e.target.value; render(); } });
 async function uploadFiles(key, files) {
   const svcId = key === 'ws' ? S.ws : '', cid = S.cid; let last = null;
   for (const f of files) {
@@ -1212,6 +1222,8 @@ async function uploadFiles(key, files) {
 document.addEventListener('change', async e => {
   const d = e.target.dataset; if (!D || !D.me) return;
   if (d.up) { const fs = [...e.target.files]; e.target.value = ''; if (fs.length) await uploadFiles(d.up, fs); return; }
+  if (d.mlst !== undefined) { S.mlSt = e.target.value; S.mlN = 8; render(); return; }
+  if (e.target.id === 'nt-owner') { const as = document.getElementById('nt-as'); if (as) { as.innerHTML = '<option value="">' + (e.target.value === 'client' ? '—' : 'Unassigned') + '</option>' + (e.target.value === 'client' ? '' : teamOpts(as.value, false, e.target.value === 'vendor' ? 'vendor' : 'team')); as.disabled = e.target.value === 'client'; } return; }
   if (d.epref) { await api('email-pref', { on: e.target.checked }, { msg: e.target.checked ? 'Emails are on.' : 'Emails are off. You will still see everything in the app.' }); return; }
   if (d.ts) await api('t-status', { id: d.ts, status: e.target.value });
   else if (d.as) await api('t-assign', { id: d.as, assignee: e.target.value });
