@@ -461,3 +461,5 @@ textarea.grow{resize:vertical;overflow:hidden;min-height:64px}
 .invest .sumrow td{border-top:0;padding-top:6px;padding-bottom:2px;color:var(--muted)}
 .invest tfoot .sumrow:first-child td{border-top:2px solid var(--line);padding-top:12px}
 .invest .sumrow.save td{color:#2f6b45}
+.terms{white-space:pre-wrap;line-height:1.65;font-size:14px;overflow-wrap:anywhere}
+.doc .terms{font-size:10.5px;line-height:1.55}
