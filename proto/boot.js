@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const pool = MemPool();
-  const Core = CoreFactory(pool, L, { randomBytes: n => crypto.getRandomValues(new Uint8Array(n)), seedJson: JSON.stringify(window.SEED_JSON), adminEmail: 'shihan@gioia.sg', adminName: 'Shi Han', googleReady: true, appUrl: 'https://client-desk-production-aee87942.up.railway.app',
+  const Core = CoreFactory(pool, L, { payDefault: window.PAY_DEFAULT, randomBytes: n => crypto.getRandomValues(new Uint8Array(n)), seedJson: JSON.stringify(window.SEED_JSON), adminEmail: 'shihan@gioia.sg', adminName: 'Shi Han', googleReady: true, appUrl: 'https://client-desk-production-aee87942.up.railway.app',
     // prototype: emails are recorded as previews instead of being sent, and uploads stay in this browser
     mailer: { mailReady: true, sim: true, sendMail: async () => {} }, drive: { driveReady: true, trash: async () => {} }, emailFrom: 'projects@gioia.asia', awaitMail: true });
   const FILES = new Map(); let fileSeq = 0;

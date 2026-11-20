@@ -15,7 +15,7 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 const str = (v, max) => String(v == null ? '' : v).trim().slice(0, max || 300);
 const G = require('./lib/google.js')({ serviceAccount: process.env.GOOGLE_SERVICE_ACCOUNT, emailFrom: process.env.EMAIL_FROM, driveId: process.env.DRIVE_ID, fromName: process.env.EMAIL_NAME || 'Gioia' });
-const Core = require('./lib/core.js')(pool, L, { mailer: G, drive: G, emailFrom: process.env.EMAIL_FROM || '', randomBytes: n => crypto.randomBytes(n), seedJson: process.env.SEED_JSON, adminEmail: process.env.ADMIN_EMAIL, adminName: process.env.ADMIN_NAME, googleReady: !!(GOOGLE_ID && GOOGLE_SECRET), devLogin: DEV_LOGIN, appUrl: (process.env.BASE_URL || '').replace(/\/$/, '') });
+const Core = require('./lib/core.js')(pool, L, { payDefault: require('./lib/paydefault.json'), mailer: G, drive: G, emailFrom: process.env.EMAIL_FROM || '', randomBytes: n => crypto.randomBytes(n), seedJson: process.env.SEED_JSON, adminEmail: process.env.ADMIN_EMAIL, adminName: process.env.ADMIN_NAME, googleReady: !!(GOOGLE_ID && GOOGLE_SECRET), devLogin: DEV_LOGIN, appUrl: (process.env.BASE_URL || '').replace(/\/$/, '') });
 const { init, identify, buildState, runAction, getKV, setKV, Refuse, DEFAULT_BRAND, uploadTarget, fileFor, exportAll, tx, vendorFile, vendorUploadTarget } = Core;
 
 /* ---------- web ---------- */
