@@ -7,7 +7,7 @@
     mailer: { mailReady: true, sim: true, sendMail: async () => {} }, drive: { driveReady: true, trash: async () => {} }, emailFrom: 'projects@gioia.asia', awaitMail: true });
   const FILES = new Map(); let fileSeq = 0;
   Core.pool = pool;
-  const VIEWERS = [['shihan@gioia.sg', 'Shi Han · admin'], ['melissa@gioia.sg', 'Melissa Wee · admin'], ['jo@gioia.sg', 'Jo Lim · team member'], ['ken@kenstudio.example', 'Ken Tan · team member (photographer)'], ['yokliang@yucheng.example', 'Tan Yok Liang · client (Yu Cheng)'], ['grace@lumen.example', 'Grace Ong · prospect (Lumen)']];
+  const VIEWERS = [['shihan@gioia.sg', 'Shi Han · admin'], ['melissa@gioia.sg', 'Melissa Wee · admin'], ['jo@gioia.sg', 'Jo Lim · team member'], ['ken@kenstudio.example', 'Ken Tan · vendor (photographer)'], ['yokliang@yucheng.example', 'Tan Yok Liang · client (Yu Cheng)'], ['grace@lumen.example', 'Grace Ong · prospect (Lumen)']];
   let who = VIEWERS[0][0];
   const ready = ProtoSeed(Core)().catch(e => { console.error(e); alert('Sample data failed: ' + e.message); });
   const reply = data => ({ ok: true, json: async () => data });
