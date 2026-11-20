@@ -14,8 +14,9 @@ const GOOGLE_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 const str = (v, max) => String(v == null ? '' : v).trim().slice(0, max || 300);
-const Core = require('./lib/core.js')(pool, L, { randomBytes: n => crypto.randomBytes(n), seedJson: process.env.SEED_JSON, adminEmail: process.env.ADMIN_EMAIL, adminName: process.env.ADMIN_NAME, googleReady: !!(GOOGLE_ID && GOOGLE_SECRET), devLogin: DEV_LOGIN, appUrl: (process.env.BASE_URL || '').replace(/\/$/, '') });
-const { init, identify, buildState, runAction, getKV, Refuse, DEFAULT_BRAND } = Core;
+const G = require('./lib/google.js')({ serviceAccount: process.env.GOOGLE_SERVICE_ACCOUNT, emailFrom: process.env.EMAIL_FROM, driveId: process.env.DRIVE_ID, fromName: process.env.EMAIL_NAME || 'Gioia' });
+const Core = require('./lib/core.js')(pool, L, { mailer: G, drive: G, emailFrom: process.env.EMAIL_FROM || '', randomBytes: n => crypto.randomBytes(n), seedJson: process.env.SEED_JSON, adminEmail: process.env.ADMIN_EMAIL, adminName: process.env.ADMIN_NAME, googleReady: !!(GOOGLE_ID && GOOGLE_SECRET), devLogin: DEV_LOGIN, appUrl: (process.env.BASE_URL || '').replace(/\/$/, '') });
+const { init, identify, buildState, runAction, getKV, setKV, Refuse, DEFAULT_BRAND, uploadTarget, fileFor, exportAll, tx } = Core;
 
 /* ---------- web ---------- */
 const app = express();
@@ -28,7 +29,7 @@ app.use((req, res, next) => {
 });
 if (PROD && !process.env.SESSION_SECRET) console.error('SESSION_SECRET is not set: sign-in sessions will reset on every restart.');
 app.use(cookieSession({ name: 'desk', keys: [process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex')], maxAge: 30 * 24 * 3600 * 1000, sameSite: 'lax', secure: PROD, httpOnly: true }));
-app.use(express.json({ limit: '200kb' }));
+app.use((req, res, next) => req.path === '/api/upload' ? next() : express.json({ limit: '200kb' })(req, res, next));
 const baseUrl = req => (process.env.BASE_URL || req.protocol + '://' + req.get('host')).replace(/\/$/, '');
 
 const PAGE_ESC = v => String(v).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
@@ -85,6 +86,58 @@ app.post('/api/action', async (req, res) => {
     console.error(e); res.status(500).json({ error: 'Something went wrong. Nothing was changed.' });
   }
 });
+/* uploads go straight into the client's folder in the shared drive */
+app.post('/api/upload', express.raw({ type: () => true, limit: '25mb' }), async (req, res) => {
+  try {
+    if (!G.driveReady) return res.status(400).json({ error: 'File uploads need the Google Drive connection.' });
+    const q = req.query, name = String(q.name || 'File').slice(0, 200);
+    if (!req.body || !req.body.length) return res.status(400).json({ error: 'That file is empty.' });
+    const t = await uploadTarget(req.session.email, q.cid, String(q.key || ''), q.svc);
+    const folderId = await G.folderPath(t.parts);
+    const f = await G.upload(folderId, name, req.get('content-type'), req.body);
+    res.json(await runAction(req.session.email, { a: 'f-add', cid: q.cid, p: { key: q.key, svc: q.svc, name, mime: f.mimeType, size: req.body.length, fileId: f.id } }));
+  } catch (e) {
+    if (e instanceof Refuse) return res.status(400).json({ error: e.message });
+    console.error('upload', e); res.status(500).json({ error: 'The upload did not go through: ' + e.message });
+  }
+});
+app.get('/api/file/:cid/:id', async (req, res) => {
+  try {
+    const f = await fileFor(req.session.email, req.params.cid, req.params.id);
+    const r = await G.download(f.drive);
+    res.set('Content-Type', f.mime || r.headers.get('content-type') || 'application/octet-stream');
+    res.set('Content-Disposition', (req.query.dl ? 'attachment' : 'inline') + '; filename*=UTF-8\'\'' + encodeURIComponent(f.name));
+    res.send(Buffer.from(await r.arrayBuffer()));
+  } catch (e) { res.status(e instanceof Refuse ? 403 : 500).send(e instanceof Refuse ? e.message : 'This file could not be opened.'); }
+});
+app.get('/api/backup', async (req, res) => {
+  const me = await identify(pool, req.session.email).catch(() => null);
+  if (!me || me.role !== 'admin') return res.status(403).send('Admins only.');
+  res.set('Content-Disposition', 'attachment; filename="client-desk-backup-' + new Date().toISOString().slice(0, 10) + '.json"');
+  res.json(await exportAll());
+});
+/* nightly backup to the shared drive, after 2am Singapore time; the last 30 are kept */
+async function nightlyBackup(force) {
+  if (!G.driveReady) return;
+  const sg = new Date(Date.now() + 8 * 3600000), day = sg.toISOString().slice(0, 10), last = await getKV(pool, 'lastBackup', null);
+  if (!force && (sg.getUTCHours() < 2 || (last && last.day === day && last.ok))) return;
+  const rec = { day, at: new Date().toISOString() };
+  try {
+    const folder = await G.folderPath(['Backups']), data = Buffer.from(JSON.stringify(await exportAll()));
+    const f = await G.upload(folder, 'client-desk-backup-' + day + '.json', 'application/json', data);
+    rec.ok = true; rec.file = f.id; rec.size = data.length;
+    const old = (await G.list(folder)).filter(x => /^client-desk-backup-/.test(x.name)).sort((a, b) => b.name.localeCompare(a.name)).slice(30);
+    for (const o of old) await G.remove(o.id).catch(() => {});
+  } catch (e) { rec.err = String(e.message || e).slice(0, 300); console.error('backup', e); }
+  await tx(cl => setKV(cl, 'lastBackup', rec));
+}
+setInterval(() => nightlyBackup().catch(e => console.error('backup', e)), 30 * 60 * 1000);
+app.post('/api/backup-now', async (req, res) => {
+  const me = await identify(pool, req.session.email).catch(() => null);
+  if (!me || me.role !== 'admin') return res.status(403).json({ error: 'Admins only.' });
+  if (!G.driveReady) return res.status(400).json({ error: 'Backups to Drive need the Google Drive connection. You can still download a backup.' });
+  await nightlyBackup(true); res.json({ ok: true, last: await getKV(pool, 'lastBackup', null) });
+});
 app.use(express.static(path.join(__dirname, 'public'), { maxAge: 0 }));
 
-init().then(() => app.listen(PORT, () => console.log('Client desk listening on ' + PORT))).catch(e => { console.error('Could not start', e); process.exit(1); });
+init().then(() => app.listen(PORT, () => { console.log('Client desk listening on ' + PORT); G.check().then(r => console.log('Google email: ' + r.mail + ' | Google Drive: ' + r.drive)).catch(e => console.error('Google check', e)); setTimeout(() => nightlyBackup().catch(e => console.error('backup', e)), 60000); })).catch(e => { console.error('Could not start', e); process.exit(1); });

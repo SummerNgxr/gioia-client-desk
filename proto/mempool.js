@@ -26,6 +26,7 @@
       'insert into feed(cid,v) values($1,$2)': ([cid, v]) => { db.feed.push({ id: ++db.seq, cid, v: JSON.parse(v) }); return out([]); },
       'delete from feed where cid=$1': ([cid]) => { db.feed = db.feed.filter(r => r.cid !== cid); return out([]); },
       'select v,cid from feed order by id desc limit 400': () => out(db.feed.slice().reverse().slice(0, 400)),
+      'select v,cid from feed order by id desc limit 5000': () => out(db.feed.slice().reverse().slice(0, 5000)),
       'select v,cid from feed where cid = any($1) order by id desc limit 400': ([ids]) => out(db.feed.filter(r => ids.includes(r.cid)).reverse().slice(0, 400))
     };
     const query = async (sql, p) => { if (/^create table/.test(sql)) return out([]); const h = Q[sql]; if (!h) throw new Error('Prototype database does not know: ' + sql); return h(p || []); };
