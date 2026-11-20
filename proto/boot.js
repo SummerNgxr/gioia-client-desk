@@ -4,7 +4,7 @@
   const pool = MemPool();
   const Core = CoreFactory(pool, L, { randomBytes: n => crypto.getRandomValues(new Uint8Array(n)), seedJson: JSON.stringify(window.SEED_JSON), adminEmail: 'shihan@gioia.sg', adminName: 'Shi Han', googleReady: true, appUrl: 'https://client-desk-production-aee87942.up.railway.app',
     // prototype: emails are recorded as previews instead of being sent, and uploads stay in this browser
-    mailer: { mailReady: true, sim: true, sendMail: async () => {} }, drive: { driveReady: true }, emailFrom: 'projects@gioia.asia', awaitMail: true });
+    mailer: { mailReady: true, sim: true, sendMail: async () => {} }, drive: { driveReady: true, trash: async () => {} }, emailFrom: 'projects@gioia.asia', awaitMail: true });
   const FILES = new Map(); let fileSeq = 0;
   Core.pool = pool;
   const VIEWERS = [['shihan@gioia.sg', 'Shi Han · admin'], ['melissa@gioia.sg', 'Melissa Wee · admin'], ['jo@gioia.sg', 'Jo Lim · team member'], ['yokliang@yucheng.example', 'Tan Yok Liang · client (Yu Cheng)'], ['grace@lumen.example', 'Grace Ong · prospect (Lumen)']];

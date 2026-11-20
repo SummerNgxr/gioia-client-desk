@@ -108,7 +108,11 @@ app.get('/api/file/:cid/:id', async (req, res) => {
     res.set('Content-Type', f.mime || r.headers.get('content-type') || 'application/octet-stream');
     res.set('Content-Disposition', (req.query.dl ? 'attachment' : 'inline') + '; filename*=UTF-8\'\'' + encodeURIComponent(f.name));
     res.send(Buffer.from(await r.arrayBuffer()));
-  } catch (e) { res.status(e instanceof Refuse ? 403 : 500).send(e instanceof Refuse ? e.message : 'This file could not be opened.'); }
+  } catch (e) {
+    if (e instanceof Refuse) return res.status(403).send(e.message);
+    const gone = /not found|404|trash/i.test(String(e.message || ''));
+    res.status(gone ? 404 : 500).type('html').send('<!doctype html><meta charset="utf-8"><body style="font-family:Arial,sans-serif;background:#f4efe5;color:#1f2a22;display:grid;place-items:center;min-height:90vh"><div style="background:#fffdf7;border:1px solid #e7dfcf;border-radius:14px;padding:28px;max-width:420px"><h2 style="margin-top:0">' + (gone ? 'This file is no longer in Google Drive' : 'This file could not be opened') + '</h2><p>' + (gone ? 'It may have been deleted or moved in Drive. You can remove it from the app with the Delete button next to the file.' : 'Please try again in a moment.') + '</p></div></body>');
+  }
 });
 app.get('/api/backup', async (req, res) => {
   const me = await identify(pool, req.session.email).catch(() => null);
@@ -127,7 +131,7 @@ async function nightlyBackup(force) {
     const f = await G.upload(folder, 'client-desk-backup-' + day + '.json', 'application/json', data);
     rec.ok = true; rec.file = f.id; rec.size = data.length;
     const old = (await G.list(folder)).filter(x => /^client-desk-backup-/.test(x.name)).sort((a, b) => b.name.localeCompare(a.name)).slice(30);
-    for (const o of old) await G.remove(o.id).catch(() => {});
+    for (const o of old) await G.trash(o.id).catch(() => {});
   } catch (e) { rec.err = String(e.message || e).slice(0, 300); console.error('backup', e); }
   await tx(cl => setKV(cl, 'lastBackup', rec));
 }

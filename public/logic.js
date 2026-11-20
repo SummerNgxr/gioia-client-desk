@@ -133,5 +133,5 @@
     out.total = [...out.own, ...out.share].reduce((a, x) => a + x.amount, 0); return out;
   }
   const feeBase = (c, s) => !s ? 0 : s.adhoc ? ((adhocOf(c, s.adhoc) || {}).amount || s.price) : s.price;
-  return { MONTHS, pad, clone, money, short, ym, mName, due, ql, adhocOf, invLines, invTotal, inv, invLocked, taskOpen, hasAccess, newTask, buildTasks, acceptQuote, statusOptions, STATUS, freeWs, shared, invNo, renewals, renewLines, pseudo, monthKey, rnFrom, taskFromDef, discounts, discLabel, discWhen, cleanDiscounts, schedule, findMember, stageMine, feeSvc, feeTasks, feeEarned, feeOwed, feeState, feeBase, taskValue, taskCost, parseSteps, stepsText, toStages, staged, curStage, syncStage, normalizeClient };
+  return { MONTHS, pad, clone, money, short, ym, mName, due, ql, adhocOf, invLines, invTotal, inv, invLocked, taskOpen, hasAccess, newTask, buildTasks, acceptQuote, statusOptions, STATUS, fkey: f => f.drive || (f.url + '|' + f.at), freeWs, shared, invNo, renewals, renewLines, pseudo, monthKey, rnFrom, taskFromDef, discounts, discLabel, discWhen, cleanDiscounts, schedule, findMember, stageMine, feeSvc, feeTasks, feeEarned, feeOwed, feeState, feeBase, taskValue, taskCost, parseSteps, stepsText, toStages, staged, curStage, syncStage, normalizeClient };
 });
