@@ -71,10 +71,12 @@ app.get('/auth/google/callback', async (req, res) => {
 app.get('/auth/logout', (req, res) => { req.session = null; res.redirect('/'); });
 if (DEV_LOGIN) app.get('/auth/dev', (req, res) => { req.session.email = str(req.query.email).toLowerCase(); res.redirect('/'); });
 
+/* tells open pages when a new version of the app has been deployed */
+const APP_VERSION = process.env.RAILWAY_GIT_COMMIT_SHA || process.env.RAILWAY_DEPLOYMENT_ID || String(Date.now());
 app.get('/api/state', async (req, res) => {
   try {
     const cl = await pool.connect();
-    try { res.json(await buildState(cl, await identify(cl, req.session.email))); } finally { cl.release(); }
+    try { res.json(Object.assign(await buildState(cl, await identify(cl, req.session.email)), { version: APP_VERSION })); } finally { cl.release(); }
   } catch (e) { console.error(e); res.status(500).json({ error: 'Something went wrong loading the app.' }); }
 });
 app.post('/api/action', async (req, res) => {

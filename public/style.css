@@ -440,3 +440,5 @@ textarea.grow{resize:vertical;overflow:hidden;min-height:64px}
 .file{grid-template-columns:34px minmax(0,1fr) auto auto}
 .vinv{display:inline-flex;align-items:center;gap:4px;font-weight:600}
 .vinv a{font-weight:500}
+.updbar{position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:90;background:var(--ink,#1f2a22);color:#fff;border-radius:999px;padding:8px 8px 8px 18px;display:flex;align-items:center;gap:12px;box-shadow:0 8px 24px rgba(0,0,0,.18);font-size:14px}
+.updbar button{background:#fff;color:#1f2a22;border:0;border-radius:999px;padding:6px 14px;font:inherit;font-weight:600;cursor:pointer}
