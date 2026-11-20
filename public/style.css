@@ -493,3 +493,4 @@ textarea.grow{resize:vertical;overflow:hidden;min-height:64px}
 .ptrow{display:grid;grid-template-columns:1fr auto auto auto;gap:8px;align-items:center}
 @media (max-width:700px){.ptrow{grid-template-columns:1fr auto}}
 .ptrow input{width:100%;min-width:0;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);font:inherit;color:inherit}
+#tr-title{padding:6px 10px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);width:min(520px,100%)}

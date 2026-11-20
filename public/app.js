@@ -43,6 +43,7 @@ const P = {
   image: '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m21 16-5-5-8 8"/>',
   chart: '<path d="M5 20v-7M10 20V8M15 20v-5M20 20V5"/>',
   circle: '<circle cx="12" cy="12" r="7.5"/>',
+  edit: '<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/>',
   help: '<circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.6"/><path d="M12 17h.01"/>',
   refresh: '<path d="M19.5 9A8 8 0 0 0 5 7.5"/><path d="M4.5 4v4h4"/><path d="M4.5 15A8 8 0 0 0 19 16.5"/><path d="M19.5 20v-4h-4"/>',
   download: '<path d="M12 4v11M7 10.5l5 5 5-5"/><path d="M4 20h16"/>',
@@ -595,7 +596,7 @@ function taskPage(c, t) {
   const label = cl && t.status === 'awaiting' ? 'Awaiting your approval' : '';
   const assignee = E && t.owner === 'gioia' ? '<select id="dr-as" data-as="' + t.id + '" aria-label="Assignee"><option value="">Unassigned</option>' + teamOpts(t.assignee) + '</select>' : '<b>' + (t.owner === 'client' ? (cl ? 'You' : esc(c.contact || 'Client')) : esc(m ? m.name : 'Unassigned')) + '</b>';
   const dueCell = E ? '<input id="dr-due" type="date" data-due="' + t.id + '" value="' + esc(t.due) + '" aria-label="Due date">' : '<b>' + (t.due ? dlong(t.due) : '—') + '</b>';
-  const head = '<div class="card stack" style="gap:14px"><div class="row" style="gap:16px;flex-wrap:nowrap;align-items:flex-start"><span class="ticon lg">' + I(svcIcon(t.svc)) + '</span><div class="stack" style="gap:8px"><h1 style="font-size:26px">' + esc(t.title) + '</h1><span class="row" style="gap:6px">' + pill(t.status, label) + (t.approve && t.rounds ? '<span class="chip">Revision ' + t.rounds + ' of 2</span>' : '') + '</span></div></div>' +
+  const head = '<div class="card stack" style="gap:14px"><div class="row" style="gap:16px;flex-wrap:nowrap;align-items:flex-start"><span class="ticon lg">' + I(svcIcon(t.svc)) + '</span><div class="stack" style="gap:8px">' + (E && S.renaming === t.id ? '<div class="row" style="gap:8px;flex-wrap:nowrap"><input id="tr-title" value="' + esc(t.title) + '" aria-label="Task name" style="font:600 22px var(--display);min-width:280px">' + btn('Save', 'tr-save', { id: t.id }) + btn('Cancel', 'tr-cancel', {}, 'quiet') + '</div>' : '<h1 style="font-size:26px">' + esc(t.title) + (E ? ' <button class="iconbtn" data-a="tr-open" data-id="' + t.id + '" aria-label="Rename task" title="Rename task" style="vertical-align:middle">' + I('edit', 'sm') + '</button>' : '') + '</h1>') + '<span class="row" style="gap:6px">' + pill(t.status, label) + (t.approve && t.rounds ? '<span class="chip">Revision ' + t.rounds + ' of 2</span>' : '') + '</span></div></div>' +
     '<div class="metarow"><div>' + I('user') + '<div class="stack" style="gap:2px;flex:1"><span class="small muted">' + (cl ? 'Assigned to' : 'Assignee') + '</span>' + assignee + '</div></div>' + (A ? '<div>' + I('building') + '<div class="stack" style="gap:2px"><span class="small muted">Client</span><b>' + esc(c.company) + '</b></div></div>' : '') + '<div>' + I('cal') + '<div class="stack" style="gap:2px;flex:1"><span class="small muted">Due date</span>' + dueCell + '</div></div>' + vcCell(c, t) + '</div></div>';
   const desc = '<div class="stack" style="gap:6px"><h2>Description</h2>' + (A ? '<textarea id="dr-desc" data-desc="' + t.id + '" placeholder="What was done, and what the client should check. The client sees this.">' + esc(t.desc) + '</textarea>' : '<p style="margin:0">' + (t.desc ? esc(t.desc) : '<span class="muted">No description.</span>') + '</p>') + '<span class="small muted">' + esc(short(s)) + (t.m ? ' · ' + mName(c, t.m) : '') + '</span></div>';
   const cs = curStage(t);
@@ -860,6 +861,7 @@ function drawTour() {
     '<div class="tourtip" role="dialog" aria-label="Portal tour" style="left:' + left + 'px;top:' + top + 'px;width:' + tw + 'px"><div class="row between"><span class="eyebrow">' + (S.tour.i + 1) + ' of ' + steps.length + '</span><button class="link small" data-a="tour-skip">Skip tour</button></div><h3 style="margin:2px 0 4px">' + esc(h) + '</h3><p style="margin:0">' + esc(t) + '</p><div class="row" style="justify-content:flex-end;gap:8px;margin-top:12px">' + (S.tour.i ? btn('Back', 'tour-back', {}, 'quiet') : '') + btn(S.tour.i === steps.length - 1 ? 'Got it' : 'Next', 'tour-next') + '</div></div>';
 }
 window.addEventListener('resize', () => { if (S.tour) drawTour(); });
+document.addEventListener('keydown', e => { if (e.target.id === 'tr-title') { if (e.key === 'Enter') { e.preventDefault(); const b = document.querySelector('button[data-a="tr-save"]'); if (b) b.click(); } else if (e.key === 'Escape') { S.renaming = null; render(); } } });
 function renderSearch() {
   const box = document.getElementById('sres'); if (!box) return;
   const q = S.q.toLowerCase(); if (q.length < 2) { box.innerHTML = ''; return; }
@@ -1339,6 +1341,9 @@ const ACT = {
   'tour-back'() { S.tour.i = Math.max(0, S.tour.i - 1); drawTour(); return 'skip'; },
   'tour-skip'() { const k = S.tour && S.tour.kind; S.tour = null; drawTour(); if (k && !(D.tours || {})[k]) { D.tours = Object.assign({}, D.tours, { [k]: true }); api('tour-done', { kind: k }, { quiet: true }); } return 'skip'; },
   'tour-start'() { S.menu = null; S.tour = { kind: tourKind(), i: 0 }; },
+  'tr-open'(d) { S.renaming = d.id; setTimeout(() => { const el = document.getElementById('tr-title'); if (el) { el.focus(); el.select(); } }, 30); },
+  'tr-cancel'() { S.renaming = null; },
+  async 'tr-save'(d) { const r = await api('t-rename', { id: d.id, title: val('tr-title') }, { msg: 'Task renamed.' }); if (r) S.renaming = null; },
   'pay-open'(d) { S.modal = { kind: 'pay', cid: d.cid, pa: d.pa, m: d.m, id: d.id }; },
   async 'pay-go'() { const M = S.modal, p = { date: val('py-date'), mode: val('py-mode'), mode2: document.getElementById('py-mode2') ? val('py-mode2') : '', note: val('py-note') }; if (M.id) p.id = M.id; else p.m = +M.m; const r = await api(M.pa, p, { cid: M.cid }); if (r) S.modal = null; },
   'depuse-open'(d) { S.modal = { kind: 'depuse', cid: d.cid }; },
