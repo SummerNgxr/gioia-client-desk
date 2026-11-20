@@ -458,3 +458,6 @@ textarea.grow{resize:vertical;overflow:hidden;min-height:64px}
 .invest tfoot td{border-top:2px solid var(--line);padding-top:12px}
 .invest .deprow td{background:var(--card-2)}
 .depline{color:#7a5a12}
+.invest .sumrow td{border-top:0;padding-top:6px;padding-bottom:2px;color:var(--muted)}
+.invest tfoot .sumrow:first-child td{border-top:2px solid var(--line);padding-top:12px}
+.invest .sumrow.save td{color:#2f6b45}
