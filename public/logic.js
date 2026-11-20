@@ -28,7 +28,28 @@
   function cleanDiscounts(arr, months, ids) {
     return (Array.isArray(arr) ? arr : []).map(d => { const from = Math.min(months, Math.max(1, Math.floor(+d.from || 1))); return { id: String(d.id || ''), label: String(d.label || '').trim().slice(0, 80), type: d.type === 'pct' ? 'pct' : 'amount', value: d.type === 'pct' ? Math.min(100, Math.max(0, Number(d.value) || 0)) : Math.max(0, Math.floor(Number(d.value) || 0)), scope: ids.includes(d.scope) ? d.scope : 'all', when: ['once', 'every', 'range'].includes(d.when) ? d.when : 'range', from, to: Math.min(months, Math.max(from, Math.floor(+d.to || months))) }; }).filter(d => d.value > 0).slice(0, 10);
   }
-  function invLines(c, m) {
+  /* deposit: a % of the contract or a fixed amount, invoiced when the proposal is accepted and deducted from the first invoice (any remainder from the next) */
+  /* type: pct (of the contract) | amount (fixed) | months (that many months of fees, like a security deposit)
+     use: first (deducted from the first invoice, then the next) | last (covers the final invoices) */
+  function cleanDeposit(d) {
+    d = d || {}; const type = ['pct', 'amount', 'months'].includes(d.type) ? d.type : '';
+    const value = type === 'pct' ? Math.min(100, Math.max(0, Number(d.value) || 0)) : type === 'months' ? Math.min(12, Math.max(0, Math.floor(Number(d.value) || 0))) : Math.max(0, Math.floor(Number(d.value) || 0));
+    return type && value > 0 ? { type, value, use: d.use === 'last' ? 'last' : 'first' } : null;
+  }
+  const rawTotal = (c, m) => Math.max(0, invLines(c, m, true).reduce((a, l) => a + l.amount, 0));
+  const depOrder = (c, d) => { const ms = Array.from({ length: c.quote.months }, (_, i) => i + 1); return d.use === 'last' ? ms.reverse() : ms; };
+  function depositAmt(c) {
+    const d = cleanDeposit(c.quote.deposit); if (!d || c.quote.renewal) return 0;
+    if (d.type === 'amount') return d.value;
+    if (d.type === 'months') return depOrder(c, d).slice(0, Math.min(d.value, c.quote.months)).reduce((a, m) => a + Math.max(0, invLines(c, m, true).filter(l => !(l.s && l.s.billing === 'once')).reduce((x, l) => x + l.amount, 0)), 0);
+    let base = 0; for (let m = 1; m <= c.quote.months; m++) base += rawTotal(c, m); return Math.round(base * d.value / 100);
+  }
+  const depositInv = c => (c.adhoc || []).find(a => a.deposit);
+  function depositCut(c, m) { const dep = depositAmt(c); if (!dep) return 0; let left = dep; for (const k of depOrder(c, cleanDeposit(c.quote.deposit))) { const cut = Math.min(left, rawTotal(c, k)); if (k === m) return cut; left -= cut; } return 0; }
+  const depLabel = d => (d.type === 'pct' ? d.value + '% of the contract' : d.type === 'months' ? d.value + ' month' + (d.value === 1 ? '' : 's') + ' of fees' : 'fixed amount') + (d.use === 'last' ? ', held as a security deposit and used for the final invoice' + (d.type === 'months' && d.value > 1 ? 's' : '') : ', deducted from your first invoice');
+  const depUse = (c) => { const d = cleanDeposit(c.quote.deposit); if (!d) return ''; const ms = depOrder(c, d).filter(m => depositCut(c, m) > 0).sort((a, b) => a - b); if (!ms.length) return ''; const cover = ms.filter(m => depositCut(c, m) >= rawTotal(c, m)); return (d.use === 'last' ? 'Held as a security deposit and used for ' : 'Deducted from ') + (ms.length === 1 ? (d.use === 'last' ? 'your last invoice, ' : 'your first invoice, ') + mName(c, ms[0]) : 'your invoices for ' + mName(c, ms[0]) + ' to ' + mName(c, ms[ms.length - 1])) + (d.use === 'last' && cover.length === ms.length ? ', so nothing more is due for ' + (ms.length === 1 ? 'that month' : 'those months') : '') + '.'; };
+  const contractTotal = c => { let t = depositAmt(c); for (let m = 1; m <= c.quote.months; m++) t += invTotal(c, m); return t; };
+  function invLines(c, m, raw) {
     const rr = renewals(c).find(r => r.status === 'accepted' && m >= r.from && m <= r.to);
     if (rr) return invLines(pseudo(c, rr), m - rr.from + 1);
     const out = [];
@@ -39,6 +60,7 @@
       const amt = Math.min(base, d.type === 'pct' ? Math.round(base * d.value / 100) : +d.value || 0);
       if (amt > 0) out.push({ name: discLabel(d, c), amount: -amt, disc: d.id });
     });
+    if (!raw) { const cut = depositCut(c, m), di = depositInv(c); if (cut > 0) out.push({ name: (cleanDeposit(c.quote.deposit).use === 'last' ? 'Covered by security deposit' : 'Less deposit') + (di ? ' (invoice ' + di.no + ')' : ''), amount: -cut, dep: true }); }
     return out;
   }
   /* months grouped by what is billed: "Month 1: $1,180", "Months 2 to 6: $680 a month" */
@@ -47,7 +69,9 @@
   const inv = (c, m) => c.invoices.find(i => i.m === m);
   const invLocked = (c, m) => m > c.quote.committed && !c.quote.renewed;
   const freeWs = s => !!s && (s.billing === 'general' || s.billing === 'prep');
-  const taskOpen = (c, t) => { if (t.svc === 'general') return true; if (t.svc === 'prep') return c.prep === 'open'; const i = t.adhoc ? adhocOf(c, t.adhoc) : inv(c, t.m); return !!i && i.status === 'paid'; };
+  const taskOpen = (c, t) => { if (t.svc === 'general') return true; if (t.svc === 'prep') return c.prep === 'open'; const i = t.adhoc ? adhocOf(c, t.adhoc) : inv(c, t.m); return !!i && (i.status === 'paid' || (!t.adhoc && covered(c, t.m))); };
+  /* a month fully covered by a paid deposit counts as paid */
+  const covered = (c, m) => { const di = depositInv(c); return !!di && di.status === 'paid' && depositCut(c, m) > 0 && invTotal(c, m) <= 0; };
   /* a quotation the client can see in the portal before any work opens */
   const shared = c => ['sent', 'accepted', 'declined', 'changes'].includes(c.quote.status);
   const hasAccess = c => c.prep === 'open' || c.invoices.some(i => i.status === 'paid') || c.adhoc.some(a => a.status === 'paid');
@@ -91,6 +115,8 @@
     c.quote.status = 'accepted';
     c.invoices = Array.from({ length: c.quote.months }, (_, i) => ({ m: i + 1, no: invNo(fmt, c.quote.no, i + 1), status: 'pending' }));
     c.tasks = buildTasks(c);
+    const dep = depositAmt(c); c.adhoc = (c.adhoc || []).filter(a => !(a.deposit && a.status !== 'paid'));
+    if (dep > 0 && !depositInv(c)) c.adhoc.unshift({ id: c.id + '-dep', no: c.quote.no + '-D', name: 'Deposit for ' + (c.name || 'proposal ' + c.quote.no) + ' (' + depLabel(cleanDeposit(c.quote.deposit)) + ')', amount: dep, status: 'pending', date: new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10), s: null, deposit: true });
   }
   const statusOptions = t => staged(t) ? (curStage(t) && curStage(t).owner === 'gioia' ? ['todo', 'progress'] : [t.status]) : t.owner === 'client' ? ['cdraft', 'submitted', 'done'] : t.approve ? ['todo', 'progress', 'cdraft', 'creview', 'awaiting', 'changes', 'approved', 'done'] : ['todo', 'progress', 'cdraft', 'creview', 'done'];
   const STATUS = { pending: 'Pending', sent: 'Sent', paid: 'Paid', accepted: 'Accepted', cancelled: 'Cancelled', declined: 'Declined', void: 'Void', locked: 'Awaiting renewal', todo: 'Pending action', progress: 'In progress', cdraft: 'Pending client draft', creview: 'Pending client review', awaiting: 'Awaiting client approval', changes: 'Changes requested', approved: 'Approved by client', submitted: 'Sent by client', done: 'Completed' };
@@ -133,5 +159,5 @@
     out.total = [...out.own, ...out.share].reduce((a, x) => a + x.amount, 0); return out;
   }
   const feeBase = (c, s) => !s ? 0 : s.adhoc ? ((adhocOf(c, s.adhoc) || {}).amount || s.price) : s.price;
-  return { MONTHS, pad, clone, money, short, ym, mName, due, ql, adhocOf, invLines, invTotal, inv, invLocked, taskOpen, hasAccess, newTask, buildTasks, acceptQuote, statusOptions, STATUS, fkey: f => f.drive || (f.url + '|' + f.at), freeWs, shared, invNo, renewals, renewLines, pseudo, monthKey, rnFrom, taskFromDef, discounts, discLabel, discWhen, cleanDiscounts, schedule, findMember, stageMine, feeSvc, feeTasks, feeEarned, feeOwed, feeState, feeBase, taskValue, taskCost, parseSteps, stepsText, toStages, staged, curStage, syncStage, normalizeClient };
+  return { covered, depUse, depLabel, cleanDeposit, depositAmt, depositInv, contractTotal, MONTHS, pad, clone, money, short, ym, mName, due, ql, adhocOf, invLines, invTotal, inv, invLocked, taskOpen, hasAccess, newTask, buildTasks, acceptQuote, statusOptions, STATUS, fkey: f => f.drive || (f.url + '|' + f.at), freeWs, shared, invNo, renewals, renewLines, pseudo, monthKey, rnFrom, taskFromDef, discounts, discLabel, discWhen, cleanDiscounts, schedule, findMember, stageMine, feeSvc, feeTasks, feeEarned, feeOwed, feeState, feeBase, taskValue, taskCost, parseSteps, stepsText, toStages, staged, curStage, syncStage, normalizeClient };
 });
