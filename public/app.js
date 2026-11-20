@@ -949,7 +949,7 @@ function adopt(st) {
   document.body.classList.toggle('no-upload', !D.uploads); document.body.classList.toggle('no-email', !D.email);
 }
 async function load() {
-  try { const r = await fetch('/api/state', { credentials: 'same-origin' }); const st = await r.json(); if (st.error) throw new Error(st.error); adopt(st); }
+  try { const r = await fetch('/api/state', { credentials: 'same-origin' }); const st = await r.json(); if (st.error) throw new Error(st.error); SYNC.version = SYNC.version || st.version; SYNC.sig = sig(st); adopt(st); }
   catch (e) { document.getElementById('app').innerHTML = '<p style="padding:24px">The app could not load. Please refresh the page.</p>'; return; }
   render();
 }
@@ -958,7 +958,7 @@ async function api(a, p, opts) {
   try { const r = await fetch('/api/action', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ a, cid: opts.cid || S.cid, p: p || {} }) }); res = await r.json(); }
   catch (e) { toast('Could not reach the server. Check your connection and try again.'); return null; }
   if (res.error) { toast(res.error); return null; }
-  adopt(res.state);
+  SYNC.sig = sig(res.state); SYNC.pending = null; adopt(res.state);
   if (!opts.quiet) toast(opts.msg || (res.logged && res.logged.length ? res.logged[0] : 'Saved.'));
   return res;
 }
@@ -1217,5 +1217,39 @@ document.addEventListener('drop', async e => {
   await api('t-status', { id: t.id, status: target }); render();
 });
 document.addEventListener('dragend', () => { S.drag = null; document.querySelectorAll('.col.over').forEach(x => x.classList.remove('over')); });
+/* live updates: fetch the latest data every 20 seconds and when the tab comes back into view.
+   Changes are shown straight away unless you are typing or have a panel open; then they wait until you finish. */
+const SYNC = { sig: '', version: '', pending: null, busy: false, newVersion: false };
+function sig(st) { const c = Object.assign({}, st); delete c.version; return JSON.stringify(c); }
+function userBusy() {
+  const a = document.activeElement, typing = a && a.closest && a.closest('#app') && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && !['checkbox', 'radio', 'file', 'search'].includes(a.type);
+  const unsaved = [...document.querySelectorAll('#app textarea, #app input')].some(el => !['file', 'checkbox', 'radio', 'search'].includes(el.type) && el.value !== el.defaultValue);
+  return !!(S.drawer || S.modal || S.menu || S.drag || SYNC.busy || typing || unsaved);
+}
+function applyPending() {
+  if (!SYNC.pending || userBusy()) return;
+  const st = SYNC.pending, m = document.querySelector('.main'), top = m ? m.scrollTop : 0, wy = window.scrollY;
+  SYNC.pending = null; adopt(st); render();
+  const m2 = document.querySelector('.main'); if (m2) m2.scrollTop = top; window.scrollTo(0, wy);
+}
+async function syncNow() {
+  if (!D || !D.me || document.hidden || SYNC.busy) return;
+  try {
+    const r = await fetch('/api/state', { credentials: 'same-origin' }); if (!r.ok) return; const st = await r.json(); if (st.error) return;
+    if (st.version && SYNC.version && st.version !== SYNC.version && !SYNC.newVersion) { SYNC.newVersion = true; showUpdateBar(); }
+    const s2 = sig(st); if (s2 === SYNC.sig) return; SYNC.sig = s2; SYNC.pending = st; applyPending();
+  } catch (e) { /* offline for a moment: try again next time */ }
+}
+function showUpdateBar() {
+  if (document.getElementById('updbar')) return;
+  const b = document.createElement('div'); b.id = 'updbar'; b.className = 'updbar'; b.setAttribute('role', 'status');
+  b.innerHTML = '<span>A new version of the app is ready.</span><button type="button">Reload</button>';
+  b.querySelector('button').addEventListener('click', () => location.reload()); document.body.appendChild(b);
+}
+setInterval(syncNow, 20000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) syncNow(); });
+window.addEventListener('focus', syncNow);
+document.addEventListener('focusout', () => setTimeout(applyPending, 50));
+document.addEventListener('click', () => setTimeout(applyPending, 50));
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && D && D.me) { if (S.modal) S.modal = null; else if (S.drawer) S.drawer = null; else S.menu = null; render(); } });
 load();
