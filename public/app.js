@@ -43,6 +43,7 @@ const P = {
   image: '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m21 16-5-5-8 8"/>',
   chart: '<path d="M5 20v-7M10 20V8M15 20v-5M20 20V5"/>',
   circle: '<circle cx="12" cy="12" r="7.5"/>',
+  help: '<circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.6"/><path d="M12 17h.01"/>',
   refresh: '<path d="M19.5 9A8 8 0 0 0 5 7.5"/><path d="M4.5 4v4h4"/><path d="M4.5 15A8 8 0 0 0 19 16.5"/><path d="M19.5 20v-4h-4"/>',
   download: '<path d="M12 4v11M7 10.5l5 5 5-5"/><path d="M4 20h16"/>',
   filter: '<path d="M4 5h16l-6 7.5V19l-4 1v-7.5z"/>',
@@ -790,8 +791,43 @@ function render() {
   if (S.modal && S.modal.kind === 'setup') overlay += '<div class="modal" data-a="close-bg-modal"><div class="sheet stack"><h2>Copy this for Claude</h2><p class="small muted" style="margin:0">Your browser blocked automatic copying. Select all the text below and copy it.</p><textarea rows="16" class="mono" readonly>' + esc(S.modal.text) + '</textarea><div>' + btn('Close', 'close-modal', {}, 'quiet') + '</div></div></div>';
   const ae = document.activeElement, fid = ae && ae.id, sel = ae && ae.id && 'selectionStart' in ae ? [ae.selectionStart, ae.selectionEnd] : null;
   document.getElementById('app').innerHTML = (S.role === 'client' ? portalShell() : staffShell()) + overlay + (S.toast ? '<div class="toast" role="status">' + I('tick', 'sm') + esc(S.toast) + '</div>' : '');
+  drawTour();
   if (['mt-q', 'gsearch', 'ac-q', 'af-q', 'ml-q'].includes(fid)) { const el = document.getElementById(fid); if (el) { el.focus(); try { if (sel) el.setSelectionRange(sel[0], sel[1]); } catch (x) {} } }
 }
+/* a short walkthrough the first time a client opens their portal; it can be replayed from the profile menu */
+const TOURS = {
+  portal: [
+    ['[data-t="overview"]', 'Start here', 'Anything waiting for you, such as a draft to send or work to approve, shows on your Overview, with a count beside it.'],
+    ['[data-t="workspaces"]', 'Workspaces', 'One workspace for each service. Each month opens as its invoice is paid.'],
+    ['[data-t="tasks"]', 'Tasks', 'Every task and where it stands. Open one to review, approve, ask for changes, comment or upload files.'],
+    ['[data-t="files"]', 'Files', 'Everything shared between you and Gioia, sorted into folders.'],
+    ['[data-t="invoices"]', 'Invoices', 'Your invoices with our bank and PayNow details, and your deposit if you have one.'],
+    ['.topbar .iconbtn', 'Notifications', 'Updates appear here. We also email you whenever something needs you.'],
+    ['[data-t="details"]', 'My details', 'Your contact details and email settings. You can replay this tour from the menu at the top right.']
+  ],
+  proposal: [
+    ['[data-t="proposal"]', 'Your proposal', 'Read what we will do and the month-by-month breakdown. At the bottom, accept it, ask for changes or decline.'],
+    ['#terms', 'Terms and Conditions', 'Please read these before accepting. Ticking the box confirms you agree to them.'],
+    ['[data-t="details"]', 'My details', 'Your contact details and email settings. You can replay this tour from the menu at the top right.']
+  ]
+};
+function tourKind() { const c = client(); return c && hasAccess(c) ? 'portal' : 'proposal'; }
+function tourSteps() { return (TOURS[S.tour.kind] || []).filter(st => { const el = document.querySelector(st[0]); return el && el.getClientRects().length; }); }
+function drawTour() {
+  let box = document.getElementById('tour');
+  if (S.role === 'client' && !S.tour && !S.tourChecked && D.tours) { S.tourChecked = true; const k = tourKind(); if (!D.tours[k] && !S.modal && !S.drawer) S.tour = { kind: k, i: 0 }; }
+  if (!S.tour) { if (box) box.remove(); return; }
+  const steps = tourSteps(); if (!steps.length) { S.tour = null; if (box) box.remove(); return; }
+  if (S.tour.i >= steps.length) S.tour.i = steps.length - 1;
+  const [sel, h, t] = steps[S.tour.i], el = document.querySelector(sel);
+  el.scrollIntoView({ block: 'nearest', inline: 'center' });
+  const r = el.getBoundingClientRect(), pad = 6, W = innerWidth, H = innerHeight, tw = Math.min(340, W - 24), below = r.bottom + 190 < H || r.top < 200;
+  const left = Math.max(12, Math.min(W - tw - 12, r.left + r.width / 2 - tw / 2)), top = below ? Math.min(H - 180, r.bottom + 14) : Math.max(12, r.top - 14 - 170);
+  if (!box) { box = document.createElement('div'); box.id = 'tour'; document.body.appendChild(box); }
+  box.innerHTML = '<div class="tourspot" style="left:' + (r.left - pad) + 'px;top:' + (r.top - pad) + 'px;width:' + (r.width + pad * 2) + 'px;height:' + (r.height + pad * 2) + 'px"></div>' +
+    '<div class="tourtip" role="dialog" aria-label="Portal tour" style="left:' + left + 'px;top:' + top + 'px;width:' + tw + 'px"><div class="row between"><span class="eyebrow">' + (S.tour.i + 1) + ' of ' + steps.length + '</span><button class="link small" data-a="tour-skip">Skip tour</button></div><h3 style="margin:2px 0 4px">' + esc(h) + '</h3><p style="margin:0">' + esc(t) + '</p><div class="row" style="justify-content:flex-end;gap:8px;margin-top:12px">' + (S.tour.i ? btn('Back', 'tour-back', {}, 'quiet') : '') + btn(S.tour.i === steps.length - 1 ? 'Got it' : 'Next', 'tour-next') + '</div></div>';
+}
+window.addEventListener('resize', () => { if (S.tour) drawTour(); });
 function renderSearch() {
   const box = document.getElementById('sres'); if (!box) return;
   const q = S.q.toLowerCase(); if (q.length < 2) { box.innerHTML = ''; return; }
@@ -1080,7 +1116,7 @@ function emailPrefCard() {
   return '<div class="card stack" style="max-width:560px"><h2>Email updates</h2><label class="opt ' + (D.emailOn ? 'on' : '') + '"><input type="checkbox" data-epref="1"' + (D.emailOn ? ' checked' : '') + '><span><b>Email me when something needs me</b><br><span class="small muted">Proposals, invoices, work ready for your review or approval, and comments from the team. Sent to ' + esc(D.me.email) + '.</span></span></label></div>';
 }
 function meMenu() {
-  return '<div class="menu" style="width:270px"><div style="padding:8px 10px 10px"><b>' + esc(D.me.name || '') + '</b><br><span class="small muted">' + esc(D.me.email) + '</span><br><span class="small muted">' + (S.role === 'client' ? 'Client' : isAdmin() ? 'Admin' : 'Team member') + '</span></div>' + (S.role !== 'client' ? '<label class="mi" style="cursor:pointer"><input type="checkbox" data-epref="1"' + (D.emailOn ? ' checked' : '') + ' style="width:auto"><span>Email me about my work</span></label>' : '') + '<a class="mi" href="/auth/logout">' + I('out') + '<span>Sign out</span></a></div>';
+  return '<div class="menu" style="width:270px"><div style="padding:8px 10px 10px"><b>' + esc(D.me.name || '') + '</b><br><span class="small muted">' + esc(D.me.email) + '</span><br><span class="small muted">' + (S.role === 'client' ? 'Client' : isAdmin() ? 'Admin' : 'Team member') + '</span></div>' + (S.role !== 'client' ? '<label class="mi" style="cursor:pointer"><input type="checkbox" data-epref="1"' + (D.emailOn ? ' checked' : '') + ' style="width:auto"><span>Email me about my work</span></label>' : '') + (S.role === 'client' ? '<button class="mi" data-a="tour-start">' + I('help') + '<span>Show me around</span></button>' : '') + '<a class="mi" href="/auth/logout">' + I('out') + '<span>Sign out</span></a></div>';
 }
 
 /* ---------- actions ---------- */
@@ -1256,6 +1292,10 @@ const ACT = {
     if (f) { try { const r = await fetch('/api/vendor-upload?member=' + encodeURIComponent(p.member) + '&name=' + encodeURIComponent(f.name), { method: 'POST', headers: { 'Content-Type': f.type || 'application/octet-stream' }, body: f }), j = await r.json(); if (!r.ok) throw new Error(j.error || 'The upload did not go through.'); p.fileId = j.fileId; p.fileName = f.name; } catch (e) { toast(e.message); return; } }
     const r = await api('payout-create', p, { msg: 'Payment recorded.' }); if (r) S.modal = null;
   },
+  'tour-next'() { const n = tourSteps().length; if (S.tour.i < n - 1) { S.tour.i++; drawTour(); return 'skip'; } return ACT['tour-skip'](); },
+  'tour-back'() { S.tour.i = Math.max(0, S.tour.i - 1); drawTour(); return 'skip'; },
+  'tour-skip'() { const k = S.tour && S.tour.kind; S.tour = null; drawTour(); if (k && !(D.tours || {})[k]) { D.tours = Object.assign({}, D.tours, { [k]: true }); api('tour-done', { kind: k }, { quiet: true }); } return 'skip'; },
+  'tour-start'() { S.menu = null; S.tour = { kind: tourKind(), i: 0 }; },
   'pay-open'(d) { S.modal = { kind: 'pay', cid: d.cid, pa: d.pa, m: d.m, id: d.id }; },
   async 'pay-go'() { const M = S.modal, p = { date: val('py-date'), mode: val('py-mode'), mode2: document.getElementById('py-mode2') ? val('py-mode2') : '', note: val('py-note') }; if (M.id) p.id = M.id; else p.m = +M.m; const r = await api(M.pa, p, { cid: M.cid }); if (r) S.modal = null; },
   'depuse-open'(d) { S.modal = { kind: 'depuse', cid: d.cid }; },
