@@ -16,7 +16,7 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const str = (v, max) => String(v == null ? '' : v).trim().slice(0, max || 300);
 const G = require('./lib/google.js')({ serviceAccount: process.env.GOOGLE_SERVICE_ACCOUNT, emailFrom: process.env.EMAIL_FROM, driveId: process.env.DRIVE_ID, fromName: process.env.EMAIL_NAME || 'Gioia' });
 const Core = require('./lib/core.js')(pool, L, { mailer: G, drive: G, emailFrom: process.env.EMAIL_FROM || '', randomBytes: n => crypto.randomBytes(n), seedJson: process.env.SEED_JSON, adminEmail: process.env.ADMIN_EMAIL, adminName: process.env.ADMIN_NAME, googleReady: !!(GOOGLE_ID && GOOGLE_SECRET), devLogin: DEV_LOGIN, appUrl: (process.env.BASE_URL || '').replace(/\/$/, '') });
-const { init, identify, buildState, runAction, getKV, setKV, Refuse, DEFAULT_BRAND, uploadTarget, fileFor, exportAll, tx } = Core;
+const { init, identify, buildState, runAction, getKV, setKV, Refuse, DEFAULT_BRAND, uploadTarget, fileFor, exportAll, tx, vendorFile, vendorUploadTarget } = Core;
 
 /* ---------- web ---------- */
 const app = express();
@@ -100,6 +100,24 @@ app.post('/api/upload', express.raw({ type: () => true, limit: '25mb' }), async 
     if (e instanceof Refuse) return res.status(400).json({ error: e.message });
     console.error('upload', e); res.status(500).json({ error: 'The upload did not go through: ' + e.message });
   }
+});
+/* a vendor's invoice, uploaded when recording a payment (admins only) */
+app.post('/api/vendor-upload', express.raw({ type: () => true, limit: '25mb' }), async (req, res) => {
+  try {
+    if (!G.driveReady) return res.status(400).json({ error: 'File uploads need the Google Drive connection.' });
+    if (!req.body || !req.body.length) return res.status(400).json({ error: 'That file is empty.' });
+    const t = await vendorUploadTarget(req.session.email, String(req.query.member || '')), name = String(req.query.name || 'Invoice').slice(0, 200);
+    const f = await G.upload(await G.folderPath(t.parts), name, req.get('content-type'), req.body);
+    res.json({ fileId: f.id });
+  } catch (e) { if (e instanceof Refuse) return res.status(400).json({ error: e.message }); console.error('vendor upload', e); res.status(500).json({ error: 'The upload did not go through: ' + e.message }); }
+});
+app.get('/api/vendor-file/:id', async (req, res) => {
+  try {
+    const po = await vendorFile(req.session.email, req.params.id), r = await G.download(po.file);
+    res.set('Content-Type', r.headers.get('content-type') || 'application/octet-stream');
+    res.set('Content-Disposition', 'inline; filename*=UTF-8\'\'' + encodeURIComponent(po.fileName || 'invoice'));
+    res.send(Buffer.from(await r.arrayBuffer()));
+  } catch (e) { res.status(e instanceof Refuse ? 403 : 404).send(e instanceof Refuse ? e.message : 'This file is no longer in Google Drive.'); }
 });
 app.get('/api/file/:cid/:id', async (req, res) => {
   try {

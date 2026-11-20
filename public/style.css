@@ -438,3 +438,5 @@ textarea.grow{resize:vertical;overflow:hidden;min-height:64px}
 .file .fdel{color:var(--muted)}
 .file .fdel:hover{color:var(--crit)}
 .file{grid-template-columns:34px minmax(0,1fr) auto auto}
+.vinv{display:inline-flex;align-items:center;gap:4px;font-weight:600}
+.vinv a{font-weight:500}

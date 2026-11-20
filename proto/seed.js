@@ -8,6 +8,8 @@
     const st = async who => Core.buildState(await Core.pool.connect(), await (async () => { const cl = await Core.pool.connect(); return Core.identify(cl, who); })());
     await run(A, 'team-add', { name: 'Melissa Wee', email: MEL, admin: true });
     await run(A, 'team-add', { name: 'Jo Lim', email: JO, admin: false });
+    await run(A, 'team-add', { kind: 'vendor', name: 'Ken Tan', company: 'Ken Tan Studio', what: 'Photography', phone: '9123 4567', email: 'ken@kenstudio.example', pay: 'PayNow to UEN 53412345K (Ken Tan Studio)' });
+    await run(A, 'team-add', { kind: 'vendor', name: 'PrintPro', company: 'PrintPro Pte Ltd', what: 'Printing', pay: 'Bank transfer, DBS 012-345678-9' });
     const b0 = (await st(A)).brand;
     await run(A, 'brand-save', { brand: Object.assign({}, b0, { terms: b0.terms || '1. FEES AND PAYMENT\nSample terms for the prototype. Your own Terms & Conditions from Settings appear here.\n\n2. TERM\nThe committed months are payable in full. Further months continue when both parties confirm.', welcome: 'Dear {name},\n\nThank you for taking the time to share your plans for {company} with us. We have put together the proposal below around what you told us matters most.\n\nTake your time to read through it. If anything needs adjusting, ask us below and we will send an updated version.\n\nWarmly,\nShi Han' }) });
     // catalogue prep tasks
@@ -48,6 +50,15 @@
     await run(A, 'fee-save', { fee: { kind: 'item', member: id('Melissa'), cid: yc.id, item: 'Kick-off photoshoot', amount: 300 } });
     s = await st(A);
     await run(A, 'payout-create', { member: id('Melissa'), date: '2026-11-15', note: 'Bank transfer' });
+    // vendors: a photographer with two task fees (one paid against his invoice), and a printer
+    await run(A, 't-assign', { id: nov('social', 2).id, assignee: id('Ken') }, yc.id);
+    await run(A, 't-assign', { id: nov('social', 3).id, assignee: id('Ken') }, yc.id);
+    await run(A, 'fee-save', { fee: { kind: 'task', member: id('Ken'), cid: yc.id, taskId: nov('social', 2).id, amount: 180, note: 'Product shoot' } });
+    await run(A, 'fee-save', { fee: { kind: 'task', member: id('Ken'), cid: yc.id, taskId: nov('social', 3).id, amount: 180, note: 'Product shoot' } });
+    await run(A, 't-done', { id: nov('social', 2).id }, yc.id);
+    s = await st(A);
+    await run(A, 'payout-create', { member: id('Ken'), date: '2026-11-18', note: 'PayNow', invoiceNo: 'KTS-0412', invoiceDate: '2026-11-16' });
+    await run(A, 'fee-save', { fee: { kind: 'item', member: id('PrintPro'), cid: yc.id, item: 'Printed brochures (500)', amount: 220 } });
     // a second project for Yu Cheng, with preparation open before the quotation is accepted
     const r = await run(A, 'q-save', { aid: yc.aid, cid: 'new', name: '2027 Website Redesign', q: { ids: ['web', 'social'], start: '2027-01', months: 3, committed: 3, discount: 0 }, then: 'sent' });
     await run(A, 'prep-start', {}, r.out.cid);
