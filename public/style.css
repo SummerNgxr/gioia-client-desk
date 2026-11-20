@@ -511,3 +511,8 @@ select.stpill.ok{background-color:var(--ok-bg);color:var(--ok)} select.stpill.wa
 select.stpill.crit{background-color:var(--crit-bg);color:var(--crit)} select.stpill.info{background-color:var(--info-bg);color:var(--info)}
 select.stpill.gold{background-color:#fbe3bd;color:#8a560b} select.stpill.lock{background-color:transparent;border:1px dashed #bdb5a5;color:var(--muted)}
 select.stpill{width:auto!important;flex:none;max-width:260px}
+.listrow .grip{display:inline-flex;color:#b3aa98;cursor:grab;margin:0 2px 0 -6px}
+.listrow.canmove:hover .grip{color:var(--muted)}
+.listrow.dragging{opacity:.45}
+.listrow.dropb{box-shadow:inset 0 2px 0 var(--accent,#1d3a2b)}
+.listrow.dropa{box-shadow:inset 0 -2px 0 var(--accent,#1d3a2b)}

@@ -45,6 +45,7 @@ const P = {
   circle: '<circle cx="12" cy="12" r="7.5"/>',
   edit: '<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/>',
   trash: '<path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7l1 13h10l1-13"/><path d="M10 11v6M14 11v6"/>',
+  grip: '<circle cx="9" cy="6" r="1.3"/><circle cx="15" cy="6" r="1.3"/><circle cx="9" cy="12" r="1.3"/><circle cx="15" cy="12" r="1.3"/><circle cx="9" cy="18" r="1.3"/><circle cx="15" cy="18" r="1.3"/>',
   help: '<circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.6"/><path d="M12 17h.01"/>',
   refresh: '<path d="M19.5 9A8 8 0 0 0 5 7.5"/><path d="M4.5 4v4h4"/><path d="M4.5 15A8 8 0 0 0 19 16.5"/><path d="M19.5 20v-4h-4"/>',
   download: '<path d="M12 4v11M7 10.5l5 5 5-5"/><path d="M4 20h16"/>',
@@ -158,7 +159,7 @@ function listHtml(list) {
     const who = ed && !staged(t) ? '<span class="row" style="gap:6px;flex-wrap:nowrap">' + (t.owner === 'client' ? '<span class="av cl" title="Client">C</span>' : avatar(t.assignee)) + '<select class="inl" data-lass="' + t.id + '" aria-label="Assigned to"><option value="@client"' + (t.owner === 'client' ? ' selected' : '') + '>Client</option><option value=""' + (t.owner !== 'client' && !t.assignee ? ' selected' : '') + '>Team · unassigned</option>' + teamOpts(t.owner === 'client' ? '' : t.assignee) + '</select></span>' : t.owner === 'client' ? '<span class="chip client">Client</span>' : ed ? '<span class="row" style="gap:6px;flex-wrap:nowrap">' + avatar(t.assignee) + '<select class="inl" data-lass="' + t.id + '" aria-label="Assigned to"><option value="">Unassigned</option>' + teamOpts(t.assignee) + '</select></span>' : avatar(t.assignee) + '<span>' + esc(m ? m.name : 'Unassigned') + '</span>';
     const due = ed ? '<input class="inl' + (t.due ? '' : ' empty') + '" type="date" data-ldue="' + t.id + '" value="' + esc(t.due || '') + '" aria-label="Due date">' : (dueHtml(t) || '<span class="muted">No date</span>');
     const st = ed && !staged(t) && opts.length > 1 ? '<select class="inl pill ' + (TONE[t.status] || '') + '" data-lst="' + t.id + '" aria-label="Status">' + opts.map(k => '<option value="' + k + '"' + (k === t.status ? ' selected' : '') + '>' + esc(STATUS[k]) + '</option>').join('') + '</select>' : pill(t.status) + (staged(t) ? '<div class="small muted" style="margin-top:3px">Step ' + Math.min(t.stage + 1, t.stages.length) + ' of ' + t.stages.length + '</div>' : '');
-    return '<div class="listrow" data-a="task" data-id="' + t.id + '"><span class="ttl"><span class="box ' + (t.status === 'done' ? 'on' : '') + '">' + (t.status === 'done' ? I('tick', 'sm') : '') + '</span><span>' + esc(t.title) + '</span></span><span class="who small">' + who + '</span><span class="small">' + due + '</span><span>' + st + '</span></div>'; }).join('') + '</div>';
+    return '<div class="listrow' + (ed ? ' canmove' : '') + '" data-a="task" data-id="' + t.id + '"' + (ed ? ' draggable="true" data-ldrag="' + t.id + '"' : '') + '><span class="ttl">' + (ed ? '<span class="grip" title="Drag to reorder" aria-hidden="true">' + I('grip', 'sm') + '</span>' : '') + '<span class="box ' + (t.status === 'done' ? 'on' : '') + '">' + (t.status === 'done' ? I('tick', 'sm') : '') + '</span><span>' + esc(t.title) + '</span></span><span class="who small">' + who + '</span><span class="small">' + due + '</span><span>' + st + '</span></div>'; }).join('') + '</div>';
 }
 
 /* ---------- workspace page ---------- */
@@ -1456,6 +1457,13 @@ document.addEventListener('change', async e => {
   render();
 });
 /* drag a card between columns (team only) */
+/* list view: drag a row up or down to change the order */
+document.addEventListener('dragstart', e => { const r = e.target.closest && e.target.closest('[data-ldrag]'); if (!r || e.target.closest('.inl')) return; S.ldrag = r.dataset.ldrag; r.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', S.ldrag); } catch (x) {} });
+document.addEventListener('dragover', e => { if (!S.ldrag) return; const r = e.target.closest('[data-ldrag]'); if (!r) return; e.preventDefault(); const b = r.getBoundingClientRect(), after = e.clientY > b.top + b.height / 2; document.querySelectorAll('.listrow.dropb,.listrow.dropa').forEach(x => x.classList.remove('dropb', 'dropa')); if (r.dataset.ldrag !== S.ldrag) r.classList.add(after ? 'dropa' : 'dropb'); });
+document.addEventListener('drop', async e => { if (!S.ldrag) return; const r = e.target.closest('[data-ldrag]'); e.preventDefault(); const from = S.ldrag; S.ldrag = null; document.querySelectorAll('.listrow.dropb,.listrow.dropa,.listrow.dragging').forEach(x => x.classList.remove('dropb', 'dropa', 'dragging'));
+  if (!r || r.dataset.ldrag === from) return; const ids = [...r.parentNode.querySelectorAll('[data-ldrag]')].map(x => x.dataset.ldrag).filter(id => id !== from), b = r.getBoundingClientRect(), at = ids.indexOf(r.dataset.ldrag) + (e.clientY > b.top + b.height / 2 ? 1 : 0);
+  ids.splice(at, 0, from); await api('t-reorder', { ids }, { msg: 'Order saved.' }); render(); });
+document.addEventListener('dragend', () => { if (!S.ldrag) return; S.ldrag = null; document.querySelectorAll('.listrow.dropb,.listrow.dropa,.listrow.dragging').forEach(x => x.classList.remove('dropb', 'dropa', 'dragging')); });
 document.addEventListener('dragstart', e => { const el = e.target.closest('[data-drag]'); if (!el) return; S.drag = el.dataset.drag; e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', S.drag); } catch (x) {} });
 document.addEventListener('dragover', e => { const col = e.target.closest('[data-col]'); if (!col || !S.drag) return; e.preventDefault(); document.querySelectorAll('.col.over').forEach(x => x !== col && x.classList.remove('over')); col.classList.add('over'); });
 document.addEventListener('dragleave', e => { const col = e.target.closest('[data-col]'); if (col && !col.contains(e.relatedTarget)) col.classList.remove('over'); });
