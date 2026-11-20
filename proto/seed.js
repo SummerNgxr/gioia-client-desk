@@ -31,6 +31,15 @@
     await run(A, 't-stage-set', { id: art.id, stage: 2 }, yc.id);
     await run(A, 'tpl-save', { name: 'Bilingual article', steps: ['Client: Write the original content in Chinese', 'Jo: Translate and develop the English article', 'Jo: Optimise for SEO, GEO and AEO', 'Client reviews: Review the English draft', 'Shi Han: Final edits and headlines', 'Client approves: Approve the final article', 'Jo: Design the article images', 'Jo: Upload to the website', 'Shi Han: Share the link with the client'].join('\n') });
     await run(A, 'tpl-save', { name: 'Social post with approval', steps: 'Team: Draft caption and design\nClient approves: Approve the post\nTeam: Schedule and publish' });
+    await run(A, 'tpl-save', { name: 'Draft then client approves', steps: 'Team: Draft\nClient approves: Approve' });
+    const DA = 'Team: Draft\nClient approves: Approve';
+    await run(A, 'ptpl-save', { name: 'Digital marketing set-up', tasks: [
+      { title: 'Kick-off call: goals, audience, tone of voice' }, { title: 'Send brand assets (logo, colours, approved photos)', owner: 'client' }, { title: 'Agree the monthly approval rhythm' },
+      { title: 'Give Gioia admin access to the website', owner: 'client' }, { title: 'Give access to Google Search Console and Analytics', owner: 'client' }, { title: 'Website audit (SEO, GEO and AEO)', steps: 'Team: Audit the website\nClient reviews: Review the findings' },
+      { title: 'Article topic list for the first 3 months', steps: DA }, { title: 'Send the first 4 article drafts', owner: 'client' },
+      { title: 'Add Gioia as admin of the Instagram and Facebook pages', owner: 'client' }, { title: 'Content pillars and posting schedule', steps: DA },
+      { title: 'Set up the Meta ad account and payment', owner: 'client' }, { title: 'Connect the lead form to the Google Sheet, with lead source' }, { title: 'Agree the lead funnel stages' },
+      { title: 'WhatsApp follow-up script', steps: 'Team: Write the script\nClient reviews: Review the script' }, { title: 'First creatives and ad copy', steps: DA }, { title: 'Start the reply FAQ doc in Drive' }] });
     await run(A, 't-stage-due', { id: art.id, i: 2, due: '2026-11-24' }, yc.id);
     await run(A, 't-stage-due', { id: art.id, i: 4, due: '2026-11-27' }, yc.id);
     await run(A, 't-stage-due', { id: art.id, i: 7, due: '2026-11-30' }, yc.id);
