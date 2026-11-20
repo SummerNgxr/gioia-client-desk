@@ -392,7 +392,7 @@ function billingPage() {
 function earningsPage() {
   const mine = S.fees.filter(f => f.member === S.me), owed = mine.reduce((a, f) => a + fx(f).owed, 0), up = mine.reduce((a, f) => a + Math.max(0, f.amount - fx(f).earned), 0), paid = S.payouts.filter(p => p.member === S.me).reduce((a, p) => a + p.total, 0);
   if (vendorMe()) return '<div><h1>Payments</h1><p class="muted" style="margin:4px 0 0">What Gioia has agreed to pay you for each task, what is owing now, and payments made. A fee is owing once that task or step is marked done. Send your invoice to Gioia as usual; payments are recorded here once made.</p></div><div class="grid g3">' + ktile('hourglass', 'g', 'Owing to you', owed) + ktile('cal', 'g', 'Not earned yet', up) + ktile('coins', 'o', 'Paid to you', paid) + '</div>' + feeTable(mine, 'mine') + '<h3 style="margin:0">Payments to you</h3>' + payoutTable(S.payouts.filter(p => p.member === S.me), false);
-  return '<div><h1>My earnings</h1><p class="muted" style="margin:4px 0 0">You earn each fee as the work is completed. Per-task fees are earned when that task or step is done; a monthly sum is earned per completed task, or once all your tasks that month are done, as noted on each fee. Only you and the admins see these.</p></div><div class="grid g3">' + ktile('hourglass', 'g', 'Owing to you', owed) + ktile('cal', 'g', 'Not earned yet', up) + ktile('coins', 'o', 'Paid to you', paid) + '</div>' + feeTable(mine, 'mine') + '<h3 style="margin:0">Payments to you</h3>' + payoutTable(S.payouts.filter(p => p.member === S.me), false);
+  return '<div><h1>My earnings</h1><p class="muted" style="margin:4px 0 0">You earn each fee as the work is completed. Per-task fees are earned when that task or step is done; a monthly sum is earned per completed task, or once all your tasks that month are done, as noted on each fee.</p></div><div class="grid g3">' + ktile('hourglass', 'g', 'Owing to you', owed) + ktile('cal', 'g', 'Not earned yet', up) + ktile('coins', 'o', 'Paid to you', paid) + '</div>' + feeTable(mine, 'mine') + '<h3 style="margin:0">Payments to you</h3>' + payoutTable(S.payouts.filter(p => p.member === S.me), false);
 }
 function wsFeesPanel(c, s, m) {
   if (S.role === 'client') return '';
@@ -808,7 +808,7 @@ const TOURS = {
   team: [
     ['[data-v="mytasks"]', 'My tasks', 'Everything assigned to you across all projects, with due dates. Start here each day. The number shows what is waiting on you.'],
     ['[data-v="clients"]', 'Clients', 'The projects you are working on. Open one to see its workspaces, tasks and files.'],
-    ['[data-v="earnings"]', 'My earnings', 'Your fees for each task or month, what you have earned so far and what has been paid to you. Only you and the admins see this.'],
+    ['[data-v="earnings"]', 'My earnings', 'Your fees for each task or month, what you have earned so far and what has been paid to you.'],
     ['[data-v="files"]', 'Files', 'Files for your projects, sorted into folders.'],
     ['[data-v="templates"]', 'Step templates', 'Saved step lists for work that passes back and forth with the client, such as articles.'],
     ['.topbar .iconbtn', 'Notifications', 'Updates on your tasks appear here. We also email you when something needs you.'],
