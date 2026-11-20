@@ -8,8 +8,8 @@
     const st = async who => Core.buildState(await Core.pool.connect(), await (async () => { const cl = await Core.pool.connect(); return Core.identify(cl, who); })());
     await run(A, 'team-add', { name: 'Melissa Wee', email: MEL, admin: true });
     await run(A, 'team-add', { name: 'Jo Lim', email: JO, admin: false });
-    await run(A, 'team-add', { kind: 'vendor', name: 'Ken Tan', company: 'Ken Tan Studio', what: 'Photography', phone: '9123 4567', email: 'ken@kenstudio.example', pay: 'PayNow to UEN 53412345K (Ken Tan Studio)' });
-    await run(A, 'team-add', { kind: 'vendor', name: 'PrintPro', company: 'PrintPro Pte Ltd', what: 'Printing', pay: 'Bank transfer, DBS 012-345678-9' });
+    await run(A, 'team-add', { welcome: false, name: 'Ken Tan', company: 'Ken Tan Studio', what: 'Photography', phone: '9123 4567', email: 'ken@kenstudio.example', pay: 'PayNow to UEN 53412345K (Ken Tan Studio)' });
+    await run(A, 'team-add', { welcome: false, name: 'PrintPro', company: 'PrintPro Pte Ltd', what: 'Printing', pay: 'Bank transfer, DBS 012-345678-9' });
     const b0 = (await st(A)).brand;
     await run(A, 'brand-save', { brand: Object.assign({}, b0, { terms: b0.terms || '1. FEES AND PAYMENT\nSample terms for the prototype. Your own Terms & Conditions from Settings appear here.\n\n2. TERM\nThe committed months are payable in full. Further months continue when both parties confirm.', welcome: 'Dear {name},\n\nThank you for taking the time to share your plans for {company} with us. We have put together the proposal below around what you told us matters most.\n\nTake your time to read through it. If anything needs adjusting, ask us below and we will send an updated version.\n\nWarmly,\nShi Han' }) });
     // catalogue prep tasks
