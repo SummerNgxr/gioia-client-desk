@@ -140,4 +140,4 @@ app.post('/api/backup-now', async (req, res) => {
 });
 app.use(express.static(path.join(__dirname, 'public'), { maxAge: 0 }));
 
-init().then(() => app.listen(PORT, () => console.log('Client desk listening on ' + PORT))).catch(e => { console.error('Could not start', e); process.exit(1); });
+init().then(() => app.listen(PORT, () => { console.log('Client desk listening on ' + PORT); G.check().then(r => console.log('Google email: ' + r.mail + ' | Google Drive: ' + r.drive)).catch(e => console.error('Google check', e)); setTimeout(() => nightlyBackup().catch(e => console.error('backup', e)), 60000); })).catch(e => { console.error('Could not start', e); process.exit(1); });
