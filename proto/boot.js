@@ -41,7 +41,7 @@
     const bar = document.createElement('div'); bar.className = 'proto-bar';
     bar.innerHTML = '<span>Prototype · viewing as</span><select aria-label="View the app as">' + VIEWERS.map(([e, n]) => '<option value="' + e + '">' + n + '</option>').join('') + '</select><button type="button" data-reset>Reset sample data</button>';
     document.body.appendChild(bar);
-    bar.querySelector('select').addEventListener('change', e => { who = e.target.value; Object.assign(S, { view: who.includes('gioia.sg') ? 'clients' : who.includes('kenstudio') ? 'mytasks' : S.view, ptab: 'overview', cid: '', drawer: null, modal: null, menu: null, tid: null, init: false }); load(); });
+    bar.querySelector('select').addEventListener('change', e => { who = e.target.value; Object.assign(S, { view: who.includes('gioia.sg') ? 'clients' : who.includes('kenstudio') ? 'mytasks' : S.view, ptab: 'overview', cid: '', drawer: null, modal: null, menu: null, tid: null, init: false, tour: null, tourChecked: false }); load(); });
     bar.querySelector('[data-reset]').addEventListener('click', () => location.reload());
   });
 })();

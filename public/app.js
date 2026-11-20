@@ -805,17 +805,33 @@ const TOURS = {
     ['.topbar .iconbtn', 'Notifications', 'Updates appear here. We also email you whenever something needs you.'],
     ['[data-t="details"]', 'My details', 'Your contact details and email settings. You can replay this tour from the menu at the top right.']
   ],
+  team: [
+    ['[data-v="mytasks"]', 'My tasks', 'Everything assigned to you across all projects, with due dates. Start here each day. The number shows what is waiting on you.'],
+    ['[data-v="clients"]', 'Clients', 'The projects you are working on. Open one to see its workspaces, tasks and files.'],
+    ['[data-v="earnings"]', 'My earnings', 'Your fees for each task or month, what you have earned so far and what has been paid to you. Only you and the admins see this.'],
+    ['[data-v="files"]', 'Files', 'Files for your projects, sorted into folders.'],
+    ['[data-v="templates"]', 'Step templates', 'Saved step lists for work that passes back and forth with the client, such as articles.'],
+    ['.topbar .iconbtn', 'Notifications', 'Updates on your tasks appear here. We also email you when something needs you.'],
+    ['.topbar .me', 'Your menu', 'Email settings, sign out, and Show me around to replay this tour.']
+  ],
+  vendor: [
+    ['[data-v="mytasks"]', 'My tasks', 'The tasks Gioia has assigned to you, with due dates. Open one to update it, upload files or comment.'],
+    ['[data-v="clients"]', 'Projects', 'The projects your tasks belong to.'],
+    ['[data-v="earnings"]', 'Payments', 'What Gioia has agreed to pay you for each task, what is owing, and payments made.'],
+    ['[data-v="files"]', 'Files', 'Files on your tasks.'],
+    ['.topbar .me', 'Your menu', 'Email settings, sign out, and Show me around to replay this tour.']
+  ],
   proposal: [
     ['[data-t="proposal"]', 'Your proposal', 'Read what we will do and the month-by-month breakdown. At the bottom, accept it, ask for changes or decline.'],
     ['#terms', 'Terms and Conditions', 'Please read these before accepting. Ticking the box confirms you agree to them.'],
     ['[data-t="details"]', 'My details', 'Your contact details and email settings. You can replay this tour from the menu at the top right.']
   ]
 };
-function tourKind() { const c = client(); return c && hasAccess(c) ? 'portal' : 'proposal'; }
+function tourKind() { if (S.role !== 'client') return vendorMe() ? 'vendor' : isAdmin() ? '' : 'team'; const c = client(); return c && hasAccess(c) ? 'portal' : 'proposal'; }
 function tourSteps() { return (TOURS[S.tour.kind] || []).filter(st => { const el = document.querySelector(st[0]); return el && el.getClientRects().length; }); }
 function drawTour() {
   let box = document.getElementById('tour');
-  if (S.role === 'client' && !S.tour && !S.tourChecked && D.tours) { S.tourChecked = true; const k = tourKind(); if (!D.tours[k] && !S.modal && !S.drawer) S.tour = { kind: k, i: 0 }; }
+  if (!S.tour && !S.tourChecked && D.tours) { S.tourChecked = true; const k = tourKind(); if (k && !D.tours[k] && !S.modal && !S.drawer) S.tour = { kind: k, i: 0 }; }
   if (!S.tour) { if (box) box.remove(); return; }
   const steps = tourSteps(); if (!steps.length) { S.tour = null; if (box) box.remove(); return; }
   if (S.tour.i >= steps.length) S.tour.i = steps.length - 1;
@@ -1116,7 +1132,7 @@ function emailPrefCard() {
   return '<div class="card stack" style="max-width:560px"><h2>Email updates</h2><label class="opt ' + (D.emailOn ? 'on' : '') + '"><input type="checkbox" data-epref="1"' + (D.emailOn ? ' checked' : '') + '><span><b>Email me when something needs me</b><br><span class="small muted">Proposals, invoices, work ready for your review or approval, and comments from the team. Sent to ' + esc(D.me.email) + '.</span></span></label></div>';
 }
 function meMenu() {
-  return '<div class="menu" style="width:270px"><div style="padding:8px 10px 10px"><b>' + esc(D.me.name || '') + '</b><br><span class="small muted">' + esc(D.me.email) + '</span><br><span class="small muted">' + (S.role === 'client' ? 'Client' : isAdmin() ? 'Admin' : 'Team member') + '</span></div>' + (S.role !== 'client' ? '<label class="mi" style="cursor:pointer"><input type="checkbox" data-epref="1"' + (D.emailOn ? ' checked' : '') + ' style="width:auto"><span>Email me about my work</span></label>' : '') + (S.role === 'client' ? '<button class="mi" data-a="tour-start">' + I('help') + '<span>Show me around</span></button>' : '') + '<a class="mi" href="/auth/logout">' + I('out') + '<span>Sign out</span></a></div>';
+  return '<div class="menu" style="width:270px"><div style="padding:8px 10px 10px"><b>' + esc(D.me.name || '') + '</b><br><span class="small muted">' + esc(D.me.email) + '</span><br><span class="small muted">' + (S.role === 'client' ? 'Client' : isAdmin() ? 'Admin' : 'Team member') + '</span></div>' + (S.role !== 'client' ? '<label class="mi" style="cursor:pointer"><input type="checkbox" data-epref="1"' + (D.emailOn ? ' checked' : '') + ' style="width:auto"><span>Email me about my work</span></label>' : '') + (tourKind() ? '<button class="mi" data-a="tour-start">' + I('help') + '<span>Show me around</span></button>' : '') + '<a class="mi" href="/auth/logout">' + I('out') + '<span>Sign out</span></a></div>';
 }
 
 /* ---------- actions ---------- */
