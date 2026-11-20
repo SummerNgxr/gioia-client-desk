@@ -494,3 +494,14 @@ textarea.grow{resize:vertical;overflow:hidden;min-height:64px}
 @media (max-width:700px){.ptrow{grid-template-columns:1fr auto}}
 .ptrow input{width:100%;min-width:0;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);font:inherit;color:inherit}
 #tr-title{padding:6px 10px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);width:min(520px,100%)}
+.listrow .inl{width:100%;max-width:190px;padding:6px 8px;border:1px solid transparent;border-radius:8px;background:transparent;font:inherit;font-size:13.5px;color:inherit;cursor:pointer}
+.listrow .inl:hover,.listrow .inl:focus{border-color:var(--line);background:#fff}
+.listrow select.inl[data-lst]{font-weight:600}
+.listrow .inl.empty{color:var(--muted)}
+.listrow select.inl.pill{max-width:210px;border:0;padding:5px 26px 5px 10px;border-radius:999px;appearance:auto}
+.listrow select.inl.pill{background:var(--card-2);color:var(--ink)}
+.listrow select.inl.pill.ok{background:var(--ok-bg);color:var(--ok)}
+.listrow select.inl.pill.warn{background:var(--warn-bg);color:var(--warn)}
+.listrow select.inl.pill.crit{background:var(--crit-bg);color:var(--crit)}
+.listrow select.inl.pill.info{background:var(--info-bg);color:var(--info)}
+.listrow select.inl.pill.gold{background:#fbe3bd;color:#8a560b}

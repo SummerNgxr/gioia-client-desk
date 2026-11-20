@@ -151,7 +151,13 @@ function boardHtml(list) {
   return '<div class="board">' + COLS.map(([k, label, sts]) => { const items = list.filter(t => sts.includes(t.status)); return '<div class="col c-' + k + '" data-col="' + k + '"><div class="colhead">' + label + ' <span class="count">' + items.length + '</span></div>' + (items.map(card).join('') || '<p class="small muted" style="padding:4px">Nothing here</p>') + '</div>'; }).join('') + '</div>';
 }
 function listHtml(list) {
-  return '<div class="card" style="padding:0"><div class="listrow small muted" style="cursor:default;font-weight:600"><span>Task</span><span>Assigned to</span><span>Due</span><span>Status</span></div>' + list.map(t => { const m = member(t.assignee); return '<div class="listrow" data-a="task" data-id="' + t.id + '"><span class="ttl"><span class="box ' + (t.status === 'done' ? 'on' : '') + '">' + (t.status === 'done' ? I('tick', 'sm') : '') + '</span><span>' + esc(t.title) + '</span></span><span class="who small">' + (t.owner === 'client' ? '<span class="chip client">Client</span>' : avatar(t.assignee) + '<span>' + esc(m ? m.name : 'Unassigned') + '</span>') + '</span><span class="small">' + (dueHtml(t) || '<span class="muted">No date</span>') + '</span><span>' + pill(t.status) + '</span></div>'; }).join('') + '</div>';
+  // the team can change assignee, due date and status straight from the list; clicking anywhere else opens the task
+  const ed = staff() && !vendorMe();
+  return '<div class="card" style="padding:0"><div class="listrow small muted" style="cursor:default;font-weight:600"><span>Task</span><span>Assigned to</span><span>Due</span><span>Status</span></div>' + list.map(t => { const m = member(t.assignee), opts = statusOpts(t);
+    const who = t.owner === 'client' ? '<span class="chip client">Client</span>' : ed ? '<span class="row" style="gap:6px;flex-wrap:nowrap">' + avatar(t.assignee) + '<select class="inl" data-lass="' + t.id + '" aria-label="Assigned to"><option value="">Unassigned</option>' + teamOpts(t.assignee) + '</select></span>' : avatar(t.assignee) + '<span>' + esc(m ? m.name : 'Unassigned') + '</span>';
+    const due = ed ? '<input class="inl' + (t.due ? '' : ' empty') + '" type="date" data-ldue="' + t.id + '" value="' + esc(t.due || '') + '" aria-label="Due date">' : (dueHtml(t) || '<span class="muted">No date</span>');
+    const st = ed && !staged(t) && opts.length > 1 ? '<select class="inl pill ' + (TONE[t.status] || '') + '" data-lst="' + t.id + '" aria-label="Status">' + opts.map(k => '<option value="' + k + '"' + (k === t.status ? ' selected' : '') + '>' + esc(STATUS[k]) + '</option>').join('') + '</select>' : pill(t.status) + (staged(t) ? '<div class="small muted" style="margin-top:3px">Step ' + Math.min(t.stage + 1, t.stages.length) + ' of ' + t.stages.length + '</div>' : '');
+    return '<div class="listrow" data-a="task" data-id="' + t.id + '"><span class="ttl"><span class="box ' + (t.status === 'done' ? 'on' : '') + '">' + (t.status === 'done' ? I('tick', 'sm') : '') + '</span><span>' + esc(t.title) + '</span></span><span class="who small">' + who + '</span><span class="small">' + due + '</span><span>' + st + '</span></div>'; }).join('') + '</div>';
 }
 
 /* ---------- workspace page ---------- */
@@ -1358,6 +1364,7 @@ const ACT = {
 };
 document.addEventListener('click', async e => {
   if (!D || !D.me) return;
+  if (e.target.closest('.inl')) return;
   const el = e.target.closest('[data-a]');
   if (!el) { if (S.menu && !e.target.closest('.menu')) { S.menu = null; render(); } return; }
   const a = el.dataset.a;
@@ -1392,6 +1399,9 @@ document.addEventListener('change', async e => {
   if (d.dep) { if (d.dep === 'qdp') syncQuoteNew(); else wizSync(); depSync(d.dep); render(); return; }
   if (d.pymode) { S.modal.mode = e.target.value; S.modal.date = val('py-date'); render(); return; }
   if (d.pat) { S.modal.tid = e.target.value; render(); return; }
+  if (d.lass !== undefined) { await api('t-assign', { id: d.lass, assignee: e.target.value }, { msg: 'Assigned.' }); return; }
+  if (d.ldue !== undefined) { await api('t-due', { id: d.ldue, due: e.target.value }, { msg: e.target.value ? 'Due date set.' : 'Due date cleared.' }); return; }
+  if (d.lst !== undefined) { await api('t-status', { id: d.lst, status: e.target.value }, { msg: 'Status updated.' }); return; }
   if (d.mlst !== undefined) { S.mlSt = e.target.value; S.mlN = 8; render(); return; }
   if (e.target.id === 'nt-owner') { const as = document.getElementById('nt-as'); if (as) { as.innerHTML = '<option value="">' + (e.target.value === 'client' ? '—' : 'Unassigned') + '</option>' + (e.target.value === 'client' ? '' : teamOpts(as.value, false, e.target.value === 'vendor' ? 'vendor' : 'team')); as.disabled = e.target.value === 'client'; } return; }
   if (d.epref) { await api('email-pref', { on: e.target.checked }, { msg: e.target.checked ? 'Emails are on.' : 'Emails are off. You will still see everything in the app.' }); return; }
