@@ -798,7 +798,7 @@ function render() {
 const TOURS = {
   portal: [
     ['[data-t="overview"]', 'Start here', 'Anything waiting for you, such as a draft to send or work to approve, shows on your Overview, with a count beside it.'],
-    ['[data-t="workspaces"]', 'Workspaces', 'One workspace for each service. Each month opens as its invoice is paid.'],
+    ['[data-t="workspaces"]', 'Workspaces', 'One workspace for each service, every month. Each month\'s workspace unlocks once that month\'s invoice is paid.'],
     ['[data-t="tasks"]', 'Tasks', 'Every task and where it stands. Open one to review, approve, ask for changes, comment or upload files.'],
     ['[data-t="files"]', 'Files', 'Everything shared between you and Gioia, sorted into folders.'],
     ['[data-t="invoices"]', 'Invoices', 'Your invoices with our bank and PayNow details, and your deposit if you have one.'],
