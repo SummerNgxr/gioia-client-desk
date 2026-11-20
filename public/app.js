@@ -743,6 +743,7 @@ function smallModal(M) {
       (mode === 'deposit' ? '<p class="small" style="margin:0;background:var(--card-2);border-radius:8px;padding:8px 10px">' + sm(Math.min(bal, total)) + ' will be taken from deposit ' + esc(L.depositInv(c).no) + ' and recorded as used for this invoice.' + (rest ? ' The deposit does not cover the full amount.' : ' Balance after: ' + sm(bal - total) + '.') + '</p>' + (rest ? '<div class="field"><label for="py-mode2">The remaining ' + sm(rest) + ' was paid by</label><select id="py-mode2"><option value="paynow">PayNow</option><option value="bank">Bank transfer</option><option value="other">Other</option></select></div>' : '') : '') +
       field('py-note', 'Note (optional)', '') + '<div class="row">' + btn(I('tick', 'sm') + 'Mark as paid', 'pay-go') + btn('Cancel', 'close-modal', {}, 'quiet') + '</div></div></div>';
   }
+  if (M.kind === 'rfee') { const pm = member(M.prev) || {}, nm = member(M.next); return '<div class="modal" data-a="close-bg-modal"><div class="sheet stack" style="max-width:480px"><h2>What about ' + esc((pm.name || '').split(' ')[0]) + '\'s fee?</h2><p style="margin:0">' + esc(pm.name || '') + ' has an unpaid fee of <b>' + sm(M.amount) + '</b> for "' + esc(M.what) + '". ' + esc((pm.name || '').split(' ')[0]) + ' will be told the task has been reassigned.</p><div class="stack" style="gap:8px">' + (nm ? btn('Move the fee to ' + esc(nm.name), 'rfee-go', { f: 'move' }, 'block') : '') + btn('Keep it with ' + esc(pm.name || '') + ' (they did part of the work)', 'rfee-go', { f: 'keep' }, 'ghost block') + btn('Remove the fee', 'rfee-go', { f: 'remove' }, 'ghost block') + '</div>' + btn('Cancel, don\'t reassign', 'close-modal', {}, 'quiet') + '</div></div>'; }
   if (M.kind === 'tdel') { const t = c.tasks.find(z => z.id === M.id) || {}, nf = S.fees.filter(f => f.taskId === M.id).length; return wrap('Delete this task?', '<p style="margin:0">"' + esc(t.title || '') + '" will be removed for everyone, including the client.' + (nf ? ' Its unpaid fee' + (nf > 1 ? 's are' : ' is') + ' removed too.' : '') + ' Files added to it stay in the project\'s Files. This cannot be undone.</p>', 'td-go', 'Delete task', 'danger'); }
   if (M.kind === 'ptpl') return ptplModal(M);
   if (M.kind === 'ptapply') return ptApplyModal(M, c);
@@ -772,6 +773,17 @@ function docHtml(c, type, m) {
 
 /* ---------- render ---------- */
 let toastT;
+/* changing who does a task: if the previous person has an unpaid fee on it, ask what to do with it first */
+async function changeAssignee(id, v) {
+  const t = (client() || { tasks: [] }).tasks.find(z => z.id === id) || {}, prev = t.owner === 'client' ? '' : t.assignee || '';
+  const run = fee => v === '@client' ? api('t-owner', { id, owner: 'client', fee }, { msg: 'Now with the client.' }) : t.owner === 'client' ? api('t-owner', { id, owner: 'gioia', assignee: v }, { msg: 'Now with the team.' }) : api('t-assign', { id, assignee: v, fee }, { msg: v ? 'Reassigned.' : 'Unassigned.' });
+  return withFee(t, null, prev, v === '@client' ? '' : v, run);
+}
+function withFee(t, stage, prev, next, run) {
+  const fees = prev && prev !== next ? S.fees.filter(f => f.taskId === t.id && f.member === prev && (stage === null ? f.stage === null || f.stage === undefined : f.stage === stage) && !f.paid) : [];
+  if (!isAdmin() || !fees.length) return run('keep');
+  S.modal = { kind: 'rfee', run, prev, next, what: stage === null ? t.title : 'Step ' + (stage + 1) + ' of ' + t.title, amount: fees.reduce((a, f) => a + f.amount, 0) }; render();
+}
 /* accounts export: money in (client invoices paid) and money out (team and vendor payments) */
 function accountsCsv(from, to) {
   const inR = d => d && d >= from && d <= to, rows = [], undated = [];
@@ -803,7 +815,7 @@ function render() {
   }
   if (S.modal && S.modal.kind === 'doc') { const dc = S.modal.temp || S.clients.find(x => x.id === S.modal.cid) || c; overlay += '<div class="modal" data-a="close-bg-modal"><div class="sheet"><div class="row between noprint" style="margin-bottom:12px"><h2>' + (S.modal.type === 'quote' ? (S.modal.temp ? 'Preview: quotation ' : 'Quotation ') + esc(dc.quote.no) : 'Invoice') + '</h2><div class="row">' + btn(I('download', 'sm') + 'Print or save as PDF', 'print', {}, 'ghost') + btn(S.modal.temp ? 'Back to the quotation' : 'Close', 'close-modal', {}, 'quiet') + '</div></div>' + docHtml(dc, S.modal.type, S.modal.m) + '</div></div>'; }
   if (S.modal && S.modal.kind === 'link') overlay += linkDrawer();
-  if (S.modal && ['num', 'delacct', 'qdel', 'qcancel', 'payout', 'export', 'pay', 'depuse', 'deprefund', 'tmd', 'ptpl', 'ptapply', 'ptsave', 'tdel'].includes(S.modal.kind)) overlay += smallModal(S.modal);
+  if (S.modal && ['num', 'delacct', 'qdel', 'qcancel', 'payout', 'export', 'pay', 'depuse', 'deprefund', 'tmd', 'ptpl', 'ptapply', 'ptsave', 'tdel', 'rfee'].includes(S.modal.kind)) overlay += smallModal(S.modal);
   if (S.modal && S.modal.kind === 'tpl') overlay += tplModal(S.modal);
   if (S.modal && S.modal.kind === 'filedel') { const c0 = S.clients.find(x => x.id === S.modal.cid), f0 = c0 && c0.files.find(x => L.fkey(x) === S.modal.k) || {}; overlay += '<div class="modal" data-a="close-bg-modal"><div class="sheet stack" style="max-width:460px"><h2>Delete "' + esc(f0.name || 'this file') + '"?</h2><p style="margin:0">' + (f0.drive ? 'It is removed from the app and moved to the Google Drive trash, where it can be restored for 30 days.' : 'The link is removed from the app. The file it points to is not touched.') + '</p><div class="row">' + btn('Delete', 'file-del-go', {}, 'danger') + btn('Cancel', 'close-modal', {}, 'quiet') + '</div></div></div>'; }
   if (S.modal && S.modal.kind === 'mailview') { const m = ((D.google || {}).log || []).find(x => x.id === S.modal.id) || {}; overlay += '<div class="modal" data-a="close-bg-modal"><div class="sheet stack" style="max-width:680px"><div class="row between"><h2 style="font-size:20px">' + esc(m.subject || '') + '</h2><button class="iconbtn" data-a="close-modal" aria-label="Close">' + I('x') + '</button></div><span class="small muted">To ' + esc(m.to || '') + ' · ' + fmtAt(m.at) + (m.sim ? ' · prototype preview, not sent' : '') + '</span>' + (m.html ? '<iframe class="mailframe" title="Email preview" srcdoc="' + esc(m.html) + '"></iframe>' : '<p class="muted">The preview is only kept for the latest emails.</p>') + '</div></div>'; }
@@ -1350,6 +1362,7 @@ const ACT = {
   'tour-back'() { S.tour.i = Math.max(0, S.tour.i - 1); drawTour(); return 'skip'; },
   'tour-skip'() { const k = S.tour && S.tour.kind; S.tour = null; drawTour(); if (k && !(D.tours || {})[k]) { D.tours = Object.assign({}, D.tours, { [k]: true }); api('tour-done', { kind: k }, { quiet: true }); } return 'skip'; },
   'tour-start'() { S.menu = null; S.tour = { kind: tourKind(), i: 0 }; },
+  async 'rfee-go'(d) { const run = S.modal.run; S.modal = null; await run(d.f); },
   'td-open'(d) { S.modal = { kind: 'tdel', cid: S.cid, id: d.id }; },
   async 'td-go'() { const r = await api('t-delete', { id: S.modal.id }, { cid: S.modal.cid, msg: 'Task deleted.' }); if (r) { S.modal = null; ACT['task-back'](); } },
   'tr-open'(d) { S.renaming = d.id; setTimeout(() => { const el = document.getElementById('tr-title'); if (el) { el.focus(); el.select(); } }, 30); },
@@ -1404,14 +1417,14 @@ document.addEventListener('change', async e => {
   if (d.dep) { if (d.dep === 'qdp') syncQuoteNew(); else wizSync(); depSync(d.dep); render(); return; }
   if (d.pymode) { S.modal.mode = e.target.value; S.modal.date = val('py-date'); render(); return; }
   if (d.pat) { S.modal.tid = e.target.value; render(); return; }
-  if (d.lass !== undefined) { const v = e.target.value, t = (client() || { tasks: [] }).tasks.find(z => z.id === d.lass) || {}; if (v === '@client') await api('t-owner', { id: d.lass, owner: 'client' }, { msg: 'Now with the client.' }); else if (t.owner === 'client') await api('t-owner', { id: d.lass, owner: 'gioia', assignee: v }, { msg: 'Now with the team.' }); else await api('t-assign', { id: d.lass, assignee: v }, { msg: 'Assigned.' }); render(); return; }
+  if (d.lass !== undefined) { await changeAssignee(d.lass, e.target.value); render(); return; }
   if (d.ldue !== undefined) { await api('t-due', { id: d.ldue, due: e.target.value }, { msg: e.target.value ? 'Due date set.' : 'Due date cleared.' }); render(); return; }
   if (d.lst !== undefined) { await api('t-status', { id: d.lst, status: e.target.value }, { msg: 'Status updated.' }); render(); return; }
   if (d.mlst !== undefined) { S.mlSt = e.target.value; S.mlN = 8; render(); return; }
   if (e.target.id === 'nt-owner') { const as = document.getElementById('nt-as'); if (as) { as.innerHTML = '<option value="">' + (e.target.value === 'client' ? '—' : 'Unassigned') + '</option>' + (e.target.value === 'client' ? '' : teamOpts(as.value, false, e.target.value === 'vendor' ? 'vendor' : 'team')); as.disabled = e.target.value === 'client'; } return; }
   if (d.epref) { await api('email-pref', { on: e.target.checked }, { msg: e.target.checked ? 'Emails are on.' : 'Emails are off. You will still see everything in the app.' }); return; }
   if (d.ts) await api('t-status', { id: d.ts, status: e.target.value });
-  else if (d.as) { const v = e.target.value, t = (client() || { tasks: [] }).tasks.find(z => z.id === d.as) || {}; if (v === '@client') await api('t-owner', { id: d.as, owner: 'client' }, { msg: 'Now with the client.' }); else if (t.owner === 'client') await api('t-owner', { id: d.as, owner: 'gioia', assignee: v }, { msg: 'Now with the team.' }); else await api('t-assign', { id: d.as, assignee: e.target.value }); }
+  else if (d.as) await changeAssignee(d.as, e.target.value);
   else if (d.due) await api('t-due', { id: d.due, due: e.target.value });
   else if (d.desc) await api('t-desc', { id: d.desc, desc: e.target.value }, { msg: 'Description saved. The client sees it on the task.' });
   else if (d.te) await api('team-update', { id: d.te, email: e.target.value }, { msg: 'Email saved.' });
@@ -1426,7 +1439,7 @@ document.addEventListener('change', async e => {
   else if (d.rnadd) { rnSync(); const s = svc(e.target.value); if (s) S.drawer.r.lines.push({ s: clone(s), on: true, price: s.price }); }
   else if (d.wzaid) { wizSync(); S.wiz.aid = e.target.value; }
   else if (e.target.dataset.wzr) { wizSync(); }
-  else if (d.sas) { const [id, i] = d.sas.split('|'); await api('t-stage-assign', { id, i: +i, assignee: e.target.value }); }
+  else if (d.sas) { const [id, i] = d.sas.split('|'), t = (client() || { tasks: [] }).tasks.find(z => z.id === id) || {}, prev = ((t.stages || [])[+i] || {}).assignee || ''; await withFee(t, +i, prev, e.target.value, fee => api('t-stage-assign', { id, i: +i, assignee: e.target.value, fee }, { msg: 'Step reassigned.' })); }
   else if (d.sdue) { const [id, i] = d.sdue.split('|'); await api('t-stage-due', { id, i: +i, due: e.target.value }); }
   else if (d.tval) await api('t-value', { id: d.tval, value: e.target.value }, { msg: e.target.value === '' ? 'Value split evenly again.' : 'Task value saved.' });
   else if (d.mtclient) { S.mtClient = e.target.value; }
