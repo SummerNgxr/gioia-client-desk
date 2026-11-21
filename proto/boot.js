@@ -6,7 +6,7 @@
     // prototype: emails are recorded as previews instead of being sent, and uploads stay in this browser
     mailer: { mailReady: true, sim: true, sendMail: async () => {} }, drive: { driveReady: true, trash: async () => {} }, emailFrom: 'projects@gioia.asia', awaitMail: true });
   const FILES = new Map(); let fileSeq = 0;
-  Core.pool = pool;
+  Core.pool = pool; window.__core = Core; // lets tests run server jobs such as the daily reminders
   const VIEWERS = [['shihan@gioia.sg', 'Shi Han · admin'], ['melissa@gioia.sg', 'Melissa Wee · admin'], ['jo@gioia.sg', 'Jo Lim · team member'], ['ken@kenstudio.example', 'Ken Tan · vendor (photographer)'], ['yokliang@yucheng.example', 'Tan Yok Liang · client (Yu Cheng)'], ['grace@lumen.example', 'Grace Ong · prospect (Lumen)']];
   let who = VIEWERS[0][0];
   const ready = ProtoSeed(Core)().catch(e => { console.error(e); alert('Sample data failed: ' + e.message); });

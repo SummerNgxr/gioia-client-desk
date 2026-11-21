@@ -165,6 +165,9 @@ async function nightlyBackup(force) {
   await tx(cl => setKV(cl, 'lastBackup', rec));
 }
 setInterval(() => nightlyBackup().catch(e => console.error('backup', e)), 30 * 60 * 1000);
+// daily reminders: checked every 15 minutes, sent once a day after 9am Singapore time
+const remindTick = () => Core.runReminders(false).then(r => { if (r) console.log('reminders sent: ' + r.mails + ' emails, ' + r.notes + ' notifications'); }).catch(e => console.error('reminders', e));
+setInterval(remindTick, 15 * 60 * 1000); setTimeout(remindTick, 60 * 1000);
 app.post('/api/backup-now', async (req, res) => {
   const me = await identify(pool, req.session.email).catch(() => null);
   if (!me || me.role !== 'admin') return res.status(403).json({ error: 'Admins only.' });
