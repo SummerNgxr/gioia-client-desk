@@ -65,6 +65,7 @@ app.get('/auth/google/callback', async (req, res) => {
     const claims = JSON.parse(Buffer.from(String(tok.id_token || '').split('.')[1] || '', 'base64url').toString() || '{}');
     if (claims.aud !== GOOGLE_ID || !claims.email || claims.email_verified === false) return res.redirect('/?signin=failed');
     req.session.email = String(claims.email).toLowerCase();
+    Core.saveGooglePic(req.session.email, claims.picture).catch(e => console.error('photo', e.message));
     res.redirect('/');
   } catch (e) { console.error('sign-in failed', e.message); res.redirect('/?signin=failed'); }
 });
