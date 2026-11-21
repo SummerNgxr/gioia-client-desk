@@ -558,3 +558,5 @@ details.faq p{margin:0;padding:0 18px 16px;line-height:1.55}
 .tlic-av{display:flex;justify-content:center}
 .tlic-st{min-width:0;overflow:hidden}
 .tlic-st .pill{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.avbtn{all:unset;cursor:pointer;border-radius:50%;display:inline-flex;flex:none}
+.avbtn:hover .av,.avbtn:focus-visible .av{outline:2px solid var(--accent);outline-offset:2px}
