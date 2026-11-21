@@ -470,6 +470,50 @@ function costingHtml(c) {
 }
 function ktile(ic, tone, label, v) { return '<div class="ktile ' + tone + '"><span class="kico">' + I(ic) + '</span><div><span class="klab">' + label + '</span><b class="num">' + sm(v) + '</b></div></div>'; }
 const feeMatch = (f, st) => !st || fx(f).state === st;
+/* ---------- profit and loss: what came in, what went out and what is left, by month and by project ----------
+   work basis: client invoices by the month they are for, team fees by the month of the work (accrual)
+   cash basis: client payments by the date received, team payments and deposit refunds by the date paid */
+const pk = (y, mo) => y + '-' + String(mo + 1).padStart(2, '0');
+const pkIso = iso => /^\d{4}-\d{2}/.test(iso || '') ? String(iso).slice(0, 7) : '';
+const pkName = k => { const [y, m] = k.split('-').map(Number); return MONTHS[m - 1] + ' ' + y; };
+function pnlEntries(basis) {
+  const out = [];
+  S.clients.forEach(c => {
+    if (basis === 'work') {
+      c.invoices.forEach(i => { if (invLocked(c, i.m) || ['void', 'cancelled'].includes(i.status)) return; const x = ym(c, i.m); out.push({ k: pk(x.y, x.mo), cid: c.id, dir: 'in', amount: invTotal(c, i.m), done: i.status === 'paid' || L.covered(c, i.m) }); });
+      c.adhoc.forEach(a => { if (a.deposit || ['void', 'cancelled'].includes(a.status)) return; out.push({ k: pkIso(a.date), cid: c.id, dir: 'in', amount: a.amount, done: a.status === 'paid' }); });
+    } else {
+      rowsFor(c, false).forEach(r => { if (r.state !== 'paid') return; const src = r.data.id ? c.adhoc.find(a => a.id === r.data.id) : c.invoices.find(i => i.m === r.data.m), d = src && src.pay && src.pay.date ? src.pay.date : src && src.paidAt ? src.paidAt : '', dep = src && src.pay && src.pay.mode === 'deposit' ? src.pay.fromDeposit || 0 : 0; if (r.amount - dep > 0) out.push({ k: pkIso(d), cid: c.id, dir: 'in', amount: r.amount - dep, done: true }); });
+      const di = L.depositInv(c); (di && di.uses || []).filter(u => u.type === 'refund').forEach(u => out.push({ k: pkIso(u.date), cid: c.id, dir: 'out', amount: u.amount, done: true, refund: true }));
+    }
+  });
+  if (basis === 'work') S.fees.forEach(f => { const c = S.clients.find(x => x.id === f.cid); let k = pkIso(f.created); if (c) { const t = f.kind === 'task' && c.tasks.find(z => z.id === f.taskId), m = f.kind === 'task' ? t && t.m : f.kind === 'item' ? 0 : f.m; if (m) { const x = ym(c, m); k = pk(x.y, x.mo); } } const st = fx(f); out.push({ k, cid: f.cid, dir: 'out', amount: f.amount, done: st.paid >= f.amount, earned: st.earned }); });
+  else S.payouts.forEach(p => p.lines.forEach(l => { const f = S.fees.find(z => z.id === l.feeId); out.push({ k: pkIso(p.date), cid: f ? f.cid : '', dir: 'out', amount: l.amount, done: true }); }));
+  return out.filter(e => e.amount);
+}
+function pnlSection() {
+  const basis = S.plb || 'work', yr = String(new Date().getFullYear()), per = S.plp || 'y:' + yr, all = pnlEntries(basis);
+  const keys = [...new Set(all.map(e => e.k).filter(Boolean))].sort(), years = [...new Set(keys.map(k => k.slice(0, 4)))];
+  if (!years.includes(yr)) years.push(yr); years.sort();
+  const inPer = e => per === 'all' ? true : per.startsWith('y:') ? e.k.startsWith(per.slice(2)) : e.k === per.slice(2);
+  const list = all.filter(inPer), tot = d => list.filter(e => e.dir === d).reduce((a, e) => a + e.amount, 0), tin = tot('in'), tout = tot('out'), left = tin - tout, pct = tin ? Math.round(left / tin * 100) : 0;
+  const notIn = list.filter(e => e.dir === 'in' && !e.done).reduce((a, e) => a + e.amount, 0), notOut = list.filter(e => e.dir === 'out' && !e.done).reduce((a, e) => a + e.amount, 0);
+  const opts = [['all', 'All time'], ...years.slice().reverse().map(y => ['y:' + y, 'Year ' + y]), ...keys.slice().reverse().map(k => ['m:' + k, pkName(k)])];
+  const tile = (lab, v, sub, tone) => '<div class="pltile ' + tone + '"><span class="klab">' + lab + '</span><b class="num">' + (v < 0 ? '−' : '') + sm(Math.abs(v)) + '</b><span class="small muted">' + sub + '</span></div>';
+  const W = basis === 'work';
+  const tiles = '<div class="grid g3">' + tile('Coming in', tin, W ? 'Invoiced to clients' + (notIn ? ' · ' + sm(notIn) + ' not paid yet' : ' · all paid') : 'Received from clients', 'in') + tile('Going out', tout, W ? 'Team and vendor fees' + (notOut ? ' · ' + sm(notOut) + ' not paid yet' : ' · all paid') : 'Paid to the team, vendors and refunds', 'out') + tile(left >= 0 ? (W ? 'Profit' : 'Left') : (W ? 'Loss' : 'Short'), left, tin ? (left >= 0 ? pct + '% of what came in' : 'Costs are more than what came in') : 'Nothing came in for this period', left >= 0 ? 'ok' : 'bad') + '</div>';
+  // by month
+  const mk = per.startsWith('m:') ? [per.slice(2)] : keys.filter(k => per === 'all' || k.startsWith(per.slice(2)));
+  const mrows = mk.map(k => { const es = all.filter(e => e.k === k), i = es.filter(e => e.dir === 'in').reduce((a, e) => a + e.amount, 0), o = es.filter(e => e.dir === 'out').reduce((a, e) => a + e.amount, 0); return { k, i, o, l: i - o }; }), mx = Math.max(1, ...mrows.map(r => Math.max(r.i, r.o)));
+  const bar = (v, cls) => '<span class="plbar ' + cls + '" style="width:' + Math.round(v / mx * 100) + '%"></span>';
+  const money = v => (v < 0 ? '<span style="color:var(--crit)">−' + sm(-v) + '</span>' : sm(v));
+  const byMonth = mrows.length > 1 ? '<div class="stack" style="gap:6px"><h3 style="margin:0">By month</h3><div class="pltable"><div class="plh"><span>Month</span><span></span><span class="num">In</span><span class="num">Out</span><span class="num">' + (W ? 'Profit' : 'Left') + '</span></div>' + mrows.map(r => '<button class="plr" data-a="pl-per" data-p="m:' + r.k + '"><span>' + pkName(r.k) + '</span><span class="plbars">' + bar(r.i, 'in') + bar(r.o, 'out') + '</span><span class="num">' + sm(r.i) + '</span><span class="num">' + sm(r.o) + '</span><b class="num">' + money(r.l) + '</b></button>').join('') + '</div></div>' : '';
+  // by project
+  const cids = [...new Set(list.map(e => e.cid))], prow = cids.map(id => { const c = S.clients.find(x => x.id === id), es = list.filter(e => e.cid === id), i = es.filter(e => e.dir === 'in').reduce((a, e) => a + e.amount, 0), o = es.filter(e => e.dir === 'out').reduce((a, e) => a + e.amount, 0); return { c, i, o, l: i - o }; }).sort((a, b) => b.i - a.i);
+  const byProj = prow.length ? '<div class="stack" style="gap:6px"><h3 style="margin:0">By project</h3><div class="pltable proj"><div class="plh"><span>Client and project</span><span class="num">In</span><span class="num">Out</span><span class="num">' + (W ? 'Profit' : 'Left') + '</span><span class="num">Margin</span></div>' + prow.map(r => '<div class="plr"><span>' + (r.c ? '<b>' + esc(r.c.company) + '</b><br><span class="small muted">' + esc(pname(r.c)) + '</span>' : '<span class="muted">Removed project</span>') + '</span><span class="num">' + sm(r.i) + '</span><span class="num">' + sm(r.o) + '</span><b class="num">' + money(r.l) + '</b><span class="num small muted">' + (r.i ? Math.round(r.l / r.i * 100) + '%' : '—') + '</span></div>').join('') + '</div></div>' : '<p class="muted small" style="margin:0">Nothing recorded for this period.</p>';
+  const undated = basis === 'cash' ? all.filter(e => !e.k).length : 0;
+  return '<div class="card stack plcard"><div class="row between" style="align-items:flex-end"><div><h2 style="font-size:26px">Profit and loss</h2><p class="muted small" style="margin:2px 0 0">' + (W ? 'What the work is worth: client invoices for the period, less the team fees for the same work, paid or not.' : 'Money that actually moved: payments received, less payments made, by the date they happened.') + '</p></div><div class="row"><div class="seg">' + [['work', 'Profit on the work'], ['cash', 'Cash in and out']].map(([v, l]) => '<button data-a="pl-basis" data-b="' + v + '" aria-pressed="' + (basis === v) + '">' + l + '</button>').join('') + '</div><select data-plp="1" aria-label="Period" style="width:auto">' + opts.map(([v, l]) => '<option value="' + v + '"' + (per === v ? ' selected' : '') + '>' + l + '</option>').join('') + '</select></div></div>' + tiles + byMonth + byProj + (undated ? '<p class="small muted" style="margin:0">' + undated + ' payment' + (undated === 1 ? ' has' : 's have') + ' no date recorded, so ' + (undated === 1 ? 'it shows' : 'they show') + ' only under All time.</p>' : '') + '</div>';
+}
 function billingPage() {
   const all = S.clients.flatMap(c => rowsFor(c, false)), sum = st => all.filter(r => st.includes(r.state)).reduce((a, r) => a + r.amount, 0);
   const owedAll = S.fees.reduce((a, f) => a + fx(f).owed, 0), paidAll = S.payouts.reduce((a, p) => a + p.total, 0);
@@ -484,6 +528,7 @@ function billingPage() {
   const people = S.team.map(m => { const mine = S.fees.filter(f => f.member === m.id), owed = mine.reduce((a, f) => a + fx(f).owed, 0), up = mine.reduce((a, f) => a + Math.max(0, f.amount - fx(f).earned), 0); return { m, owed, up, n: mine.length }; }).filter(x => x.n);
   return '<div class="row between"><div><h1>Accounts</h1><p class="muted" style="margin:4px 0 0">Client invoices, quotations and team payments.</p></div><div class="row">' + btn(I('plus', 'sm') + 'New project', 'wz-new', {}, 'ghost') + btn(I('doc', 'sm') + 'New invoice', 'inv-new') + '</div></div>' +
     '<div class="grid g4">' + ktile('coins', 'g', 'Outstanding client invoices', sum(['pending', 'sent'])) + ktile('check', 'o', 'Client payments received', sum(['paid'])) + ktile('hourglass', 'g', 'Team fees owing', owedAll) + ktile('coins', 'o', 'Team fees paid', paidAll) + '</div>' +
+    pnlSection() +
     '<div class="row between" style="align-items:flex-end"><div><h2 style="font-size:26px">Client accounts</h2><p class="muted" style="margin:2px 0 0">One row per project. Click to see its invoices and costing.</p></div><div class="row"><div class="search" style="width:300px">' + I('search') + '<input id="ac-q" type="search" data-acq="1" placeholder="Search clients, projects or numbers…" value="' + esc(S.acq) + '" aria-label="Search client accounts"></div><select data-acs="1" aria-label="Invoice status" style="width:auto"><option value="">All statuses</option>' + [['pending', 'Pending'], ['sent', 'Sent'], ['paid', 'Paid'], ['none', 'No invoices yet']].map(([k, l]) => '<option value="' + k + '"' + (S.acs === k ? ' selected' : '') + '>' + l + '</option>').join('') + '</select></div></div>' +
     '<div class="tlist"><div class="tlh ca-row"><span></span><span>Client and project</span><span>Quotation</span><span>Invoice status</span><span>Outstanding</span><span></span></div>' + (clients.map(crow).join('') || '<p class="muted" style="padding:16px;margin:0">No clients match.</p>') + '</div>' +
     '<div class="row between" style="align-items:flex-end"><div><h2 style="font-size:26px">Invoices from the team</h2><p class="muted" style="margin:2px 0 0">Team members and vendors bill Gioia for their earned fees. Approve an invoice, ask a question, or mark it paid once you have paid them.</p></div><div class="seg">' + [['open', 'To pay'], ['paid', 'Paid'], ['all', 'All']].map(([v, l]) => '<button data-a="bill-filter" data-f="' + v + '" aria-pressed="' + ((S.billF || 'open') === v) + '">' + l + ((v === 'open' && (S.bills || []).some(b => ['submitted', 'approved', 'queried'].includes(b.status))) ? ' (' + S.bills.filter(b => ['submitted', 'approved', 'queried'].includes(b.status)).length + ')' : '') + '</button>').join('') + '</div></div>' +
@@ -1623,6 +1668,8 @@ const ACT = {
   async 'link-add'() { const url = val('ln-url'); if (!/^https?:\/\/\S+$/.test(url)) { toast('Paste the full link, starting with https://'); return; } const r = await api('f-link', { key: S.modal.key, svc: S.modal.svc, url, name: val('ln-name') }); if (r) S.modal = null; },
   'save-details'() { const p = { company: val('d-company'), contact: val('d-contact'), phone: val('d-phone'), website: val('d-website'), email: val('d-email') }; if (document.getElementById('d-project')) p.project = val('d-project'); return api('save-details', p); },
   'arch-toggle'() { S.showArchived = !S.showArchived; },
+  'pl-basis'(d) { S.plb = d.b; },
+  'pl-per'(d) { S.plp = d.p; },
   'acct-archive'(d) { return api('acct-archive', { aid: d.aid, archived: d.v === '1' }, { msg: d.v === '1' ? 'Client archived. Find them with "Show archived" on the Clients page.' : 'Client restored.' }); },
   'del-acct-open'(d) { S.modal = { kind: 'delacct', aid: d.aid }; },
   async 'del-acct'() { const r = await api('acct-delete', { aid: S.modal.aid, confirm: val('da-name') }, { msg: 'Client deleted.' }); if (r) { S.modal = null; S.view = 'clients'; } },
@@ -1874,6 +1921,7 @@ document.addEventListener('change', async e => {
   else if (d.mtwho) { S.mtWho = e.target.value; }
   else if (d.fe) { const x = S.drawer.draft; syncFee(); if (d.fe === 'repeat') x.repeat = e.target.checked; else if (!['amount', 'pct'].includes(d.fe)) x[d.fe] = e.target.value; if (d.fe === 'cid') { x.svc = ''; x.m = 1; x.taskId = ''; x.stage = ''; } if (d.fe === 'svc') x.m = 1; if (d.fe === 'taskId') x.stage = ''; if (d.fe === 'amount') return; }
   else if (d.acs !== undefined && e.target.dataset.acs) { S.acs = e.target.value; }
+  else if (e.target.dataset.plp) { S.plp = e.target.value; }
   else if (e.target.dataset.afs) { S.afs = e.target.value; }
   else if (d.pws) { S.pws = e.target.value; S.ptg = ''; S.pwm = 0; }
   else if (d.qclient) { syncQuoteNew(); const keep = S.drawer; openQuote('new', e.target.value); Object.assign(S.drawer, { q: keep.q, name: keep.name, no: keep.no, welcome: keep.welcome }); }
