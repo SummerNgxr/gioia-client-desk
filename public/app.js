@@ -864,7 +864,7 @@ const tpw = (id, h) => h ? '<div id="' + id + '" class="stack" style="gap:inheri
 function taskPage(c, t) {
   if (!t) return '<div class="lockbox">This task no longer exists.</div>';
   const A = staff(), E = A && !vendorMe(), s = ql(c, t.svc), m = member(t.assignee), cl = S.role === 'client';
-  const canSt = A && taskOpen(c, t) && statusOpts(t).length > 1 && !(staged(t) && (!curStage(t) || curStage(t).owner === 'client'));
+  const canSt = A && taskOpen(c, t) && statusOpts(t).length > 1 && !(staged(t) && !curStage(t));
   if (cl && S.confirm === t.id) {
     const mine = t.comments.filter(x => x.client).slice(-1)[0];
     return '<div class="tpage"><button class="backlink" data-a="task-back">' + I('back') + '<h1>Review submitted</h1></button><div class="banner"><span class="big">' + I('tick') + '</span><div><h2 style="font-size:26px">Approved</h2><p style="margin:4px 0 0">You have approved “' + esc(t.title) + '”.</p></div></div>' +
