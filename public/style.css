@@ -288,7 +288,8 @@ textarea{min-height:76px;resize:vertical}
 .klab{display:block;font:600 15px/1.25 var(--display);color:var(--ink)}
 .ktile b{display:block;font:600 28px/1.2 var(--display);margin-top:6px}
 .ktile.o b{color:#9a640f}
-.tlh.ca-row,.tli.ca-row{grid-template-columns:44px minmax(0,1.7fr) minmax(0,1fr) minmax(0,1fr) minmax(0,.9fr) 90px}
+.tlh.ca-row,.tli.ca-row{grid-template-columns:44px minmax(0,2fr) minmax(0,1fr) minmax(0,.8fr) minmax(0,.8fr) minmax(0,.8fr) 24px}
+.ca-row .num{text-align:right}
 .tlh.ft-row,.tli.ft-row{grid-template-columns:44px minmax(0,1.2fr) minmax(0,1.4fr) minmax(0,.7fr) minmax(0,1fr) 18px}
 .tli.sel{background:#fbf3e3}
 .tli.ca-row+.accbody{border-bottom:1px solid var(--line)}
@@ -597,3 +598,16 @@ hr.sep{border:0;border-top:1px solid var(--line);margin:4px 0}
 .plbar{display:block;height:7px;border-radius:4px;min-width:2px}.plbar.in{background:var(--accent)}.plbar.out{background:var(--gold)}
 @media (max-width:820px){.pltable .plh,.pltable .plr{grid-template-columns:1fr 90px 90px 90px}.pltable .plbars,.pltable .plh span:nth-child(2){display:none}.pltable.proj .plh,.pltable.proj .plr{grid-template-columns:1fr 80px 80px 80px}.pltable.proj .plr>span:last-child,.pltable.proj .plh>span:last-child{display:none}}
 .plone{background:var(--card-2)}.plone .pltile{background:var(--card)}.plone .pltile.ok{background:var(--ok-bg)}.plone .pltile.bad{background:var(--crit-bg)}
+.astrip{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:0;padding:0;overflow:hidden}
+.astat{display:flex;flex-direction:column;gap:4px;padding:16px 18px;border-right:1px solid var(--line)}
+.astat:last-child{border-right:0}
+.astat .num{font:600 22px var(--display)}
+.astat.gold .num{color:var(--warn)}.astat.ok{background:var(--ok-bg)}.astat.ok .num{color:var(--ok)}.astat.bad{background:var(--crit-bg)}.astat.bad .num{color:var(--crit)}
+@media (max-width:1000px){.astrip{grid-template-columns:repeat(3,minmax(0,1fr))}.astat:nth-child(3){border-right:0}.astat:nth-child(-n+3){border-bottom:1px solid var(--line)}}
+button.tli.ca-row{width:100%;text-align:left;font:inherit;color:inherit;background:none;border:0;border-bottom:1px solid var(--line);cursor:pointer}
+button.tli.ca-row:hover{background:var(--card-2)}
+.invtbl .ifor,.invtbl .idue{white-space:nowrap}
+.imenu{width:230px}
+.imenu .mi{align-items:center}
+.plsw{padding:6px 12px}
+.plcard h2{font-size:24px}
