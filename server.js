@@ -16,7 +16,7 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const str = (v, max) => String(v == null ? '' : v).trim().slice(0, max || 300);
 const G = require('./lib/google.js')({ serviceAccount: process.env.GOOGLE_SERVICE_ACCOUNT, emailFrom: process.env.EMAIL_FROM, driveId: process.env.DRIVE_ID, fromName: process.env.EMAIL_NAME || 'Gioia' });
 const Core = require('./lib/core.js')(pool, L, { payDefault: require('./lib/paydefault.json'), terms: require('fs').readFileSync(require('path').join(__dirname, 'lib/terms.txt'), 'utf8'), starters: require('./lib/starters.json'), mailer: G, drive: G, emailFrom: process.env.EMAIL_FROM || '', randomBytes: n => crypto.randomBytes(n), seedJson: process.env.SEED_JSON, adminEmail: process.env.ADMIN_EMAIL, adminName: process.env.ADMIN_NAME, googleReady: !!(GOOGLE_ID && GOOGLE_SECRET), devLogin: DEV_LOGIN, appUrl: (process.env.BASE_URL || '').replace(/\/$/, '') });
-const { init, identify, buildState, runAction, getKV, setKV, Refuse, DEFAULT_BRAND, uploadTarget, fileFor, exportAll, tx, vendorFile, vendorUploadTarget } = Core;
+const { init, identify, buildState, runAction, getKV, setKV, Refuse, DEFAULT_BRAND, uploadTarget, fileFor, exportAll, tx, vendorFile, vendorUploadTarget, billFile } = Core;
 
 /* ---------- web ---------- */
 const app = express();
@@ -118,6 +118,14 @@ app.get('/api/vendor-file/:id', async (req, res) => {
     const po = await vendorFile(req.session.email, req.params.id), r = await G.download(po.file);
     res.set('Content-Type', r.headers.get('content-type') || 'application/octet-stream');
     res.set('Content-Disposition', 'inline; filename*=UTF-8\'\'' + encodeURIComponent(po.fileName || 'invoice'));
+    res.send(Buffer.from(await r.arrayBuffer()));
+  } catch (e) { res.status(e instanceof Refuse ? 403 : 404).send(e instanceof Refuse ? e.message : 'This file is no longer in Google Drive.'); }
+});
+app.get('/api/bill-file/:id', async (req, res) => {
+  try {
+    const b = await billFile(req.session.email, req.params.id), r = await G.download(b.file);
+    res.set('Content-Type', r.headers.get('content-type') || 'application/octet-stream');
+    res.set('Content-Disposition', 'inline; filename*=UTF-8\'\'' + encodeURIComponent(b.fileName || 'invoice'));
     res.send(Buffer.from(await r.arrayBuffer()));
   } catch (e) { res.status(e instanceof Refuse ? 403 : 404).send(e instanceof Refuse ? e.message : 'This file is no longer in Google Drive.'); }
 });

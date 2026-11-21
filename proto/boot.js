@@ -33,6 +33,8 @@
     if (f) { e.preventDefault(); e.stopPropagation(); const id = decodeURIComponent(f.getAttribute('href').split('/').pop().split('?')[0]), blob = FILES.get(id); if (!blob) { alert('In the prototype, only files uploaded since the page was loaded can be opened.'); return; } const u = URL.createObjectURL(blob); window.open(u, '_blank'); return; }
     const vf = e.target.closest('a[href^="/api/vendor-file/"]');
     if (vf) { e.preventDefault(); e.stopPropagation(); try { const po = await Core.vendorFile(who, vf.getAttribute('href').split('/').pop()), blob = FILES.get(po.file); if (!blob) { alert('In the prototype, only files uploaded since the page was loaded can be opened.'); return; } window.open(URL.createObjectURL(blob), '_blank'); } catch (er) { alert(er.message); } return; }
+    const bf = e.target.closest('a[href^="/api/bill-file/"]');
+    if (bf) { e.preventDefault(); e.stopPropagation(); try { const b = await Core.billFile(who, bf.getAttribute('href').split('/').pop()), blob = FILES.get(b.file); if (!blob) { alert('In the prototype, only files uploaded since the page was loaded can be opened.'); return; } window.open(URL.createObjectURL(blob), '_blank'); } catch (er) { alert(er.message); } return; }
     const bk = e.target.closest('a[href="/api/backup"]');
     if (bk) { e.preventDefault(); e.stopPropagation(); const data = JSON.stringify(await Core.exportAll(), null, 1), a2 = document.createElement('a'); a2.href = URL.createObjectURL(new Blob([data], { type: 'application/json' })); a2.download = 'client-desk-backup-prototype.json'; a2.click(); return; }
   }, true);
