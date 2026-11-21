@@ -24,7 +24,7 @@ app.set('trust proxy', 1);
 app.disable('x-powered-by');
 app.use((req, res, next) => {
   res.set({ 'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY', 'Referrer-Policy': 'same-origin',
-    'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; frame-ancestors 'none'" });
+    'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://*.googleusercontent.com; frame-ancestors 'none'" });
   next();
 });
 if (PROD && !process.env.SESSION_SECRET) console.error('SESSION_SECRET is not set: sign-in sessions will reset on every restart.');
