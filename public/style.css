@@ -518,3 +518,6 @@ select.stpill{width:auto!important;flex:none;max-width:260px}
 .listrow.dropa{box-shadow:inset 0 -2px 0 var(--accent,#1d3a2b)}
 .planned{text-align:left;display:inline-block;margin:4px auto 12px;color:var(--muted)}
 .terms b.th{letter-spacing:.06em;font-size:.92em}
+.signblock{max-width:520px}
+.signblock .sig{font:italic 400 34px/1.2 "Snell Roundhand","Segoe Script","Brush Script MT","Apple Chancery",cursive;color:var(--ink,#1f3a2e);padding:6px 2px 0}
+.signblock .sigline{border-top:1px solid currentColor;opacity:.35;margin:-2px 0 4px}
