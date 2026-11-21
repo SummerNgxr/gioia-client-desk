@@ -714,12 +714,12 @@ button.ccr{cursor:pointer}button.ccr:hover{background:var(--card-2)}
 /* client overview */
 .covgrid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:40px;align-items:start}
 .cside{border-left:1px solid var(--line);padding-left:36px}
-.csec{display:flex;align-items:center;gap:18px}.csec h2{font-size:26px;margin:0;white-space:nowrap}.csec span{flex:1;height:1px;background:var(--line)}
+.csec{display:flex;align-items:center;gap:16px}.csec h2{font-size:20px;margin:0;white-space:nowrap}.csec span{flex:1;height:1px;background:var(--line)}
 .cabox{padding:6px 18px}
 .carow{display:grid;grid-template-columns:46px 1fr auto;gap:18px;align-items:center;padding:14px 0;border-bottom:1px solid var(--line)}
 .carow:last-child{border-bottom:0}
 .carow .oico{width:46px;height:46px;border-radius:12px}
-.cat{display:flex;flex-direction:column;gap:2px;border-left:1px solid var(--line);padding-left:18px;min-width:0}.cat b{font:600 19px var(--display)}
+.cat{display:flex;flex-direction:column;gap:2px;border-left:1px solid var(--line);padding-left:18px;min-width:0}.cat b{font:600 16px var(--display)}
 .cdrow{display:grid;grid-template-columns:24px 1fr auto 16px;gap:16px;align-items:center;padding:13px 0;border:0;border-bottom:1px solid var(--line);background:none;width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer}
 .cdrow:last-child{border-bottom:0}.cdrow:hover{color:var(--accent)}
 .cdrow .num{display:flex;align-items:center;gap:4px;white-space:nowrap}
