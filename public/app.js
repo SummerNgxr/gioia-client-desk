@@ -24,7 +24,7 @@ const P = {
   cog: '<circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.4M12 18.8v2.4M4.2 6.1l1.7 1.7M18.1 16.2l1.7 1.7M2.8 12h2.4M18.8 12h2.4M4.2 17.9l1.7-1.7M18.1 7.8l1.7-1.7"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   x: '<path d="M6 6l12 12M18 6 6 18"/>',
-  chev: '<path d="m9 6 6 6-6 6"/>',
+  chev: '<path d="m9 6 6 6-6 6"/>', chevd: '<path d="m6 9 6 6 6-6"/>',
   down: '<path d="m6 9 6 6 6-6"/>',
   back: '<path d="m15 6-6 6 6 6"/>',
   cal: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>',
@@ -78,7 +78,7 @@ function nextStep(t) {
 /* ---------- data (filled from the server) ---------- */
 const S = {
   role: 'admin', me: '', view: 'clients', cid: '', ctab: 'overview', ws: null, wm: 1, mode: 'board', ifilter: 'all', qtab: 'invoices', ptab: 'overview',
-  drawer: null, modal: null, menu: null, q: '', toast: null, drag: null, nextQuote: 0, tid: null, back: null, confirm: null, mtg: '', mtq: '', mtClient: '', mtScope: 'me', mtFilters: false, pws: '', ptg: '',
+  drawer: null, modal: null, menu: null, q: '', toast: null, drag: null, nextQuote: 0, tid: null, back: null, confirm: null, mtg: '', mtq: '', mtClient: '', mtScope: 'me', mtMode: (() => { try { return localStorage.getItem('mtMode') || 'simple'; } catch (e) { return 'simple'; } })(), mtFilters: false, pws: '', ptg: '',
   wsOpen: [], billOpen: [], fOpen: [], fees: [], acq: '', acs: '', afq: '', afs: '', init: false,
   brand: { mark: 'GIOIA' }, team: [], catalogue: [], clients: [], accounts: [], payouts: [], feed: [], showArchived: false, invFormat: '', templates: []
 };
@@ -302,7 +302,7 @@ function workspacesPage() {
       return '<div class="acc' + (open ? ' open' : '') + '">' + accHead(c, 'ws-toggle', open, '<span class="row" style="gap:8px"><span class="chip">' + wsList(c).length + ' deliverables</span>' + (nt ? '<span class="pill warn">' + nt + ' need the team</span>' : '') + (nc ? '<span class="pill info">' + nc + ' with client</span>' : '') + '</span>') + (open ? '<div class="accbody">' + wsCards(c) + '</div>' : '') + '</div>'; }).join('') : '<div class="lockbox">No active deliverables yet. They appear when a quotation is accepted.</div>');
 }
 function chipsHtml(list, cur, act, labels) {
-  return '<div class="chips">' + GROUPS.map(([k, l, sts, ic]) => '<button class="fchip" data-a="' + act + '" data-g="' + k + '" aria-pressed="' + (cur === k) + '">' + I(ic, 'sm') + ((labels || {})[k] || l) + ' (' + list.filter(t => sts.includes(t.status)).length + ')</button>').join('') + '</div>';
+  return '<div class="chips">' + GROUPS.filter(([k, l, sts]) => cur === k || list.some(t => sts.includes(t.status))).map(([k, l, sts, ic]) => '<button class="fchip" data-a="' + act + '" data-g="' + k + '" aria-pressed="' + (cur === k) + '">' + I(ic, 'sm') + ((labels || {})[k] || l) + ' (' + list.filter(t => sts.includes(t.status)).length + ')</button>').join('') + '</div>';
 }
 function taskRow(c, t, mode) {
   const s = ql(c, t.svc), m = member(t.assignee), cs = curStage(t), sub = (staged(t) ? (cs ? 'Step ' + (t.stage + 1) + ' of ' + t.stages.length + ': ' + cs.title + (cs.owner === 'client' ? (S.role === 'client' ? ' (you)' : ' (client)') : ' (team)') : 'All ' + t.stages.length + ' steps completed') + ' · ' : '') + (t.desc || (short(s) + (t.m ? ' · ' + mName(c, t.m) : '')));
@@ -328,13 +328,15 @@ function compactRow(c, t, showWho) {
 }
 function simpleTasks(rows, showWho) {
   const open = rows.filter(r => r.t.status !== 'done'), mine = open.filter(r => !waitsClient(r.t)), waiting = open.filter(r => waitsClient(r.t)), wk = plusDays(7);
-  const buckets = [['overdue', 'Overdue', mine.filter(r => r.t.due && r.t.due < TODAY), true], ['today', 'Due today', mine.filter(r => r.t.due === TODAY), true], ['week', 'Next 7 days', mine.filter(r => r.t.due > TODAY && r.t.due <= wk), true], ['later', 'Later', mine.filter(r => !r.t.due || r.t.due > wk), false], ['waiting', 'Waiting on the client', waiting, false]];
+  const buckets = [['overdue', 'Overdue', mine.filter(r => r.t.due && r.t.due < TODAY), true], ['today', 'Due today', mine.filter(r => r.t.due === TODAY), true], ['week', 'Next 7 days', mine.filter(r => r.t.due > TODAY && r.t.due <= wk), true], ['later', 'Later', mine.filter(r => !r.t.due || r.t.due > wk), !mine.some(r => r.t.due && r.t.due <= wk)], ['waiting', 'Waiting on the client', waiting, false]];
   const sum = [[buckets[0][2].length, 'overdue'], [buckets[1][2].length, 'due today'], [buckets[2][2].length, 'due in the next 7 days'], [waiting.length, 'waiting on the client']].filter(x => x[0]).map(x => '<b>' + x[0] + '</b> ' + x[1]).join(' · ');
+  S.mtDef = Object.fromEntries(buckets.map(b => [b[0], b[3]]));
   const open1 = k => S.mtOpen && k in S.mtOpen ? S.mtOpen[k] : null;
   const body = buckets.filter(b => b[2].length).map(([k, l, list, dflt]) => { const isOpen = open1(k) === null ? dflt : open1(k), LIM = 8, more = S.mtMore && S.mtMore[k];
     return '<div class="card mtgroup' + (k === 'overdue' ? ' crit' : '') + '"><button class="mtgh" data-a="mt-fold" data-k="' + k + '" aria-expanded="' + isOpen + '"><span class="row" style="gap:10px">' + I(isOpen ? 'chevd' : 'chev', 'sm') + '<b>' + l + '</b><span class="count">' + list.length + '</span></span>' + (k === 'waiting' ? '<span class="small muted">Nothing to do until the client responds</span>' : k === 'later' ? '<span class="small muted">Due after ' + dshort(wk) + '</span>' : '') + '</button>' +
       (isOpen ? list.slice(0, more ? 999 : LIM).map(r => compactRow(r.c, r.t, showWho)).join('') + (list.length > LIM && !more ? '<button class="link mtmore" data-a="mt-more" data-k="' + k + '">Show all ' + list.length + '</button>' : '') : '') + '</div>'; }).join('');
-  return (sum ? '<p class="mtsum">' + sum + '</p>' : '') + (body || '<div class="card" style="padding:28px;text-align:center"><b>All clear.</b><br><span class="muted small">Nothing is waiting on you right now.</span></div>');
+  const urgent = buckets[0][2].length + buckets[1][2].length + buckets[2][2].length;
+  return (sum ? '<p class="mtsum">' + (urgent ? '' : 'Nothing due in the next 7 days. ') + sum + (buckets[3][2].length ? ' · <b>' + buckets[3][2].length + '</b> later' : '') + '</p>' : '') + (body || '<div class="card" style="padding:28px;text-align:center"><b>All clear.</b><br><span class="muted small">Nothing is waiting on you right now.</span></div>');
 }
 function myTasksPage() {
   // admins and team members can widen this to everyone's tasks on their projects; vendors only ever see their own
@@ -1443,7 +1445,7 @@ const ACT = {
   task(d) { S.editSteps = null; pickClient(d); S.back = { view: S.view, ptab: S.ptab }; S.tid = d.id; S.confirm = null; S.q = ''; if (staff()) S.view = 'task'; else S.ptab = 'task'; const mn = document.querySelector('.main'); if (mn) mn.scrollTop = 0; window.scrollTo(0, 0); },
   'task-back'() { const b = S.back || {}; S.confirm = null; if (staff()) S.view = b.view && b.view !== 'task' ? b.view : 'mytasks'; else S.ptab = b.ptab && b.ptab !== 'task' ? b.ptab : 'tasks'; },
   'mt-mode'(d) { S.mtMode = d.m; S.mtg = ''; try { localStorage.setItem('mtMode', d.m); } catch (e) {} },
-  'mt-fold'(d) { const k = d.k, cur = S.mtOpen && k in S.mtOpen ? S.mtOpen[k] : ['overdue', 'today', 'week'].includes(k); S.mtOpen = Object.assign({}, S.mtOpen, { [k]: !cur }); },
+  'mt-fold'(d) { const k = d.k, cur = S.mtOpen && k in S.mtOpen ? S.mtOpen[k] : !!(S.mtDef || {})[k]; S.mtOpen = Object.assign({}, S.mtOpen, { [k]: !cur }); },
   'mt-more'(d) { S.mtMore = Object.assign({}, S.mtMore, { [d.k]: true }); },
   'mt-scope'(d) { S.mtScope = d.s; if (d.s === 'me') S.mtWho = ''; }, 'mt-group'(d) { S.mtg = S.mtg === d.g ? '' : d.g; }, 'mt-filters'() { S.mtFilters = !S.mtFilters; }, 'mt-clear'() { S.mtClient = ''; S.mtg = ''; S.mtWho = ''; },
   'p-group'(d) { S.ptg = S.ptg === d.g ? '' : d.g; },
