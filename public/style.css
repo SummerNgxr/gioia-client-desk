@@ -569,3 +569,7 @@ details.faq p{margin:0;padding:0 18px 16px;line-height:1.55}
 .avstack{display:inline-flex;margin-top:2px}
 .avstack .av{border:2px solid var(--card);margin-left:-5px}
 .avstack .av:first-child{margin-left:0}
+/* the status dropdown in lists looks like the status pills: same size, font and colours */
+.listrow select.inl.pill{width:auto;font:600 12px var(--body);padding:3px 22px 3px 10px;min-height:0;line-height:1.5}
+@media (min-width:821px){.listrow{grid-template-columns:minmax(0,2.4fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)}}
+.listrow > span:last-child .pill,.listrow select.inl.pill{width:100%;max-width:190px;box-sizing:border-box;justify-content:flex-start;overflow:hidden;text-overflow:ellipsis}
