@@ -907,7 +907,7 @@ function taskPage(c, t) {
   const canPost = isAdmin() && t.m >= 1 && !['general', 'prep'].includes(t.svc) && !t.adhoc && t.status !== 'done' && t.m < c.quote.months;
   if (!taskOpen(c, t)) main = '<div class="lockbox" style="padding:14px">' + I('lock', 'sm') + ' This task is in a locked month. You can plan it now (title, steps, assignee, due date); it can be worked on once its month unlocks.</div>';
   const banner = A && t.status === 'approved' && !staged(t) ? '<div class="banner"><span class="big">' + I('tick') + '</span><div><h2 style="font-size:26px">Client approved</h2><p style="margin:4px 0 0">The client has approved “' + esc(t.title) + '”.</p></div></div>' : '';
-  return '<div class="tpage"><button class="backlink" data-a="task-back">' + I('back') + '<h1>' + (banner ? 'Client approved' : 'Task details') + '</h1></button>' + banner + tpw('tp-head', head) + tpw('tp-steps', stepsBox) + tpw('tp-desc', desc) + status + tpw('tp-files', files) + tpw('tp-comments', comments) + '<div class="stack" style="gap:8px"><h2>Activity timeline</h2><div class="card">' + timelineHtml(t) + '</div></div>' + tpw('tp-main', main + (canPost ? btn(I('cal', 'sm') + 'Postpone task', 'tpost-open', { id: t.id }, 'ghost block') : '')) + '</div>';
+  return '<div class="tpage"><button class="backlink" data-a="task-back">' + I('back') + '<h1>' + (banner ? 'Client approved' : 'Task details') + '</h1></button>' + banner + tpw('tk-head', head) + tpw('tk-steps', stepsBox) + tpw('tk-desc', desc) + status + tpw('tk-files', files) + tpw('tk-comments', comments) + '<div class="stack" style="gap:8px"><h2>Activity timeline</h2><div class="card">' + timelineHtml(t) + '</div></div>' + tpw('tk-main', main + (canPost ? btn(I('cal', 'sm') + 'Postpone task', 'tpost-open', { id: t.id }, 'ghost block') : '')) + '</div>';
 }
 function tplBar(ta) {
   return '<div class="tplbar"><select data-tpl="' + ta + '" aria-label="Use a step template"><option value="">Use a saved template…</option>' + S.templates.map(t => '<option value="' + t.id + '">' + esc(t.name) + ' (' + t.count + ' steps)</option>').join('') + '</select><button class="link" data-a="tpl-save-open" data-ta="' + ta + '">Save these steps as a template</button><button class="link" data-a="tpl-manage">Manage templates</button></div>';
@@ -1175,19 +1175,19 @@ const TOURS = {
     ['.topbar .me', 'Your menu', 'Email settings, sign out, and Show me around to replay this tour.']
   ],
   task: [
-    ['#tp-head', 'This task', 'The client, project, who it is with and the due date. Click the status pill to change where it stands.'],
-    ['#tp-steps', 'Steps', 'Work that passes back and forth with the client follows these steps. The current step shows who it is with; when you finish yours, it moves on.'],
-    ['#tp-desc', 'Description', 'What was done and what the client should check. The client sees this.'],
-    ['#tp-files', 'Files', 'Attach drafts and finished work here. They are saved in the project\'s Google Drive folder.'],
-    ['#tp-comments', 'Comments', 'Talk to the client and the team here. Tick Team only to keep a note internal.'],
-    ['#tp-main', 'Move it on', 'This button takes the next step, such as submitting for client review or marking it completed. Completing your work is also what earns your fee.']
+    ['#tk-head', 'This task', 'The client, project, who it is with and the due date. Click the status pill to change where it stands.'],
+    ['#tk-steps', 'Steps', 'Work that passes back and forth with the client follows these steps. The current step shows who it is with; when you finish yours, it moves on.'],
+    ['#tk-desc', 'Description', 'What was done and what the client should check. The client sees this.'],
+    ['#tk-files', 'Files', 'Attach drafts and finished work here. They are saved in the project\'s Google Drive folder.'],
+    ['#tk-comments', 'Comments', 'Talk to the client and the team here. Tick Team only to keep a note internal.'],
+    ['#tk-main', 'Move it on', 'This button takes the next step, such as submitting for client review or marking it completed. Completing your work is also what earns your fee.']
   ],
   ctask: [
-    ['#tp-head', 'This task', 'What the work is and where it stands.'],
-    ['#tp-steps', 'Steps', 'Some work goes back and forth between you and the team. The highlighted step shows whose turn it is.'],
-    ['#tp-files', 'Files', 'The drafts or finished work to look at. Click a file to open it.'],
-    ['#tp-comments', 'Comments', 'Ask a question or give feedback here, so it stays with the work.'],
-    ['#tp-main', 'Your decision', 'Approve the work, or request changes with a comment saying what to change. Each piece includes 2 rounds of changes.']
+    ['#tk-head', 'This task', 'What the work is and where it stands.'],
+    ['#tk-steps', 'Steps', 'Some work goes back and forth between you and the team. The highlighted step shows whose turn it is.'],
+    ['#tk-files', 'Files', 'The drafts or finished work to look at. Click a file to open it.'],
+    ['#tk-comments', 'Comments', 'Ask a question or give feedback here, so it stays with the work.'],
+    ['#tk-main', 'Your decision', 'Approve the work, or request changes with a comment saying what to change. Each piece includes 2 rounds of changes.']
   ],
   cinv: [
     ['.invtbl', 'Your invoices', 'One for each month of your contract. Each month\'s deliverables unlock as soon as its invoice is paid.'],
