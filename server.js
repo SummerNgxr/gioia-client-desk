@@ -24,7 +24,7 @@ app.set('trust proxy', 1);
 app.disable('x-powered-by');
 app.use((req, res, next) => {
   res.set({ 'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY', 'Referrer-Policy': 'same-origin',
-    'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://*.googleusercontent.com; frame-ancestors 'none'" });
+    'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://*.googleusercontent.com https://*.ggpht.com; frame-ancestors 'none'" });
   next();
 });
 if (PROD && !process.env.SESSION_SECRET) console.error('SESSION_SECRET is not set: sign-in sessions will reset on every restart.');
@@ -65,7 +65,11 @@ app.get('/auth/google/callback', async (req, res) => {
     const claims = JSON.parse(Buffer.from(String(tok.id_token || '').split('.')[1] || '', 'base64url').toString() || '{}');
     if (claims.aud !== GOOGLE_ID || !claims.email || claims.email_verified === false) return res.redirect('/?signin=failed');
     req.session.email = String(claims.email).toLowerCase();
-    Core.saveGooglePic(req.session.email, claims.picture).catch(e => console.error('photo', e.message));
+    // the photo usually comes in the sign-in token; if not, ask Google's profile endpoint with the same sign-in
+    let picture = claims.picture || '';
+    if (!picture && tok.access_token) { try { const u = await fetch('https://openidconnect.googleapis.com/v1/userinfo', { headers: { Authorization: 'Bearer ' + tok.access_token } }); if (u.ok) picture = (await u.json()).picture || ''; } catch (e) { console.error('photo lookup', e.message); } }
+    console.log('sign-in: Google photo ' + (picture ? 'found (' + String(picture).split('/')[2] + ')' : 'not provided'));
+    Core.saveGooglePic(req.session.email, picture).catch(e => console.error('photo', e.message));
     res.redirect('/');
   } catch (e) { console.error('sign-in failed', e.message); res.redirect('/?signin=failed'); }
 });
