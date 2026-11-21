@@ -407,6 +407,96 @@ function billingPage() {
     '<div class="row between"><h3 style="margin:0">All fees</h3><div class="row"><div class="search" style="width:280px">' + I('search') + '<input id="af-q" type="search" data-afq="1" placeholder="Search people, vendors or projects…" value="' + esc(S.afq) + '" aria-label="Search team fees"></div><select data-afs="1" aria-label="Payment status" style="width:auto"><option value="">All statuses</option><option value="owed"' + (S.afs === 'owed' ? ' selected' : '') + '>Owing</option><option value="upcoming"' + (S.afs === 'upcoming' ? ' selected' : '') + '>Not earned yet</option><option value="paid"' + (S.afs === 'paid' ? ' selected' : '') + '>Paid</option></select></div></div>' + feeTable(fees, 'admin') +
     '<h3 style="margin:0">Payment history</h3>' + payoutTable(S.payouts, true);
 }
+/* ---------- Help: short how-to answers, written for each role ---------- */
+const HELP = {
+  client: [
+    ['Getting started', [
+      ['What do I see before my first payment?', 'Your proposal, with the services, the month-by-month investment and the Terms and Conditions. Accept it, ask for changes, or decline. Once you accept, your first invoice appears. When it is paid, your full portal opens with your deliverables, tasks and files.'],
+      ['Where is the proposal I accepted?', 'Open the Proposal tab. It shows what you accepted, when it was signed, and the Terms and Conditions you agreed to. Click View quotation to see the document, then Print or save as PDF.'],
+      ['How do I replay the tour?', 'Click your initials at the top right, then Show me around.']
+    ]],
+    ['Deliverables and tasks', [
+      ['What are deliverables?', 'Your work, grouped by service, with one set for every month. Choose a service to see its months and the tasks in each.'],
+      ['Why is a month locked?', 'Each month opens as soon as that month\'s invoice is paid. Click a locked month to see what is planned for it and to view its invoice.'],
+      ['How do I approve work?', 'Anything waiting for you shows on your Overview, with a count beside it. Open the task, look through the attached files, then click Approve, or Request changes with a comment saying what to change.'],
+      ['How many rounds of changes do I get?', 'Each piece of work includes 2 rounds of minor revisions, as set out in the Terms. The task shows which round it is on. New concepts or changes to scope are quoted separately.'],
+      ['Some tasks are for me to do. What do I do?', 'Tasks such as sending logins, photos or product details are yours. Upload the files or add a comment on the task, then click Mark as sent to the team.'],
+      ['How do I ask the team a question?', 'Comment on the task it is about, so the right person sees it with the work. You can also reply to any email we send you.']
+    ]],
+    ['Invoices and payments', [
+      ['How do I pay an invoice?', 'Open Invoices and click View invoice. It shows our bank details and a PayNow QR code. Once we receive your payment, we mark the invoice as paid and that month opens.'],
+      ['How does the deposit work?', 'If your proposal includes a deposit, it shows on the Invoices tab. Depending on your proposal, it is either taken off your first invoice, or held as a security deposit and used or refunded as set out in your agreement.'],
+      ['What happens when my contract ends?', 'We may send you a renewal proposal. A Renewal proposal tab appears, where you can accept it, ask for changes or decline. When you accept, the new months are added to the same deliverables.']
+    ]],
+    ['Your account', [
+      ['Where are my files?', 'The Files tab has everything shared between you and Gioia, sorted into folders.'],
+      ['How do I change my details or emails?', 'Open My details to update your company, contact and phone number, and to choose which emails you get.']
+    ]]
+  ],
+  team: [
+    ['Your day', [
+      ['Where do I start each day?', 'My tasks shows everything assigned to you, with due dates. Switch to Everyone to see all the tasks on your projects, and use Filters to narrow by client, assignee or status.'],
+      ['How do I replay the tours?', 'Click your initials at the top right, then Show me around. Fees & payouts has its own How billing works button.'],
+      ['How do I control my emails?', 'Click your initials at the top right and tick or untick Email me about my work.']
+    ]],
+    ['Tasks', [
+      ['How does a task move along?', 'Change the status with the pill at the top of the task. For work the client approves: click Submit for client review, the client approves or asks for changes, then click Mark as completed.'],
+      ['What are steps?', 'Some work passes back and forth, such as draft, client review, edit and post. Those tasks have steps, and the current step shows who it is with. When you finish your step, it moves on to the next person, or to the client.'],
+      ['Can I reuse a list of steps?', 'Yes. The Templates page has saved step lists and preparation task lists. Open a task, click Add steps and pick a template, or save your own.'],
+      ['How do I leave a note only the team sees?', 'When you comment, tick Team only. The client won\'t see it.'],
+      ['Where do files go?', 'Attach them on the task. They are saved in the project\'s Google Drive folder, and the client sees them on that task.'],
+      ['What happens if a task is reassigned?', 'You get an email when a task is given to you or moved to someone else. The fee moves with the task if Gioia chooses.']
+    ]],
+    ['Fees and getting paid', [
+      ['When is a fee earned?', 'A per-task fee is earned when that task or step is marked done. A monthly sum is earned per completed task, or when all your tasks that month are done, as noted on each fee.'],
+      ['How do I bill Gioia?', '1. On Fees & payouts, add your payment details (bank account and PayNow). 2. When fees are ready to bill, click Create invoice and tick the fees to include. 3. Preview the invoice and Send to Gioia, or upload your own invoice instead. You can bill at the end of each month or any time.'],
+      ['Can I use my own invoice?', 'Yes. When you create the invoice, choose Upload my own invoice and attach a PDF or photo. Use the same invoice number and total as in the form.'],
+      ['What if Gioia has a question about my invoice?', 'You get an email with the question, and the invoice shows it. Reply to Gioia, or withdraw the invoice and send a corrected one.'],
+      ['How do I know I have been paid?', 'You get an email when your invoice is marked paid, and the payment is listed under Payments to you.']
+    ]]
+  ],
+  vendor: [
+    ['Your work', [
+      ['Where do I start?', 'My tasks shows the tasks Gioia has assigned to you, with due dates. Open a task to update its status, upload files or comment.'],
+      ['How do I hand in work?', 'Attach the files on the task and add a comment if needed. Then use the main button at the bottom of the task to move it on, for example Mark as completed or finish your step.'],
+      ['How do I control my emails?', 'Click your initials at the top right and tick or untick Email me about my work.']
+    ]],
+    ['Fees and getting paid', [
+      ['When can I bill a fee?', 'A fee can be billed once its task or step is marked done. Fees & payouts shows what is ready to bill.'],
+      ['How do I bill Gioia?', '1. On Fees & payouts, add your payment details (bank account and PayNow), or skip this if you upload your own invoice. 2. Click Create invoice and tick the fees to include. 3. Preview the portal\'s invoice and Send to Gioia, or choose Upload my own invoice and attach your PDF.'],
+      ['What if Gioia has a question about my invoice?', 'You get an email with the question, and the invoice shows it. Reply to Gioia, or withdraw the invoice and send a corrected one.'],
+      ['How do I know I have been paid?', 'You get an email when your invoice is marked paid, and the payment is listed under Payments to you.']
+    ]]
+  ],
+  admin: [
+    ['Setting up a new client', [
+      ['What are the steps for a new client?', '1. New project: add the company and the client\'s Google email. 2. Build the quotation from the Service catalogue, with the months, discounts and any deposit. 3. Send the proposal: the client reads it, agrees to the Terms and accepts in the portal. If they signed on paper, mark it accepted and use Record the signed copy. 4. Email the portal invite. 5. When the first invoice or deposit is paid, use Mark as paid, then Start preparation and apply a preparation template.'],
+      ['Where do I set the Terms and Conditions?', 'In Settings. Every proposal shows them, and each client keeps a copy of the version they accepted.'],
+      ['How do deposits work?', 'Set the deposit on the quotation: a percentage, a fixed amount, or a number of months of fees. It is either taken off the first invoice, or held as a security deposit that you use against an invoice or refund from the deposit card.']
+    ]],
+    ['Paying the team', [
+      ['How do team invoices reach me?', 'Team members and vendors bill Gioia from Fees & payouts. Their invoices arrive under Accounts, in Invoices from the team, and you get an email. The number beside Accounts in the menu shows how many are waiting.'],
+      ['How do I pay a team invoice?', 'Open it with View. Approve it, or click Question to send it back with a note. After paying them outside the app, click Mark paid and enter the date. This records the payment against their fees and emails them.'],
+      ['Can I still pay someone without an invoice?', 'Yes. Under Team payments, Record a payment pays what is owing. Fees already on an invoice they sent are left out, so nothing is paid twice.']
+    ]],
+    ['Renewals', [
+      ['What does the client see when I prepare a renewal?', 'Nothing until you send it. Save draft keeps it private. Send to client emails them and adds a Renewal proposal tab, where they can accept, ask for changes or decline. Extend directly adds the months without asking.']
+    ]]
+  ]
+};
+function helpSections() {
+  if (S.role === 'client') return HELP.client;
+  if (vendorMe()) return HELP.vendor;
+  return isAdmin() ? HELP.admin.concat(HELP.team.map(([h, qs]) => ['For your team: ' + h.toLowerCase(), qs])) : HELP.team;
+}
+function helpPage() {
+  const tours = S.role === 'client' ? [['tour-start', 'Replay the portal tour']] : [['tour-start', 'Replay the tour'], ...(isAdmin() ? [] : [['tour-pay-go', 'How billing works']])];
+  return '<div><h1>Help</h1><p class="muted" style="margin:4px 0 0">Short answers to common questions. Type a word to find one.</p></div>' +
+    '<div class="row" style="gap:10px"><div class="search" style="flex:1;max-width:520px">' + I('search', 'sm') + '<input id="help-q" placeholder="Search help, e.g. invoice, approve, locked" autocomplete="off"></div>' + tours.map(([a, l]) => btn(I('help', 'sm') + l, a, {}, 'quiet')).join('') + '</div>' +
+    helpSections().map(([h, qs]) => '<section class="stack helpsec" style="gap:8px"><h3 style="margin:0">' + esc(h) + '</h3>' + qs.map(([q, a]) => '<details class="card faq"><summary>' + esc(q) + '</summary><p>' + esc(a).replace(/(^|\s)(\d)\. /g, '$1<br><b>$2.</b> ').replace(/^<br>/, '') + '</p></details>').join('') + '</section>').join('') +
+    '<p class="muted small" id="help-none" hidden>Nothing matches that. Try another word, or ' + (S.role === 'client' ? 'comment on a task or reply to any email from us.' : 'ask in the comments on the task.') + '</p>' +
+    '<div class="card row" style="gap:12px;flex-wrap:nowrap">' + I('chat') + '<span class="small">' + (S.role === 'client' ? 'Still stuck? Comment on the task it is about, or reply to any email from Gioia, and we will help.' : 'Still stuck? Ask in the comments on the task, or message Gioia.') + '</span></div>';
+}
 /* ---------- invoices team members and vendors send to Gioia ---------- */
 const BILLST = { submitted: ['info', 'Sent to Gioia'], approved: ['ok', 'Approved'], queried: ['warn', 'Question from Gioia'], paid: ['ok', 'Paid'], withdrawn: ['lock', 'Withdrawn'] };
 const billOpenAmt = id => (S.bills || []).filter(b => ['submitted', 'approved', 'queried'].includes(b.status)).reduce((a, b) => a + b.lines.filter(l => l.feeId === id).reduce((x, l) => x + l.amount, 0), 0);
@@ -548,7 +638,7 @@ function settingsPage() {
 /* ---------- shell ---------- */
 function myOpenCount() { let n = 0; S.clients.forEach(c => c.tasks.forEach(t => { if ((t.assignee === S.me || L.stageMine(t, S.me)) && taskOpen(c, t) && !['done', 'awaiting'].includes(t.status)) n++; })); return n; }
 function sidebar() {
-  const nav = vendorMe() ? [['mytasks', 'My tasks', 'check'], ['clients', 'Projects', 'building'], ['earnings', 'Fees & payouts', 'coins'], ['files', 'Files', 'folder']] : [['clients', 'Clients', 'building'], ['billing', 'Accounts', 'coins', 'admin'], ['mytasks', 'My tasks', 'check'], ['earnings', 'Fees & payouts', 'coins'], ['files', 'Files', 'folder'], ['team', 'Team', 'users', 'admin'], ['templates', 'Templates', 'list'], ['catalogue', 'Service catalogue', 'layers', 'admin']];
+  const nav = vendorMe() ? [['mytasks', 'My tasks', 'check'], ['clients', 'Projects', 'building'], ['earnings', 'Fees & payouts', 'coins'], ['files', 'Files', 'folder'], ['help', 'Help', 'help']] : [['clients', 'Clients', 'building'], ['billing', 'Accounts', 'coins', 'admin'], ['mytasks', 'My tasks', 'check'], ['earnings', 'Fees & payouts', 'coins'], ['files', 'Files', 'folder'], ['team', 'Team', 'users', 'admin'], ['templates', 'Templates', 'list'], ['catalogue', 'Service catalogue', 'layers', 'admin'], ['help', 'Help', 'help']];
   const bv = ['import', 'newproj'].includes(S.view) ? 'clients' : S.view === 'task' ? (S.back || {}).view : S.view, cur = bv === 'client' ? 'clients' : bv === 'ws' || bv === 'workspaces' ? 'clients' : bv, n = myOpenCount();
   return '<aside class="side"><div class="logo">' + logoImg('white', 46) + '<span class="desk">Dashboard</span></div><div class="sidelab">' + (isAdmin() ? 'Admin' : 'Team') + '</div>' + nav.filter(x => !x[3] || (x[3] === 'admin' ? isAdmin() : !isAdmin())).map(([k, l, ic]) => '<button class="nav" data-a="nav" data-v="' + k + '" aria-current="' + (cur === k) + '">' + I(ic) + '<span class="lbl">' + l + '</span>' + (k === 'mytasks' && n ? '<span class="badge">' + n + '</span>' : '') + (k === 'billing' && billsWaiting() ? '<span class="badge">' + billsWaiting() + '</span>' : '') + '</button>').join('') +
     (isAdmin() ? '<div class="foot"><button class="nav" data-a="nav" data-v="settings" aria-current="' + (cur === 'settings') + '">' + I('cog') + '<span class="lbl">Settings</span></button></div>' : '') + '</aside>';
@@ -562,7 +652,7 @@ function topRight() {
   return '<div class="row" style="gap:6px;margin-left:auto;position:relative"><div style="position:relative"><button class="iconbtn" data-a="menu" data-m="bell" aria-label="Notifications">' + I('bell') + (n ? '<span class="badge">' + n + '</span>' : '') + '</button>' + (S.menu === 'bell' ? bellMenu() : '') + '</div><div style="position:relative"><button class="me" data-a="menu" data-m="me" aria-label="Account and view switcher"><span class="av lg">' + initials(who) + '</span>' + I('down', 'sm') + '</button>' + (S.menu === 'me' ? meMenu() : '') + '</div></div>';
 }
 function staffShell() {
-  const c = client(), page = { task: () => taskPage(c, c.tasks.find(x => x.id === S.tid)), clients: clientsPage, client: () => c ? clientPage(c) : clientsPage(), ws: () => c ? workspacePage(c) : clientsPage(), workspaces: workspacesPage, mytasks: myTasksPage, files: filesPage, billing: billingPage, import: importPage, earnings: earningsPage, templates: templatesPage, newproj: wizardPage, catalogue: cataloguePage, team: teamPage, settings: settingsPage }[S.view]();
+  const c = client(), page = { help: helpPage, task: () => taskPage(c, c.tasks.find(x => x.id === S.tid)), clients: clientsPage, client: () => c ? clientPage(c) : clientsPage(), ws: () => c ? workspacePage(c) : clientsPage(), workspaces: workspacesPage, mytasks: myTasksPage, files: filesPage, billing: billingPage, import: importPage, earnings: earningsPage, templates: templatesPage, newproj: wizardPage, catalogue: cataloguePage, team: teamPage, settings: settingsPage }[S.view]();
   return '<div class="app">' + sidebar() + '<div class="main"><header class="topbar"><div class="search">' + I('search') + '<input id="gsearch" type="search" placeholder="Search clients, deliverables, tasks, files…" value="' + esc(S.q) + '" autocomplete="off" aria-label="Search"><div id="sres"></div></div>' + topRight() + '</header><main class="page">' + page + '</main></div></div>';
 }
 
@@ -638,15 +728,15 @@ function portalTasks(c) {
 function portalShell() {
   const c = client(), open = c.tasks.filter(t => canSee(c, t));
   if (!hasAccess(c)) {
-    if (!['proposal', 'details'].includes(S.ptab)) S.ptab = 'proposal';
-    const ptabs = [['proposal', c.quote.status === 'accepted' ? 'Proposal and invoices' : 'Your proposal', 'doc'], ['details', 'My details', 'user']];
-    const pbody = S.ptab === 'details' ? '<h1>My details</h1><div class="card stack" style="max-width:560px">' + field('d-company', 'Company', c.company) + field('d-contact', 'Contact person', c.contact) + field('d-phone', 'Phone', c.phone) + field('d-website', 'Website', c.website) + '<p class="small muted" style="margin:0">Signed in with Google.</p><div>' + btn('Save details', 'save-details') + '</div></div>' + emailPrefCard() : proposalPage(c);
+    if (!['proposal', 'details', 'help'].includes(S.ptab)) S.ptab = 'proposal';
+    const ptabs = [['proposal', c.quote.status === 'accepted' ? 'Proposal and invoices' : 'Your proposal', 'doc'], ['details', 'My details', 'user'], ['help', 'Help', 'help']];
+    const pbody = S.ptab === 'help' ? helpPage() : S.ptab === 'details' ? '<h1>My details</h1><div class="card stack" style="max-width:560px">' + field('d-company', 'Company', c.company) + field('d-contact', 'Contact person', c.contact) + field('d-phone', 'Phone', c.phone) + field('d-website', 'Website', c.website) + '<p class="small muted" style="margin:0">Signed in with Google.</p><div>' + btn('Save details', 'save-details') + '</div></div>' + emailPrefCard() : proposalPage(c);
     return '<div class="app"><aside class="side"><div class="logo">' + logoImg('white', 46) + '<span class="desk">Client portal</span></div><div class="sidelab">' + esc(c.company) + '</div>' + ptabs.map(([k, l, ic]) => '<button class="nav" data-a="ptab" data-t="' + k + '" aria-current="' + (S.ptab === k) + '">' + I(ic) + '<span class="lbl">' + l + '</span></button>').join('') + '</aside><div class="main"><header class="topbar"><div class="row" style="gap:10px"><span class="tilelogo" style="width:36px;height:36px;font-size:13px;border-radius:8px">' + initials(c.company) + '</span><b>' + esc(c.company) + '</b>' + (S.clients.length > 1 ? projectSwitch(c) : '') + '</div>' + topRight() + '</header><main class="page">' + pbody + '</main></div></div>';
   }
   const awaiting = open.filter(t => t.status === 'awaiting'), tosend = open.filter(t => ['cdraft', 'creview'].includes(t.status)), n = awaiting.length + tosend.length;
   const rp = L.renewals(c).find(r => ['sent', 'changes', 'declined'].includes(r.status)) || (S.ptab === 'renewal' && L.renewals(c).filter(r => r.status === 'accepted').pop());
   if (S.ptab === 'renewal' && !rp) S.ptab = 'overview';
-  const tabs = [['overview', 'Overview', 'home'], ...(rp ? [['renewal', 'Renewal proposal', 'refresh']] : []), ['workspaces', 'Deliverables', 'layers'], ['tasks', 'Tasks', 'check'], ['files', 'Files', 'folder'], ['invoices', 'Invoices', 'receipt'], ...(c.quote.status === 'accepted' ? [['proposal', 'Proposal', 'doc']] : []), ['details', 'My details', 'user']];
+  const tabs = [['overview', 'Overview', 'home'], ...(rp ? [['renewal', 'Renewal proposal', 'refresh']] : []), ['workspaces', 'Deliverables', 'layers'], ['tasks', 'Tasks', 'check'], ['files', 'Files', 'folder'], ['invoices', 'Invoices', 'receipt'], ...(c.quote.status === 'accepted' ? [['proposal', 'Proposal', 'doc']] : []), ['details', 'My details', 'user'], ['help', 'Help', 'help']];
   const curTab = S.ptab === 'task' ? 'tasks' : S.ptab;
   let body;
   if (S.ptab === 'task') body = taskPage(c, c.tasks.find(x => x.id === S.tid));
@@ -659,6 +749,7 @@ function portalShell() {
   else if (S.ptab === 'tasks') body = portalTasks(c);
   else if (S.ptab === 'files') body = '<h1>Files</h1>' + filesTab(c);
   else if (S.ptab === 'invoices') body = '<h1>Invoices</h1>' + invoicesTab(c, true);
+  else if (S.ptab === 'help') body = helpPage();
   else body = '<h1>My details</h1><div class="card stack" style="max-width:560px">' + field('d-company', 'Company', c.company) + field('d-contact', 'Contact person', c.contact) + field('d-phone', 'Phone', c.phone) + field('d-website', 'Website', c.website) + '<p class="small muted" style="margin:0">Signed in with Google.</p><div>' + btn('Save details', 'save-details') + '</div></div>' + emailPrefCard();
   const side = '<aside class="side"><div class="logo">' + logoImg('white', 46) + '<span class="desk">Client portal</span></div><div class="sidelab">' + esc(c.company) + '</div>' + tabs.map(([k, l, ic]) => '<button class="nav" data-a="ptab" data-t="' + k + '" aria-current="' + (curTab === k) + '">' + I(ic) + '<span class="lbl">' + l + '</span>' + (k === 'renewal' && rp.status === 'sent' ? '<span class="badge">1</span>' : k === 'overview' && n ? '<span class="badge">' + n + '</span>' : k === 'tasks' && awaiting.length ? '<span class="badge">' + awaiting.length + '</span>' : '') + '</button>').join('') + '</aside>';
   return '<div class="app">' + side + '<div class="main"><header class="topbar"><div class="row" style="gap:10px"><span class="tilelogo" style="width:36px;height:36px;font-size:13px;border-radius:8px">' + initials(c.company) + '</span><b>' + esc(c.company) + '</b>' + (S.clients.length > 1 ? projectSwitch(c) : '<span class="small muted">' + esc(pname(c)) + '</span>') + '</div>' + topRight() + '</header><main class="page">' + body + '</main></div></div>';
@@ -670,6 +761,7 @@ function timelineHtml(t) {
   if (!steps.length) return '<p class="small muted" style="margin:0">No activity yet.</p>';
   return '<div class="tl">' + steps.map(([on, title, sub, at]) => '<div class="tls"><span class="dot ' + on + '">' + (on ? I('tick', 'sm') : '') + '</span><div><b>' + esc(title) + '</b><div class="small muted">' + esc(sub) + '</div></div><span class="small muted">' + at + '</span></div>').join('') + '</div>';
 }
+const tpw = (id, h) => h ? '<div id="' + id + '" class="stack" style="gap:inherit">' + h + '</div>' : '';
 function taskPage(c, t) {
   if (!t) return '<div class="lockbox">This task no longer exists.</div>';
   const A = staff(), E = A && !vendorMe(), s = ql(c, t.svc), m = member(t.assignee), cl = S.role === 'client';
@@ -716,7 +808,7 @@ function taskPage(c, t) {
     else if (t.owner === 'client' && ['todo', 'cdraft'].includes(t.status)) main = btn(I('send') + 'Mark as sent to the team', 't-sent', { id: t.id }, 'block bigbtn');
   }
   const banner = A && t.status === 'approved' && !staged(t) ? '<div class="banner"><span class="big">' + I('tick') + '</span><div><h2 style="font-size:26px">Client approved</h2><p style="margin:4px 0 0">The client has approved “' + esc(t.title) + '”.</p></div></div>' : '';
-  return '<div class="tpage"><button class="backlink" data-a="task-back">' + I('back') + '<h1>' + (banner ? 'Client approved' : 'Task details') + '</h1></button>' + banner + head + stepsBox + desc + status + files + comments + '<div class="stack" style="gap:8px"><h2>Activity timeline</h2><div class="card">' + timelineHtml(t) + '</div></div>' + main + '</div>';
+  return '<div class="tpage"><button class="backlink" data-a="task-back">' + I('back') + '<h1>' + (banner ? 'Client approved' : 'Task details') + '</h1></button>' + banner + tpw('tp-head', head) + tpw('tp-steps', stepsBox) + tpw('tp-desc', desc) + status + tpw('tp-files', files) + tpw('tp-comments', comments) + '<div class="stack" style="gap:8px"><h2>Activity timeline</h2><div class="card">' + timelineHtml(t) + '</div></div>' + tpw('tp-main', main) + '</div>';
 }
 function tplBar(ta) {
   return '<div class="tplbar"><select data-tpl="' + ta + '" aria-label="Use a step template"><option value="">Use a saved template…</option>' + S.templates.map(t => '<option value="' + t.id + '">' + esc(t.name) + ' (' + t.count + ' steps)</option>').join('') + '</select><button class="link" data-a="tpl-save-open" data-ta="' + ta + '">Save these steps as a template</button><button class="link" data-a="tpl-manage">Manage templates</button></div>';
@@ -960,6 +1052,27 @@ const TOURS = {
     ['[data-v="files"]', 'Files', 'Files on your tasks.'],
     ['.topbar .me', 'Your menu', 'Email settings, sign out, and Show me around to replay this tour.']
   ],
+  task: [
+    ['#tp-head', 'This task', 'The client, project, who it is with and the due date. Click the status pill to change where it stands.'],
+    ['#tp-steps', 'Steps', 'Work that passes back and forth with the client follows these steps. The current step shows who it is with; when you finish yours, it moves on.'],
+    ['#tp-desc', 'Description', 'What was done and what the client should check. The client sees this.'],
+    ['#tp-files', 'Files', 'Attach drafts and finished work here. They are saved in the project\'s Google Drive folder.'],
+    ['#tp-comments', 'Comments', 'Talk to the client and the team here. Tick Team only to keep a note internal.'],
+    ['#tp-main', 'Move it on', 'This button takes the next step, such as submitting for client review or marking it completed. Completing your work is also what earns your fee.']
+  ],
+  ctask: [
+    ['#tp-head', 'This task', 'What the work is and where it stands.'],
+    ['#tp-steps', 'Steps', 'Some work goes back and forth between you and the team. The highlighted step shows whose turn it is.'],
+    ['#tp-files', 'Files', 'The drafts or finished work to look at. Click a file to open it.'],
+    ['#tp-comments', 'Comments', 'Ask a question or give feedback here, so it stays with the work.'],
+    ['#tp-main', 'Your decision', 'Approve the work, or request changes with a comment saying what to change. Each piece includes 2 rounds of changes.']
+  ],
+  cinv: [
+    ['.invtbl', 'Your invoices', 'One for each month of your contract. Each month\'s deliverables open as soon as its invoice is paid.'],
+    ['.invtbl .ist', 'Status', 'Sent means it is ready for payment. Pending invoices are for later months and are sent nearer the time. Paid invoices show the date and how they were paid.'],
+    ['.invtbl .iact .btn', 'View and pay', 'Open the invoice to see our bank details and a PayNow QR code. You can also save it as a PDF.'],
+    ['.depcard', 'Your deposit', 'If your proposal has a deposit, it shows here, with how it has been used.']
+  ],
   payouts: [
     ['#fp-tiles', 'Your fees at a glance', 'Owing to you is what you have earned and not been paid yet. A fee is earned when the task or step is marked done.'],
     ['#fp-bank', 'Step 1: your payment details', 'Add your bank account and PayNow once. They go on every invoice the portal makes for you, so Gioia knows where to pay.'],
@@ -979,7 +1092,10 @@ function tourSteps() { return (TOURS[S.tour.kind] || []).filter(st => { const el
 function drawTour() {
   let box = document.getElementById('tour');
   if (!S.tour && !S.tourChecked && D.tours) { S.tourChecked = true; const k = tourKind(); if (k && !D.tours[k] && !S.modal && !S.drawer) S.tour = { kind: k, i: 0 }; }
-  if (!S.tour && D.tours && S.view === 'earnings' && S.role !== 'client' && !isAdmin() && !D.tours.payouts && D.tours[tourKind()] && !S.modal && !S.drawer) S.tour = { kind: 'payouts', i: 0 };
+  if (!S.tour && D.tours && D.tours[tourKind()] && !S.modal && !S.drawer) {
+    const pk = S.role === 'client' ? (S.ptab === 'task' ? 'ctask' : S.ptab === 'invoices' ? 'cinv' : '') : isAdmin() ? '' : S.view === 'earnings' ? 'payouts' : S.view === 'task' ? 'task' : '';
+    if (pk && !D.tours[pk]) S.tour = { kind: pk, i: 0 };
+  }
   if (!S.tour) { if (box) box.remove(); return; }
   const steps = tourSteps(); if (!steps.length) { S.tour = null; if (box) box.remove(); return; }
   if (S.tour.i >= steps.length) S.tour.i = steps.length - 1;
@@ -1281,7 +1397,7 @@ function emailPrefCard() {
   return '<div class="card stack" style="max-width:560px"><h2>Email updates</h2><label class="opt ' + (D.emailOn ? 'on' : '') + '"><input type="checkbox" data-epref="1"' + (D.emailOn ? ' checked' : '') + '><span><b>Email me when something needs me</b><br><span class="small muted">Proposals, invoices, work ready for your review or approval, and comments from the team. Sent to ' + esc(D.me.email) + '.</span></span></label></div>';
 }
 function meMenu() {
-  return '<div class="menu" style="width:270px"><div style="padding:8px 10px 10px"><b>' + esc(D.me.name || '') + '</b><br><span class="small muted">' + esc(D.me.email) + '</span><br><span class="small muted">' + (S.role === 'client' ? 'Client' : isAdmin() ? 'Admin' : 'Gioia team') + '</span></div>' + (S.role !== 'client' ? '<label class="mi" style="cursor:pointer"><input type="checkbox" data-epref="1"' + (D.emailOn ? ' checked' : '') + ' style="width:auto"><span>Email me about my work</span></label>' : '') + (tourKind() ? '<button class="mi" data-a="tour-start">' + I('help') + '<span>Show me around</span></button>' : '') + '<a class="mi" href="/auth/logout">' + I('out') + '<span>Sign out</span></a></div>';
+  return '<div class="menu" style="width:270px"><div style="padding:8px 10px 10px"><b>' + esc(D.me.name || '') + '</b><br><span class="small muted">' + esc(D.me.email) + '</span><br><span class="small muted">' + (S.role === 'client' ? 'Client' : isAdmin() ? 'Admin' : 'Gioia team') + '</span></div>' + (S.role !== 'client' ? '<label class="mi" style="cursor:pointer"><input type="checkbox" data-epref="1"' + (D.emailOn ? ' checked' : '') + ' style="width:auto"><span>Email me about my work</span></label>' : '') + (tourKind() ? '<button class="mi" data-a="tour-start">' + I('help') + '<span>Show me around</span></button>' : '') + '<button class="mi" data-a="help-open">' + I('help') + '<span>Help</span></button>' + '<a class="mi" href="/auth/logout">' + I('out') + '<span>Sign out</span></a></div>';
 }
 
 /* ---------- actions ---------- */
@@ -1474,6 +1590,8 @@ const ACT = {
   'tour-skip'() { const k = S.tour && S.tour.kind; S.tour = null; if (k && !(D.tours || {})[k]) { D.tours = Object.assign({}, D.tours, { [k]: true }); api('tour-done', { kind: k }, { quiet: true }); } drawTour(); return 'skip'; },
   'tour-start'() { S.menu = null; S.tour = { kind: tourKind(), i: 0 }; },
   'tour-pay'() { S.tour = { kind: 'payouts', i: 0 }; },
+  'tour-pay-go'() { S.view = 'earnings'; render(); S.tour = { kind: 'payouts', i: 0 }; },
+  'help-open'() { S.menu = null; if (S.role === 'client') S.ptab = 'help'; else S.view = 'help'; },
   async 'rfee-go'(d) { const run = S.modal.run; S.modal = null; await run(d.f); },
   'td-open'(d) { S.modal = { kind: 'tdel', cid: S.cid, id: d.id }; },
   async 'td-go'() { const r = await api('t-delete', { id: S.modal.id }, { cid: S.modal.cid, msg: 'Task deleted.' }); if (r) { S.modal = null; ACT['task-back'](); } },
@@ -1532,6 +1650,13 @@ document.addEventListener('click', async e => {
 const grow = el => { el.style.height = 'auto'; el.style.height = el.scrollHeight + 2 + 'px'; };
 new MutationObserver(() => document.querySelectorAll('textarea.grow').forEach(grow)).observe(document.getElementById('app'), { childList: true });
 document.addEventListener('input', e => { if (e.target.matches && e.target.matches('textarea.grow')) grow(e.target); });
+/* Help search: filter the answers in place, without redrawing the page */
+document.addEventListener('input', e => {
+  if (e.target.id !== 'help-q') return;
+  const q = e.target.value.trim().toLowerCase(); let any = false;
+  document.querySelectorAll('.helpsec').forEach(sec => { let n = 0; sec.querySelectorAll('details.faq').forEach(d => { const hit = !q || d.textContent.toLowerCase().includes(q); d.hidden = !hit; d.open = !!q && hit; if (hit) n++; }); sec.hidden = !n; if (n) any = true; });
+  const none = document.getElementById('help-none'); if (none) none.hidden = any;
+});
 document.addEventListener('input', e => { if (e.target.id === 'gsearch') { S.q = e.target.value; renderSearch(); } else if (e.target.dataset.mtq) { S.mtq = e.target.value; render(); } else if (e.target.dataset.mlq) { S.mlQ = e.target.value; S.mlN = 8; render(); } else if (e.target.dataset.acq) { S.acq = e.target.value; render(); } else if (e.target.dataset.afq) { S.afq = e.target.value; render(); } });
 async function uploadFiles(key, files) {
   const svcId = key === 'ws' ? S.ws : '', cid = S.cid; let last = null;

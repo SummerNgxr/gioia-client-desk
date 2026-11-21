@@ -521,3 +521,9 @@ select.stpill{width:auto!important;flex:none;max-width:260px}
 .signblock{max-width:520px}
 .signblock .sig{font:italic 400 34px/1.2 "Snell Roundhand","Segoe Script","Brush Script MT","Apple Chancery",cursive;color:var(--ink,#1f3a2e);padding:6px 2px 0}
 .signblock .sigline{border-top:1px solid currentColor;opacity:.35;margin:-2px 0 4px}
+details.faq{padding:0}
+details.faq summary{cursor:pointer;padding:14px 18px;font-weight:600;list-style:none;display:flex;justify-content:space-between;gap:12px}
+details.faq summary::-webkit-details-marker{display:none}
+details.faq summary::after{content:'+';font-weight:400;opacity:.6}
+details.faq[open] summary::after{content:'–'}
+details.faq p{margin:0;padding:0 18px 16px;line-height:1.55}
