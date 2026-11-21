@@ -376,7 +376,7 @@ function compactRow(c, t, showWho) {
   const bits = [cname(c), staged(t) && cs ? 'Step ' + (t.stage + 1) + ' of ' + t.stages.length + ': ' + cs.title : short(ql(c, t.svc))];
   if (showWho) bits.push(waitsClient(t) ? 'Client' : m ? m.name : 'Unassigned');
   return '<div class="tli tlic" data-a="task" data-id="' + t.id + '" data-cid="' + c.id + '"><span class="ticon sm">' + I(svcIcon(t.svc), 'sm') + '</span><span class="tlic-main"><b>' + esc(t.title) + '</b><span class="small muted clamp1">' + esc(bits.join(' · ')) + '</span></span>' +
-    '<span class="tlic-st">' + (showWho ? whoAv(c, t, 'sm') + ' ' : '') + pill(t.status, cLabel(t)) + '</span><span class="small tlic-due' + (late ? ' late' : '') + '">' + (t.due ? dshort(t.due) : '<span class="muted">No date</span>') + '</span>' + I('chev', 'sm') + '</div>';
+    '<span class="tlic-av">' + (showWho ? whoAv(c, t, 'sm') : '') + '</span><span class="tlic-st">' + pill(t.status, cLabel(t)) + '</span><span class="small tlic-due' + (late ? ' late' : '') + '">' + (t.due ? dshort(t.due) : '<span class="muted">No date</span>') + '</span>' + I('chev', 'sm') + '</div>';
 }
 function simpleTasks(rows, showWho) {
   const open = rows.filter(r => r.t.status !== 'done'), mine = open.filter(r => !waitsClient(r.t)), waiting = open.filter(r => waitsClient(r.t)), wk = plusDays(7);
