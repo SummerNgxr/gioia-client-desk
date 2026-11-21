@@ -155,6 +155,14 @@
     const rest = Math.max(0, feeBase(c, s) - set.reduce((a, x) => a + (Number(x.value) || 0), 0)), n = sib.length - set.length;
     return n ? Math.round(rest / n) : 0;
   }
+  /* a service's value for one month and how much of it is already given to the team as fees; skip = a fee id to leave out (the one being edited) */
+  function svcBudget(c, fees, svcId, m, skip) {
+    const s = ql(c, svcId); if (!s || freeWs(s)) return null;
+    const tids = c.tasks.filter(t => t.svc === svcId && t.m === m).map(t => t.id);
+    const list = fees.filter(f => f.cid === c.id && f.id !== skip && (((f.kind === 'month' || !f.kind) && f.svc === svcId && (s.billing !== 'monthly' || s.adhoc || f.m === m)) || (f.kind === 'task' && tids.includes(f.taskId))));
+    const value = feeBase(c, s), assigned = list.reduce((x, f) => x + (Number(f.amount) || 0), 0);
+    return { s, m, value, list, assigned, balance: value - assigned, tasks: tids.length };
+  }
   function taskCost(c, fees, t) {
     const out = { own: [], share: [] };
     fees.filter(f => f.cid === c.id).forEach(f => {
@@ -164,5 +172,5 @@
     out.total = [...out.own, ...out.share].reduce((a, x) => a + x.amount, 0); return out;
   }
   const feeBase = (c, s) => !s ? 0 : s.adhoc ? ((adhocOf(c, s.adhoc) || {}).amount || s.price) : s.price;
-  return { depBalance, depSecurity, covered, depUse, depLabel, cleanDeposit, depositAmt, depositInv, contractTotal, MONTHS, pad, clone, money, short, ym, mName, due, ql, adhocOf, invLines, invTotal, inv, invLocked, taskOpen, hasAccess, newTask, buildTasks, acceptQuote, statusOptions, STATUS, fkey: f => f.drive || (f.url + '|' + f.at), freeWs, shared, invNo, renewals, renewLines, pseudo, monthKey, rnFrom, taskFromDef, discounts, discLabel, discWhen, cleanDiscounts, schedule, findMember, stageMine, feeSvc, feeTasks, feeEarned, feeOwed, feeState, feeBase, taskValue, taskCost, parseSteps, stepsText, toStages, staged, curStage, syncStage, stepKind, normalizeClient };
+  return { depBalance, depSecurity, covered, depUse, depLabel, cleanDeposit, depositAmt, depositInv, contractTotal, MONTHS, pad, clone, money, short, ym, mName, due, ql, adhocOf, invLines, invTotal, inv, invLocked, taskOpen, hasAccess, newTask, buildTasks, acceptQuote, statusOptions, STATUS, fkey: f => f.drive || (f.url + '|' + f.at), freeWs, shared, invNo, renewals, renewLines, pseudo, monthKey, rnFrom, taskFromDef, discounts, discLabel, discWhen, cleanDiscounts, schedule, findMember, stageMine, feeSvc, feeTasks, feeEarned, feeOwed, feeState, feeBase, taskValue, svcBudget, taskCost, parseSteps, stepsText, toStages, staged, curStage, syncStage, stepKind, normalizeClient };
 });
