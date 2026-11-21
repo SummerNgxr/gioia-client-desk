@@ -578,3 +578,4 @@ details.faq p{margin:0;padding:0 18px 16px;line-height:1.55}
 .avpick{position:relative;display:inline-flex;align-items:center;gap:4px;color:var(--muted);cursor:pointer}
 .avpick select.inl{position:absolute;inset:0;width:100%;max-width:none;opacity:0;cursor:pointer}
 .avpick:hover .av{outline:2px solid var(--accent);outline-offset:1px}
+.clamp2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
