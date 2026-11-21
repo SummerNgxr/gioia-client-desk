@@ -646,3 +646,38 @@ button.exr.on{background:var(--accent-soft)}
 .exd{display:grid;grid-template-columns:150px 1fr;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);align-items:center}
 .exd:last-of-type{border-bottom:0}
 @media (max-width:900px){.plgrid,.exgrid{grid-template-columns:1fr}.ivr{grid-template-columns:1fr auto;}.ivr>span:nth-child(2),.ivh{display:none}.fvr{grid-template-columns:1fr auto}.fvr>span:nth-child(2),.fvh{display:none}}
+/* accounts dashboard */
+.aplcard{gap:18px;max-width:none}
+.aph{font-size:28px;margin:0}
+.pseg button{padding:6px 14px}
+.sbox{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--card)}
+.srow{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--line);font:500 17px var(--body);width:100%;text-align:left;background:none;border-left:0;border-right:0;border-top:0;color:inherit}
+.srow .num{font:600 21px var(--display);display:flex;align-items:center;gap:8px}
+button.srow{cursor:pointer}button.srow:hover{background:var(--card-2)}
+.srow.sub{padding-left:40px;font-size:15px;color:var(--muted)}.srow.sub .num{font-size:17px;color:var(--ink)}
+.stot{display:flex;justify-content:space-between;align-items:center;padding:18px 20px;background:var(--ok-bg)}
+.stot b{font:600 22px var(--display)}.stot .num{font-size:30px;color:var(--ok)}
+.stot.bad{background:var(--crit-bg)}.stot.bad .num{color:var(--crit)}
+.alinks{gap:26px}.alinks .link{font-size:15px}
+.mline{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.mline>div{display:flex;flex-direction:column;gap:3px;padding:14px 18px;border-right:1px solid var(--line)}
+.mline>div:last-child{border-right:0}.mline .num{font:600 21px var(--display)}
+.qtile{display:grid;grid-template-columns:28px 1fr 16px;gap:12px;align-items:center;text-align:left;padding:16px 18px;border:1px solid var(--line);border-radius:var(--r);background:var(--card);font:inherit;color:inherit;cursor:pointer}
+.qtile:hover{border-color:var(--accent)}.qtile>span{display:flex;flex-direction:column;gap:2px}.qtile>.ico:first-child{color:var(--accent)}
+.ccr{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr) minmax(0,1.5fr) 100px 100px 130px;gap:14px;align-items:center;padding:13px 22px;border-bottom:1px solid var(--line);width:100%;text-align:left;font:inherit;color:inherit;background:none;border-left:0;border-right:0;border-top:0}
+button.ccr{cursor:pointer}button.ccr:hover{background:var(--card-2)}
+.cch{background:var(--card-2);font-weight:600;font-family:var(--display);font-size:15px;border-radius:var(--r) var(--r) 0 0}
+.ivr2{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) 100px 100px 90px 100px minmax(0,1fr) 80px;gap:12px;align-items:center;padding:12px 22px;border-bottom:1px solid var(--line)}
+.ivr2:last-child{border-bottom:0}
+.pill.sched{background:var(--accent-soft);color:var(--accent)}
+.ppcard{gap:0}
+.pprow{display:grid;grid-template-columns:1fr 170px 200px;gap:12px;align-items:center;padding:13px 4px;border-bottom:1px solid var(--line)}
+.pprow .num{text-align:right;font:600 18px var(--display)}
+.pprow.big{font-weight:600}.pprow.sub{padding-left:22px;color:var(--muted);font-size:14px}.pprow.sub .num{font-size:15px;color:var(--ink)}
+.pph{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}.pph .num{font:600 12px var(--body)}
+.pptot{background:var(--ok-bg);border-radius:10px;border:0;padding:16px 14px;margin:10px 0}.pptot b:first-child{font:600 20px var(--display)}.pptot .num{font-size:24px;color:var(--ok)}
+@media (max-width:900px){.mline{grid-template-columns:1fr 1fr}.ccr{grid-template-columns:1fr auto}.ccr>span:nth-child(2),.ccr>span:nth-child(3),.ccr>span:nth-child(5),.cch{display:none}.ivr2{grid-template-columns:1fr auto}.ivr2>span:nth-child(n+3):nth-child(-n+6),.ivr2.ivh{display:none}.pprow{grid-template-columns:1fr 110px 110px}}
+.ell{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ivr2>span,.ccr>span{min-width:0}
+.ivr2 .num,.ccr .num{white-space:nowrap}
+.ivr2{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) 105px 95px 90px 105px 120px 70px}
