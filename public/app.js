@@ -449,11 +449,11 @@ function earningsPage() {
   const mine = S.fees.filter(f => f.member === S.me), owed = mine.reduce((a, f) => a + fx(f).owed, 0), up = mine.reduce((a, f) => a + Math.max(0, f.amount - fx(f).earned), 0), paid = S.payouts.filter(p => p.member === S.me).reduce((a, p) => a + p.total, 0);
   const ready = mine.reduce((a, f) => a + billLeft(f), 0), bills = (S.bills || []).filter(b => b.member === S.me && b.status !== 'withdrawn').sort((a, b) => b.at.localeCompare(a.at)), bk = S.myBank, d = new Date().getDate(), monthEnd = d >= 25 || d <= 5;
   const intro = vendorMe() ? 'What Gioia has agreed to pay you for each task, what you can bill now, and payments made. A fee can be billed once that task or step is marked done.' : 'You earn each fee as the work is completed. Per-task fees are earned when that task or step is done; a monthly sum is earned per completed task, or once all your tasks that month are done, as noted on each fee.';
-  const billCard = ready > 0 ? '<div class="card row between prepcard"><span class="row" style="gap:12px;flex-wrap:nowrap">' + I('doc') + '<span><b>' + sm(ready) + ' is ready to bill</b><br><span class="small muted">' + (monthEnd ? 'It\'s the end of the month: a good time to send Gioia your invoice. ' : 'Send your invoice whenever suits you, for example at the end of each month. ') + (hasBank(bk) ? 'The portal can make the invoice for you with your payment details on it, or you can upload your own.' : D.uploads ? 'Upload your own invoice, or add your payment details below and the portal makes one for you.' : 'Add your payment details first, so they appear on the invoice.') + '</span></span></span>' + (hasBank(bk) || D.uploads ? btn(I('doc', 'sm') + 'Create invoice', 'bill-new') : btn('Add payment details', 'bank-open')) + '</div>' : '';
-  return '<div><h1>Fees &amp; payouts</h1><p class="muted" style="margin:4px 0 0">' + intro + '</p></div><div class="grid g3">' + ktile('hourglass', 'g', 'Owing to you', owed) + ktile('cal', 'g', 'Not earned yet', up) + ktile('coins', 'o', 'Paid to you', paid) + '</div>' + billCard +
-    '<div class="row between"><h3 style="margin:0">Your invoices to Gioia</h3>' + (ready > 0 && hasBank(bk) ? '' : '<span class="small muted">' + (ready > 0 ? '' : 'Nothing to bill right now.') + '</span>') + '</div>' + billTable(bills, false) +
-    '<div class="card stack" style="max-width:560px"><div class="row between"><h3 style="margin:0">Your payment details</h3>' + btn(hasBank(bk) ? 'Edit' : 'Add', 'bank-open', {}, 'ghost') + '</div>' + bankSummary(bk) + '<p class="small muted" style="margin:0">These stay private between you and Gioia.</p></div>' +
-    '<h3 style="margin:0">Your fees</h3>' + feeTable(mine, 'mine') + '<h3 style="margin:0">Payments to you</h3>' + payoutTable(S.payouts.filter(p => p.member === S.me), false);
+  const billCard = ready > 0 ? '<div class="card row between prepcard" id="fp-bill"><span class="row" style="gap:12px;flex-wrap:nowrap">' + I('doc') + '<span><b>' + sm(ready) + ' is ready to bill</b><br><span class="small muted">' + (monthEnd ? 'It\'s the end of the month: a good time to send Gioia your invoice. ' : 'Send your invoice whenever suits you, for example at the end of each month. ') + (hasBank(bk) ? 'The portal can make the invoice for you with your payment details on it, or you can upload your own.' : D.uploads ? 'Upload your own invoice, or add your payment details below and the portal makes one for you.' : 'Add your payment details first, so they appear on the invoice.') + '</span></span></span>' + (hasBank(bk) || D.uploads ? btn(I('doc', 'sm') + 'Create invoice', 'bill-new') : btn('Add payment details', 'bank-open')) + '</div>' : '';
+  return '<div class="row between" style="align-items:flex-start"><div><h1>Fees &amp; payouts</h1><p class="muted" style="margin:4px 0 0">' + intro + '</p></div>' + btn(I('help', 'sm') + 'How billing works', 'tour-pay', {}, 'quiet') + '</div><div class="grid g3" id="fp-tiles">' + ktile('hourglass', 'g', 'Owing to you', owed) + ktile('cal', 'g', 'Not earned yet', up) + ktile('coins', 'o', 'Paid to you', paid) + '</div>' + billCard +
+    '<div class="row between"><h3 style="margin:0">Your invoices to Gioia</h3>' + (ready > 0 && hasBank(bk) ? '' : '<span class="small muted"' + (ready > 0 ? '>' : ' id="fp-howto">Nothing to bill right now.') + '</span>') + '</div><div id="fp-invoices">' + billTable(bills, false) + '</div>' +
+    '<div class="card stack" style="max-width:560px" id="fp-bank"><div class="row between"><h3 style="margin:0">Your payment details</h3>' + btn(hasBank(bk) ? 'Edit' : 'Add', 'bank-open', {}, 'ghost') + '</div>' + bankSummary(bk) + '<p class="small muted" style="margin:0">These stay private between you and Gioia.</p></div>' +
+    '<h3 style="margin:0" id="fp-fees">Your fees</h3>' + feeTable(mine, 'mine') + '<h3 style="margin:0">Payments to you</h3>' + payoutTable(S.payouts.filter(p => p.member === S.me), false);
 }
 function wsFeesPanel(c, s, m) {
   if (S.role === 'client') return '';
@@ -940,13 +940,14 @@ const TOURS = {
     ['[data-t="tasks"]', 'Tasks', 'Every task and where it stands. Open one to review, approve, ask for changes, comment or upload files.'],
     ['[data-t="files"]', 'Files', 'Everything shared between you and Gioia, sorted into folders.'],
     ['[data-t="invoices"]', 'Invoices', 'Your invoices with our bank and PayNow details, and your deposit if you have one.'],
+    ['[data-t="proposal"]', 'Proposal', 'The proposal you accepted, when it was signed, and the Terms and Conditions you agreed to. You can view it as a PDF any time.'],
     ['.topbar .iconbtn', 'Notifications', 'Updates appear here. We also email you whenever something needs you.'],
     ['[data-t="details"]', 'My details', 'Your contact details and email settings. You can replay this tour from the menu at the top right.']
   ],
   team: [
     ['[data-v="mytasks"]', 'My tasks', 'Everything assigned to you across all projects, with due dates. Start here each day. The number shows what is waiting on you.'],
     ['[data-v="clients"]', 'Clients', 'The projects you are working on. Open one to see its deliverables, tasks and files.'],
-    ['[data-v="earnings"]', 'Fees & payouts', 'Your fees for each task or month, what you have earned so far and what has been paid to you.'],
+    ['[data-v="earnings"]', 'Fees & payouts', 'Your fees for each task or month, what you have earned, and where you send Gioia your invoice to get paid.'],
     ['[data-v="files"]', 'Files', 'Files for your projects, sorted into folders.'],
     ['[data-v="templates"]', 'Templates', 'Saved step lists for work that passes back and forth with the client, such as articles, and ready-made preparation task lists.'],
     ['.topbar .iconbtn', 'Notifications', 'Updates on your tasks appear here. We also email you when something needs you.'],
@@ -955,9 +956,17 @@ const TOURS = {
   vendor: [
     ['[data-v="mytasks"]', 'My tasks', 'The tasks Gioia has assigned to you, with due dates. Open one to update it, upload files or comment.'],
     ['[data-v="clients"]', 'Projects', 'The projects your tasks belong to.'],
-    ['[data-v="earnings"]', 'Fees & payouts', 'What Gioia has agreed to pay you for each task, what is owing, and payments made.'],
+    ['[data-v="earnings"]', 'Fees & payouts', 'What Gioia has agreed to pay you for each task, what is owing, and where you send Gioia your invoice to get paid.'],
     ['[data-v="files"]', 'Files', 'Files on your tasks.'],
     ['.topbar .me', 'Your menu', 'Email settings, sign out, and Show me around to replay this tour.']
+  ],
+  payouts: [
+    ['#fp-tiles', 'Your fees at a glance', 'Owing to you is what you have earned and not been paid yet. A fee is earned when the task or step is marked done.'],
+    ['#fp-bank', 'Step 1: your payment details', 'Add your bank account and PayNow once. They go on every invoice the portal makes for you, so Gioia knows where to pay.'],
+    ['#fp-bill', 'Step 2: create your invoice', 'When there is something to bill, this shows how much. Click Create invoice, tick the fees to include, and check the number and date.'],
+    ['#fp-howto', 'Step 2: create your invoice', 'Once you have earned fees, a Create invoice button appears here, showing how much you can bill. Send your invoice whenever suits you, for example at the end of each month.'],
+    ['#fp-invoices', 'Step 3: send and track it', 'Use the invoice the portal makes (preview it first) or upload your own PDF. Then follow it here: sent, approved, any question from Gioia, and paid. You get an email when it is paid.'],
+    ['#fp-fees', 'Your fees', 'Every fee agreed with you and its status. Payments to you are listed below.']
   ],
   proposal: [
     ['[data-t="proposal"]', 'Your proposal', 'Read what we will do and the month-by-month breakdown. At the bottom, accept it, ask for changes or decline.'],
@@ -970,6 +979,7 @@ function tourSteps() { return (TOURS[S.tour.kind] || []).filter(st => { const el
 function drawTour() {
   let box = document.getElementById('tour');
   if (!S.tour && !S.tourChecked && D.tours) { S.tourChecked = true; const k = tourKind(); if (k && !D.tours[k] && !S.modal && !S.drawer) S.tour = { kind: k, i: 0 }; }
+  if (!S.tour && D.tours && S.view === 'earnings' && S.role !== 'client' && !isAdmin() && !D.tours.payouts && D.tours[tourKind()] && !S.modal && !S.drawer) S.tour = { kind: 'payouts', i: 0 };
   if (!S.tour) { if (box) box.remove(); return; }
   const steps = tourSteps(); if (!steps.length) { S.tour = null; if (box) box.remove(); return; }
   if (S.tour.i >= steps.length) S.tour.i = steps.length - 1;
@@ -1461,8 +1471,9 @@ const ACT = {
   },
   'tour-next'() { const n = tourSteps().length; if (S.tour.i < n - 1) { S.tour.i++; drawTour(); return 'skip'; } return ACT['tour-skip'](); },
   'tour-back'() { S.tour.i = Math.max(0, S.tour.i - 1); drawTour(); return 'skip'; },
-  'tour-skip'() { const k = S.tour && S.tour.kind; S.tour = null; drawTour(); if (k && !(D.tours || {})[k]) { D.tours = Object.assign({}, D.tours, { [k]: true }); api('tour-done', { kind: k }, { quiet: true }); } return 'skip'; },
+  'tour-skip'() { const k = S.tour && S.tour.kind; S.tour = null; if (k && !(D.tours || {})[k]) { D.tours = Object.assign({}, D.tours, { [k]: true }); api('tour-done', { kind: k }, { quiet: true }); } drawTour(); return 'skip'; },
   'tour-start'() { S.menu = null; S.tour = { kind: tourKind(), i: 0 }; },
+  'tour-pay'() { S.tour = { kind: 'payouts', i: 0 }; },
   async 'rfee-go'(d) { const run = S.modal.run; S.modal = null; await run(d.f); },
   'td-open'(d) { S.modal = { kind: 'tdel', cid: S.cid, id: d.id }; },
   async 'td-go'() { const r = await api('t-delete', { id: S.modal.id }, { cid: S.modal.cid, msg: 'Task deleted.' }); if (r) { S.modal = null; ACT['task-back'](); } },
