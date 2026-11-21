@@ -67,6 +67,7 @@ const groupOf = st => GROUPS.find(g => g[2].includes(st))[0];
 const yourTurn = t => t.status !== 'done' && (staged(t) ? (curStage(t) || {}).owner === 'client' : ['cdraft', 'creview'].includes(t.status) || (t.owner === 'client' && ['todo', 'progress'].includes(t.status)));
 const CSTATUS = { todo: 'Not started', progress: 'In progress', cdraft: 'My task', creview: 'My task: review', awaiting: 'Ready for approval', changes: 'Making your changes', approved: 'Approved', submitted: 'Received by Gioia', done: 'Completed' };
 const cLabel = t => S.role !== 'client' ? '' : t.status === 'awaiting' ? CSTATUS.awaiting : yourTurn(t) ? (CSTATUS[t.status] && t.status.startsWith('c') ? CSTATUS[t.status] : 'My task') : CSTATUS[t.status] || '';
+const CORDER = ['client', 'awaiting', 'todo', 'progress', 'approved', 'done'], cRank = t => S.role === 'client' ? CORDER.indexOf(tGroup(t)) : 0;
 const tGroup = t => S.role === 'client' && yourTurn(t) && t.status !== 'awaiting' ? 'client' : groupOf(t.status);
 const CGROUPS = { todo: 'Not started', progress: 'In progress', client: 'My tasks', awaiting: 'Ready for approval', approved: 'Approved', done: 'Completed' };
 const SICON = { cdraft: 'doc', creview: 'user', todo: 'circle', progress: 'refresh', changes: 'refresh', submitted: 'upload', awaiting: 'clock', approved: 'tick', done: 'tick' };
@@ -348,7 +349,8 @@ function workspacesPage() {
       return '<div class="acc' + (open ? ' open' : '') + '">' + accHead(c, 'ws-toggle', open, '<span class="row" style="gap:8px"><span class="chip">' + wsList(c).length + ' deliverables</span>' + (nt ? '<span class="pill warn">' + nt + ' need the team</span>' : '') + (nc ? '<span class="pill info">' + nc + ' with client</span>' : '') + '</span>') + (open ? '<div class="accbody">' + wsCards(c) + '</div>' : '') + '</div>'; }).join('') : '<div class="lockbox">No active deliverables yet. They appear when a quotation is accepted.</div>');
 }
 function chipsHtml(list, cur, act, labels) {
-  return '<div class="chips">' + GROUPS.filter(([k]) => cur === k || list.some(t => tGroup(t) === k)).map(([k, l, sts, ic]) => '<button class="fchip" data-a="' + act + '" data-g="' + k + '" aria-pressed="' + (cur === k) + '">' + I(ic, 'sm') + ((labels || {})[k] || l) + ' (' + list.filter(t => tGroup(t) === k).length + ')</button>').join('') + '</div>';
+  const G = S.role === 'client' ? CORDER.map(k => GROUPS.find(g => g[0] === k)) : GROUPS;
+  return '<div class="chips">' + G.filter(([k]) => cur === k || list.some(t => tGroup(t) === k)).map(([k, l, sts, ic]) => '<button class="fchip" data-a="' + act + '" data-g="' + k + '" aria-pressed="' + (cur === k) + '">' + I(ic, 'sm') + ((labels || {})[k] || l) + ' (' + list.filter(t => tGroup(t) === k).length + ')</button>').join('') + '</div>';
 }
 /* the face of whoever has the task now: the client, the current step's person, or the assignee */
 function whoAv(c, t, cls) {
@@ -816,7 +818,7 @@ function portalMonths(c, s) {
 function portalTasks(c) {
   const ids = wsList(c).map(s => s.id); if (S.pws && !ids.includes(S.pws)) S.pws = '';
   const ps = S.pws ? ql(c, S.pws) : null, pm = ps && ps.billing === 'monthly' && !ps.adhoc ? portalMonths(c, ps) : null;
-  const all = c.tasks.filter(t => canSee(c, t) && (!S.pws || t.svc === S.pws) && (!pm || t.m === pm.m)).sort((a, b) => (a.due || '9') < (b.due || '9') ? -1 : 1);
+  const all = c.tasks.filter(t => canSee(c, t) && (!S.pws || t.svc === S.pws) && (!pm || t.m === pm.m)).sort((a, b) => cRank(a) - cRank(b) || ((a.due || '9') < (b.due || '9') ? -1 : 1));
   const shown = S.ptg ? all.filter(t => tGroup(t) === S.ptg) : all;
   return '<div><h1>Tasks</h1><p class="muted" style="margin:4px 0 0">Review work, send what\'s needed and give your approvals.</p></div>' +
     '<label class="wsselect" for="p-ws">' + I('layers') + '<span style="flex:1;display:flex;flex-direction:column"><span class="small muted">Deliverable</span><select id="p-ws" data-pws="1"><option value="">All deliverables</option>' + wsList(c).map(s => '<option value="' + esc(s.id) + '"' + (S.pws === s.id ? ' selected' : '') + '>' + esc(short(s)) + '</option>').join('') + '</select></span></label>' +
