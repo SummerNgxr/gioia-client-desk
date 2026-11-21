@@ -574,3 +574,7 @@ details.faq p{margin:0;padding:0 18px 16px;line-height:1.55}
 @media (min-width:821px){.listrow{grid-template-columns:minmax(0,2.4fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)}}
 .listrow > span:last-child .pill,.listrow select.inl.pill{width:100%;max-width:190px;box-sizing:border-box;justify-content:flex-start;overflow:hidden;text-overflow:ellipsis}
 .crumbs .crumbco{display:inline-flex;align-items:center;gap:7px}
+/* assignee in lists: just the face and an arrow; the real dropdown (with full names) sits invisibly on top */
+.avpick{position:relative;display:inline-flex;align-items:center;gap:4px;color:var(--muted);cursor:pointer}
+.avpick select.inl{position:absolute;inset:0;width:100%;max-width:none;opacity:0;cursor:pointer}
+.avpick:hover .av{outline:2px solid var(--accent);outline-offset:1px}
