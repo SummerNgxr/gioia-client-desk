@@ -84,7 +84,7 @@ function nextStep(t) {
 }
 /* ---------- data (filled from the server) ---------- */
 const S = {
-  role: 'admin', me: '', view: 'clients', cid: '', ctab: 'overview', ws: null, wm: 1, mode: 'board', ifilter: 'all', qtab: 'invoices', ptab: 'overview',
+  role: 'admin', me: '', view: 'clients', cid: '', ctab: 'overview', ws: null, wm: 1, mode: 'list', ifilter: 'all', qtab: 'invoices', ptab: 'overview',
   drawer: null, modal: null, menu: null, q: '', toast: null, drag: null, nextQuote: 0, tid: null, back: null, confirm: null, mtg: '', mtq: '', mtClient: '', mtScope: 'me', mtMode: (() => { try { return localStorage.getItem('mtMode') || 'simple'; } catch (e) { return 'simple'; } })(), mtFilters: false, pws: '', ptg: '',
   wsOpen: [], billOpen: [], fOpen: [], fees: [], acq: '', acs: '', afq: '', afs: '', init: false,
   brand: { mark: 'GIOIA' }, team: [], catalogue: [], clients: [], accounts: [], payouts: [], feed: [], showArchived: false, invFormat: '', templates: []
