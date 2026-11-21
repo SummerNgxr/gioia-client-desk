@@ -584,7 +584,8 @@ const hasBank = b => !!(b && ((b.bankName && b.accNo && b.accName) || b.paynow))
 const billPill = b => '<span class="pill ' + BILLST[b.status][0] + '">' + BILLST[b.status][1] + (b.status === 'paid' && b.paidOn ? ' · ' + dshort(b.paidOn) : '') + '</span>';
 /* square-crop and shrink a photo in the browser so only a small image is stored */
 function shrinkPhoto(file) {
-  return new Promise((res, rej) => { const img = new Image(), url = URL.createObjectURL(file); img.onload = () => { const n = Math.min(img.width, img.height), cv = document.createElement('canvas'); cv.width = cv.height = 192; cv.getContext('2d').drawImage(img, (img.width - n) / 2, (img.height - n) / 2, n, n, 0, 0, 192, 192); URL.revokeObjectURL(url); res(cv.toDataURL('image/jpeg', 0.82)); }; img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('bad image')); }; img.src = url; });
+  // read the file as a data: address (blob: addresses are blocked by the site's security rules)
+  return new Promise((res, rej) => { const fr = new FileReader(); fr.onerror = () => rej(new Error('unreadable')); fr.onload = () => { const img = new Image(); img.onload = () => { const n = Math.min(img.width, img.height), cv = document.createElement('canvas'); cv.width = cv.height = 192; const g = cv.getContext('2d'); g.fillStyle = '#ffffff'; g.fillRect(0, 0, 192, 192); g.drawImage(img, (img.width - n) / 2, (img.height - n) / 2, n, n, 0, 0, 192, 192); res(cv.toDataURL('image/jpeg', 0.85)); }; img.onerror = () => rej(new Error('bad image')); img.src = fr.result; }; fr.readAsDataURL(file); });
 }
 let BILLFILE = null; // the member's own invoice file, kept while the invoice form is open
 function billDraft() {
@@ -1001,7 +1002,7 @@ function smallModal(M) {
   }
   if (M.kind === 'photo') {
     const mode = D.me.picMode, big = '<span class="av pic xl">' + picImg(D.me.pic, D.me.name) + '</span>';
-    return '<div class="modal" data-a="close-bg-modal"><div class="sheet stack" style="max-width:440px"><h2>Profile photo</h2><div class="row" style="gap:16px;flex-wrap:nowrap">' + big + '<p class="small muted" style="margin:0">' + (S.role === 'client' ? 'Shown to the Gioia team next to your comments and approvals.' : 'Shown next to your name on tasks, comments and the team list.') + (D.me.hasGoogle ? ' We use your Google photo unless you upload your own.' : S.role ? ' We have not received a photo from your Google account yet. It is picked up when you sign in, or you can upload one here.' : '') + '</p></div>' +
+    return '<div class="modal" data-a="close-bg-modal"><div class="sheet stack" style="max-width:440px"><h2>Profile photo</h2><div class="row" style="gap:16px;flex-wrap:nowrap">' + big + '<p class="small muted" style="margin:0">' + (S.role === 'client' ? 'Shown to the Gioia team next to your comments and approvals.' : 'Shown next to your name on tasks, comments and the team list.') + (mode === 'custom' ? ' This is the photo you uploaded.' + (D.me.hasGoogle ? ' You can switch back to your Google photo.' : '') : D.me.hasGoogle ? ' We use your Google photo unless you upload your own.' : ' We have not received a photo from your Google account yet. It is picked up when you sign in, or you can upload one here.') + '</p></div>' +
       '<div class="stack" style="gap:8px"><label class="btn" style="cursor:pointer;justify-content:center">' + I('upload', 'sm') + 'Upload a photo<input type="file" data-picfile="1" accept="image/*" hidden></label>' + (D.me.hasGoogle && mode !== 'google' ? btn('Use my Google photo', 'photo-set', { m: 'google' }, 'ghost') : '') + (mode !== 'off' ? btn('Show my initials instead', 'photo-set', { m: 'off' }, 'quiet') : '') + '</div><div class="row">' + btn('Done', 'close-modal', {}, 'quiet') + '</div></div></div>';
   }
   if (M.kind === 'bank') {
