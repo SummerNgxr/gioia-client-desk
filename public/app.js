@@ -1876,3 +1876,5 @@ document.addEventListener('focusout', () => setTimeout(applyPending, 50));
 document.addEventListener('click', () => setTimeout(applyPending, 50));
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && D && D.me) { if (S.modal) S.modal = null; else if (S.drawer) S.drawer = null; else S.menu = null; render(); } });
 load();
+/* a photo that will not load (for example a Google address that has expired) falls back to initials */
+document.addEventListener('error', e => { const img = e.target; if (img && img.tagName === 'IMG' && img.parentElement && img.parentElement.classList.contains('pic')) { const av = img.parentElement, nm = av.getAttribute('title') || (D && D.me && D.me.name) || '?'; av.classList.remove('pic'); av.textContent = initials(nm); } }, true);
