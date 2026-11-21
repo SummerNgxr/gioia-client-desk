@@ -350,7 +350,8 @@ function workspacesPage() {
 }
 function chipsHtml(list, cur, act, labels) {
   const G = S.role === 'client' ? CORDER.map(k => GROUPS.find(g => g[0] === k)) : GROUPS;
-  return '<div class="chips">' + G.filter(([k]) => cur === k || list.some(t => tGroup(t) === k)).map(([k, l, sts, ic]) => '<button class="fchip" data-a="' + act + '" data-g="' + k + '" aria-pressed="' + (cur === k) + '">' + I(ic, 'sm') + ((labels || {})[k] || l) + ' (' + list.filter(t => tGroup(t) === k).length + ')</button>').join('') + '</div>';
+  const allChip = S.role === 'client' ? '<button class="fchip" data-a="' + act + '" data-g="" aria-pressed="' + !cur + '">' + I('list', 'sm') + 'All (' + list.length + ')</button>' : '';
+  return '<div class="chips">' + G.filter(([k]) => cur === k || list.some(t => tGroup(t) === k)).map(([k, l, sts, ic]) => '<button class="fchip" data-a="' + act + '" data-g="' + k + '" aria-pressed="' + (cur === k) + '">' + I(ic, 'sm') + ((labels || {})[k] || l) + ' (' + list.filter(t => tGroup(t) === k).length + ')</button>').join('') + allChip + '</div>';
 }
 /* the face of whoever has the task now: the client, the current step's person, or the assignee */
 function whoAv(c, t, cls) {
@@ -1555,7 +1556,7 @@ const ACT = {
   'open-client-tab'(d) { S.cid = d.id; S.view = 'client'; S.ctab = d.t; S.q = ''; },
   'open-ws'(d) { pickClient(d); S.ws = d.id; S.wm = +d.m || 1; S.q = ''; if (S.role === 'client') { S.ptab = 'tasks'; S.pws = d.id; S.ptg = ''; S.pwm = +d.m || 0; } else S.view = 'ws'; },
   'pwm'(d) { S.pwm = +d.m; S.ptg = ''; },
-  ctab(d) { S.ctab = d.t; }, ptab(d) { S.ptab = d.t; }, qtab(d) { S.qtab = d.t; }, ifilter(d) { S.ifilter = d.f; },
+  ctab(d) { S.ctab = d.t; }, ptab(d) { S.ptab = d.t; if (d.t === 'tasks' && S.role === 'client') { const c = client(), open = c ? c.tasks.filter(t => canSee(c, t)) : []; S.ptg = open.some(t => tGroup(t) === 'client') ? 'client' : open.some(t => tGroup(t) === 'awaiting') ? 'awaiting' : ''; } }, qtab(d) { S.qtab = d.t; }, ifilter(d) { S.ifilter = d.f; },
   ws(d) { S.ws = d.id; }, wm(d) { S.wm = +d.m; }, mode(d) { S.mode = d.m; },
   task(d) { S.editSteps = null; pickClient(d); S.back = { view: S.view, ptab: S.ptab }; S.tid = d.id; S.confirm = null; S.q = ''; if (staff()) S.view = 'task'; else S.ptab = 'task'; const mn = document.querySelector('.main'); if (mn) mn.scrollTop = 0; window.scrollTo(0, 0); },
   'task-back'() { const b = S.back || {}; S.confirm = null; if (staff()) S.view = b.view && b.view !== 'task' ? b.view : 'mytasks'; else S.ptab = b.ptab && b.ptab !== 'task' ? b.ptab : 'tasks'; },
