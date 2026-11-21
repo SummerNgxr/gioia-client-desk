@@ -555,3 +555,4 @@ details.faq p{margin:0;padding:0 18px 16px;line-height:1.55}
 .mstrip span.ok{background:var(--accent-soft);color:var(--accent);border-color:transparent}
 .mstrip span.cur{font-weight:700;border-color:var(--accent)}
 .av.sm{width:20px;height:20px;font-size:9px}
+.tli.tlic .tlic-st{display:inline-flex;align-items:center;gap:8px;justify-content:flex-end}

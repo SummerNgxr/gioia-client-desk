@@ -75,10 +75,10 @@ const svcIcon = sid => SVCI[String(sid).split('-x')[0]] || 'check';
 function nextStep(t) {
   if (t.status === 'done') return null;
   if (staged(t)) { const s = curStage(t); if (!s) return null; return [(s.owner === 'client' ? 'Client' : 'Team') + ': ' + s.title, 'Step ' + (t.stage + 1) + ' of ' + t.stages.length + (s.kind === 'approve' ? ', needs approval' : '')]; }
-  if (t.owner === 'client') return t.status === 'submitted' ? ['Team to mark as received', 'Once the team has what they need'] : ['Client to send', 'Waiting on the client'];
+  if (t.owner === 'client') return t.status === 'submitted' ? ['Team to mark as received', 'Once the team has what they need'] : ['Client to send', 'Waiting on client'];
   if (t.status === 'awaiting') return ['Client to review', 'The client approves or requests changes'];
   if (t.status === 'approved') return ['Team to mark task completed', 'Once all updates are finalised'];
-  if (t.status === 'cdraft' || t.status === 'creview') return ['Client to ' + (t.status === 'cdraft' ? 'send their draft' : 'review'), 'Waiting on the client'];
+  if (t.status === 'cdraft' || t.status === 'creview') return ['Client to ' + (t.status === 'cdraft' ? 'send their draft' : 'review'), 'Waiting on client'];
   return t.approve ? ['Team to submit for client review', 'When the work is ready'] : ['Team to mark task completed', 'When the work is complete'];
 }
 /* ---------- data (filled from the server) ---------- */
@@ -227,18 +227,21 @@ function monthStrip(c, cur) {
   return '<span class="mstrip" aria-label="Months of the contract">' + Array.from({ length: c.quote.months }, (_, k) => k + 1).map(x => { const paid = inv(c, x).status === 'paid'; return '<span class="' + (paid ? 'ok' : 'lk') + (x === cur ? ' cur' : '') + '" title="' + MONTHS[ym(c, x).mo] + ' ' + ym(c, x).y + (paid ? ': unlocked' : ': unlocks when its invoice is paid') + '">' + MONTHS[ym(c, x).mo].slice(0, 3) + (paid ? '' : ' 🔒') + '</span>'; }).join('') + '</span>';
 }
 /* a deliverable's state, checked in this order: completed, overdue, action required, behind schedule, on track */
-function wsStatus(c, s, m, list, need) {
+function wsStatus(c, s, m, list) {
   if (list.length && list.every(t => t.status === 'done')) return pill('done', 'Completed');
   const late = list.filter(t => t.status !== 'done' && t.due && t.due < TODAY).length;
   if (late) return '<span class="pill crit">' + I('clock', 'sm') + 'Overdue (' + late + ')</span>';
-  if (need) return '<span class="pill warn">' + I('bell', 'sm') + 'Action required (' + need + ')</span>';
+  // the same state for everyone; the person who needs to act reads "Action required"
+  const onClient = list.filter(needsClient).length, onTeam = list.filter(needsTeam).length;
+  if (staff() && onTeam) return '<span class="pill warn">' + I('bell', 'sm') + 'Action required (' + onTeam + ')</span>';
+  if (onClient) return '<span class="pill warn">' + I(staff() ? 'user' : 'bell', 'sm') + (staff() ? 'Waiting on client (' : 'Action required (') + onClient + ')</span>';
   if (s.billing === 'monthly' && m && list.length) { const end = lastDay(c, m), left = Math.round((Date.parse(end) - Date.parse(TODAY)) / 864e5), done = list.filter(t => t.status === 'done').length;
     if (left >= 0 && left < 7 && done / list.length < 0.5) return '<span class="pill gold">' + I('hourglass', 'sm') + 'Behind schedule</span>'; }
   return pill('approved', 'On track');
 }
 function wsCards(c) {
   return '<div class="grid g2">' + (isAdmin() && c.prep !== 'open' && c.quote.lines.length ? '<div class="wscard" style="cursor:default;border-style:dashed"><div class="row between"><span class="eyebrow">Before ' + mName(c, 1) + '</span>' + pill('locked', 'Not started') + '</div><h2>Preparation</h2><span class="small muted">Kick-off and set-up tasks, such as logins, brand assets and goals. Unlocks by itself when the deposit or first invoice is paid.</span><div>' + '<span class="row" style="gap:6px">' + btn(I('plus', 'sm') + 'Start preparation', 'prep-start', { cid: c.id }, 'ghost') + btn(I('list', 'sm') + 'Use a template', 'ptapply-open', { cid: c.id }, 'quiet') + '</span></div></div>' : '') + wsList(c).filter(s => s.billing !== 'prep' || c.prep === 'open').map(s => { const m = s.adhoc || freeWs(s) ? 0 : s.billing === 'monthly' ? currentMonth(c) : 1, list = wsTasks(c, s.id, m), i = wsInvoice(c, s, m), open = wsOpenFor(c, s, m), done = list.filter(t => t.status === 'done').length, pct = list.length ? Math.round(done / list.length * 100) : 0, need = open ? list.filter(staff() ? needsTeam : needsClient).length : 0;
-    return '<button class="wscard" data-a="open-ws" data-cid="' + c.id + '" data-id="' + esc(s.id) + '" data-m="' + (m || 1) + '"><div class="row between"><span class="eyebrow">' + (s.billing === 'prep' ? 'Before ' + mName(c, 1) : s.billing === 'general' ? 'Ad-hoc' : s.adhoc ? 'Added service' : s.billing === 'once' ? 'One-off' : mName(c, m)) + '</span>' + (open ? wsStatus(c, s, m, list, need) : pill('locked', 'Locked')) + '</div><h2>' + esc(short(s)) + '</h2><div class="bar"><i style="width:' + pct + '%"></i></div><span class="small muted">' + done + ' of ' + list.length + ' tasks completed</span>' + (s.billing === 'monthly' && !s.adhoc && !freeWs(s) ? monthStrip(c, m) : '') + '</button>'; }).join('') + '</div>';
+    return '<button class="wscard" data-a="open-ws" data-cid="' + c.id + '" data-id="' + esc(s.id) + '" data-m="' + (m || 1) + '"><div class="row between"><span class="eyebrow">' + (s.billing === 'prep' ? 'Before ' + mName(c, 1) : s.billing === 'general' ? 'Ad-hoc' : s.adhoc ? 'Added service' : s.billing === 'once' ? 'One-off' : mName(c, m)) + '</span>' + (open ? wsStatus(c, s, m, list) : pill('locked', 'Locked')) + '</div><h2>' + esc(short(s)) + '</h2><div class="bar"><i style="width:' + pct + '%"></i></div><span class="small muted">' + done + ' of ' + list.length + ' tasks completed</span>' + (s.billing === 'monthly' && !s.adhoc && !freeWs(s) ? monthStrip(c, m) : '') + '</button>'; }).join('') + '</div>';
 }
 function overviewTab(c) {
   const open = c.tasks.filter(t => taskOpen(c, t)), next = c.invoices.find(i => i.status !== 'paid' && !invLocked(c, i.m));
@@ -348,7 +351,7 @@ function chipsHtml(list, cur, act, labels) {
 }
 /* the face of whoever has the task now: the client, the current step's person, or the assignee */
 function whoAv(c, t, cls) {
-  const cs = curStage(t), onClient = staged(t) && cs ? cs.owner === 'client' : t.owner === 'client';
+  const cs = curStage(t), onClient = t.status !== 'done' && (staged(t) && cs ? cs.owner === 'client' : t.owner === 'client' || ['cdraft', 'creview', 'awaiting'].includes(t.status));
   if (onClient) return '<span class="av ' + (c.pic ? 'pic ' : 'cl ') + (cls || '') + '" title="' + esc(c.contact || 'Client') + '">' + (c.pic ? picImg(c.pic, c.contact) : esc(initials(c.contact || 'C'))) + '</span>';
   const id = (staged(t) && cs && cs.assignee) || t.assignee;
   return id ? avatar(id, cls) : '<span class="av ' + (cls || '') + '" title="Unassigned">–</span>';
@@ -377,8 +380,8 @@ function compactRow(c, t, showWho) {
 }
 function simpleTasks(rows, showWho) {
   const open = rows.filter(r => r.t.status !== 'done'), mine = open.filter(r => !waitsClient(r.t)), waiting = open.filter(r => waitsClient(r.t)), wk = plusDays(7);
-  const buckets = [['overdue', 'Overdue', mine.filter(r => r.t.due && r.t.due < TODAY), true], ['today', 'Due today', mine.filter(r => r.t.due === TODAY), true], ['week', 'Next 7 days', mine.filter(r => r.t.due > TODAY && r.t.due <= wk), true], ['later', 'Later', mine.filter(r => !r.t.due || r.t.due > wk), !mine.some(r => r.t.due && r.t.due <= wk)], ['waiting', 'Waiting on the client', waiting, false]];
-  const sum = [[buckets[0][2].length, 'overdue'], [buckets[1][2].length, 'due today'], [buckets[2][2].length, 'due in the next 7 days'], [waiting.length, 'waiting on the client']].filter(x => x[0]).map(x => '<b>' + x[0] + '</b> ' + x[1]).join(' · ');
+  const buckets = [['overdue', 'Overdue', mine.filter(r => r.t.due && r.t.due < TODAY), true], ['today', 'Due today', mine.filter(r => r.t.due === TODAY), true], ['week', 'Next 7 days', mine.filter(r => r.t.due > TODAY && r.t.due <= wk), true], ['later', 'Later', mine.filter(r => !r.t.due || r.t.due > wk), !mine.some(r => r.t.due && r.t.due <= wk)], ['waiting', 'Waiting on client', waiting, false]];
+  const sum = [[buckets[0][2].length, 'overdue'], [buckets[1][2].length, 'due today'], [buckets[2][2].length, 'due in the next 7 days'], [waiting.length, 'waiting on client']].filter(x => x[0]).map(x => '<b>' + x[0] + '</b> ' + x[1]).join(' · ');
   S.mtDef = Object.fromEntries(buckets.map(b => [b[0], b[3]]));
   const open1 = k => S.mtOpen && k in S.mtOpen ? S.mtOpen[k] : null;
   const body = buckets.filter(b => b[2].length).map(([k, l, list, dflt]) => { const isOpen = open1(k) === null ? dflt : open1(k), LIM = 8, more = S.mtMore && S.mtMore[k];
