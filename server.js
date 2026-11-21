@@ -39,7 +39,7 @@ async function legalPage(res, title, body) {
 }
 app.get('/privacy', (req, res) => legalPage(res, 'Privacy Policy', (co, mail) =>
   '<p>Client Desk is the client portal of ' + co + '. It is used by our team and by clients we work with.</p>' +
-  '<h2>What we collect</h2><p>When you sign in with Google, we receive your name and email address. We use your email only to recognise you and show you the workspace you are entitled to. We also store what you enter in the portal: contact details, comments, approvals and links you share.</p>' +
+  '<h2>What we collect</h2><p>When you sign in with Google, we receive your name and email address. We use your email only to recognise you and show you the projects you are entitled to. We also store what you enter in the portal: contact details, comments, approvals and links you share.</p>' +
   '<h2>How we use it</h2><p>Only to run the client portal and the services we provide to you: showing your quotations, invoices and tasks, recording approvals, and notifying the people working on your account.</p>' +
   '<h2>Sharing</h2><p>We do not sell your information or share it with third parties, apart from the hosting provider that runs the portal on our behalf. We handle personal data in line with Singapore\'s Personal Data Protection Act (PDPA).</p>' +
   '<h2>Google user data</h2><p>Our use of information received from Google is limited to the purposes above and follows the Google API Services User Data Policy, including its Limited Use requirements.</p>' +
