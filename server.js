@@ -68,8 +68,16 @@ app.get('/auth/google/callback', async (req, res) => {
     // the photo usually comes in the sign-in token; if not, ask Google's profile endpoint with the same sign-in
     let picture = claims.picture || '';
     if (!picture && tok.access_token) { try { const u = await fetch('https://openidconnect.googleapis.com/v1/userinfo', { headers: { Authorization: 'Bearer ' + tok.access_token } }); if (u.ok) picture = (await u.json()).picture || ''; } catch (e) { console.error('photo lookup', e.message); } }
-    console.log('sign-in: Google photo ' + (picture ? 'found (' + String(picture).split('/')[2] + ')' : 'not provided'));
-    Core.saveGooglePic(req.session.email, picture).catch(e => console.error('photo', e.message));
+    // keep a small copy of the photo in the app: Google work-account photos often will not load on other sites
+    let photo = '';
+    if (/^https:\/\/[a-z0-9.-]+\.(googleusercontent|ggpht)\.com\//i.test(picture)) {
+      const src = picture.replace(/=s\d+(-c)?$/, '') + '=s192-c';
+      for (const h of [{}, { Authorization: 'Bearer ' + tok.access_token }]) {
+        try { const r = await fetch(src, { headers: h }); const ct = r.headers.get('content-type') || ''; if (r.ok && /^image\//.test(ct)) { const buf = Buffer.from(await r.arrayBuffer()); if (buf.length < 120000) { photo = 'data:' + ct.split(';')[0] + ';base64,' + buf.toString('base64'); break; } } else console.log('photo download: ' + r.status + ' ' + ct); } catch (e) { console.error('photo download', e.message); }
+      }
+    }
+    console.log('sign-in: Google photo ' + (photo ? 'saved (' + Math.round(photo.length / 1024) + ' KB)' : picture ? 'address only (' + String(picture).split('/')[2] + ')' : 'not provided'));
+    Core.saveGooglePic(req.session.email, photo || picture).catch(e => console.error('photo', e.message));
     res.redirect('/');
   } catch (e) { console.error('sign-in failed', e.message); res.redirect('/?signin=failed'); }
 });
