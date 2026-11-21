@@ -681,3 +681,11 @@ button.ccr{cursor:pointer}button.ccr:hover{background:var(--card-2)}
 .ivr2>span,.ccr>span{min-width:0}
 .ivr2 .num,.ccr .num{white-space:nowrap}
 .ivr2{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) 105px 95px 90px 105px 120px 70px}
+.alinks{gap:10px;flex-wrap:wrap}
+.depbox{gap:14px}
+.dgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.dstat{display:flex;flex-direction:column;gap:2px;padding:12px 14px;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+.dstat .num{font:600 18px var(--display)}.dstat.hl{background:var(--ok-bg)}.dstat.hl .num{color:var(--ok)}
+.aur{display:grid;grid-template-columns:170px 140px 1fr;gap:14px;padding:12px 22px;border-bottom:1px solid var(--line);align-items:start}
+.aur:last-child{border-bottom:0}
+@media (max-width:900px){.dgrid{grid-template-columns:1fr 1fr}.aur{grid-template-columns:1fr}}
