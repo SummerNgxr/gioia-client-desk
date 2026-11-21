@@ -24,6 +24,7 @@
       catch (e) { return reply({ error: e.message }); }
     }
     if (url.startsWith('/api/vendor-upload')) { const q = new URLSearchParams(url.split('?')[1] || ''); try { await Core.vendorUploadTarget(who, q.get('member')); const id = 'proto-' + (++fileSeq); FILES.set(id, opt.body); return { ok: true, json: async () => ({ fileId: id }) }; } catch (e) { return { ok: false, json: async () => ({ error: e.message }) }; } }
+    if (url.startsWith('/api/receipt-upload')) { const q = new URLSearchParams(url.split('?')[1] || ''); try { await Core.receiptTarget(who, q.get('cid')); const id = 'proto-' + (++fileSeq); FILES.set(id, opt.body); return { ok: true, json: async () => ({ fileId: id }) }; } catch (e) { return { ok: false, json: async () => ({ error: e.message }) }; } }
     if (url.startsWith('/api/backup-now')) { const cl = await pool.connect(); const data = JSON.stringify(await Core.exportAll()); await Core.tx(c => Core.setKV(c, 'lastBackup', { day: new Date().toISOString().slice(0, 10), at: new Date().toISOString(), ok: true, size: data.length })); return reply({ ok: true, last: { ok: true } }); }
     try { return reply(await Core.runAction(who, JSON.parse(opt.body))); }
     catch (e) { if (e instanceof Core.Refuse) return reply({ error: e.message }); console.error(e); return reply({ error: 'Something went wrong: ' + e.message }); }
@@ -35,6 +36,8 @@
     if (vf) { e.preventDefault(); e.stopPropagation(); try { const po = await Core.vendorFile(who, vf.getAttribute('href').split('/').pop()), blob = FILES.get(po.file); if (!blob) { alert('In the prototype, only files uploaded since the page was loaded can be opened.'); return; } window.open(URL.createObjectURL(blob), '_blank'); } catch (er) { alert(er.message); } return; }
     const bf = e.target.closest('a[href^="/api/bill-file/"]');
     if (bf) { e.preventDefault(); e.stopPropagation(); try { const b = await Core.billFile(who, bf.getAttribute('href').split('/').pop()), blob = FILES.get(b.file); if (!blob) { alert('In the prototype, only files uploaded since the page was loaded can be opened.'); return; } window.open(URL.createObjectURL(blob), '_blank'); } catch (er) { alert(er.message); } return; }
+    const rc = e.target.closest('a[href^="/api/receipt/"]');
+    if (rc) { e.preventDefault(); e.stopPropagation(); try { const [, , , cid, id] = rc.getAttribute('href').split('/'); const x = await Core.receiptFile(who, cid, id), blob = FILES.get(x.file); if (!blob) { alert('In the prototype, only files uploaded since the page was loaded can be opened.'); return; } window.open(URL.createObjectURL(blob), '_blank'); } catch (er) { alert(er.message); } return; }
     const bk = e.target.closest('a[href="/api/backup"]');
     if (bk) { e.preventDefault(); e.stopPropagation(); const data = JSON.stringify(await Core.exportAll(), null, 1), a2 = document.createElement('a'); a2.href = URL.createObjectURL(new Blob([data], { type: 'application/json' })); a2.download = 'client-desk-backup-prototype.json'; a2.click(); return; }
   }, true);
