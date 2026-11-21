@@ -573,3 +573,4 @@ details.faq p{margin:0;padding:0 18px 16px;line-height:1.55}
 .listrow select.inl.pill{width:auto;font:600 12px var(--body);padding:3px 22px 3px 10px;min-height:0;line-height:1.5}
 @media (min-width:821px){.listrow{grid-template-columns:minmax(0,2.4fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)}}
 .listrow > span:last-child .pill,.listrow select.inl.pill{width:100%;max-width:190px;box-sizing:border-box;justify-content:flex-start;overflow:hidden;text-overflow:ellipsis}
+.crumbs .crumbco{display:inline-flex;align-items:center;gap:7px}
