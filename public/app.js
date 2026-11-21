@@ -302,24 +302,27 @@ function chipsHtml(list, cur, act, labels) {
 }
 function taskRow(c, t, mode) {
   const s = ql(c, t.svc), m = member(t.assignee), cs = curStage(t), sub = (staged(t) ? (cs ? 'Step ' + (t.stage + 1) + ' of ' + t.stages.length + ': ' + cs.title + (cs.owner === 'client' ? (S.role === 'client' ? ' (you)' : ' (client)') : ' (team)') : 'All ' + t.stages.length + ' steps completed') + ' · ' : '') + (t.desc || (short(s) + (t.m ? ' · ' + mName(c, t.m) : '')));
-  const who = t.owner === 'client' ? (S.role === 'client' ? 'You' : esc(c.contact || 'Client')) : esc(m ? m.name : 'Unassigned');
+  const sm2 = staged(t) && cs ? (cs.owner === 'client' ? null : member(cs.assignee)) : null;
+  const who = (staged(t) && cs ? cs.owner === 'client' : t.owner === 'client') ? (S.role === 'client' ? 'You' : esc(c.contact || 'Client')) : esc(sm2 ? sm2.name : m ? m.name : staged(t) && cs ? 'Team' : 'Unassigned');
   const late = t.due && t.due < TODAY && t.status !== 'done';
   return '<div class="tli" data-a="task" data-id="' + t.id + '" data-cid="' + c.id + '"><span class="ticon">' + I(svcIcon(t.svc)) + '</span><div class="stack" style="gap:4px;min-width:0"><b>' + esc(t.title) + '</b><span class="small muted clamp">' + esc(sub) + '</span><span>' + pill(t.status, S.role === 'client' && t.status === 'awaiting' ? 'Awaiting your approval' : '') + '</span></div>' +
-    '<span class="row small c3" style="gap:8px;flex-wrap:nowrap">' + (mode === 'client' ? I('building', 'sm') + '<span>' + esc(c.company) + '<br><span class="muted">' + esc(pname(c)) + '</span></span>' : I('user', 'sm') + who) + '</span><span class="row small c4" style="gap:8px;flex-wrap:nowrap' + (late ? ';color:var(--crit);font-weight:600' : '') + '">' + (t.due ? I('cal', 'sm') + dlong(t.due) : '<span class="muted">No due date</span>') + '</span>' + I('chev', 'sm') + '</div>';
+    '<span class="row small c3" style="gap:8px;flex-wrap:nowrap">' + (mode === 'both' ? I('building', 'sm') + '<span>' + esc(c.company) + '<br><span class="muted">' + esc(pname(c)) + '</span><br><span class="row" style="gap:4px;margin-top:2px">' + I('user', 'sm') + who + '</span></span>' : mode === 'client' ? I('building', 'sm') + '<span>' + esc(c.company) + '<br><span class="muted">' + esc(pname(c)) + '</span></span>' : I('user', 'sm') + who) + '</span><span class="row small c4" style="gap:8px;flex-wrap:nowrap' + (late ? ';color:var(--crit);font-weight:600' : '') + '">' + (t.due ? I('cal', 'sm') + dlong(t.due) : '<span class="muted">No due date</span>') + '</span>' + I('chev', 'sm') + '</div>';
 }
 function taskTable(rows, mode) {
-  return '<div class="tlist"><div class="tlh"><span></span><span>Task</span><span>' + (mode === 'client' ? 'Client' : 'Assignee') + '</span><span>Due date</span><span></span></div>' + (rows.map(({ c, t }) => taskRow(c, t, mode)).join('') || '<p class="muted" style="padding:16px;margin:0">No tasks match.</p>') + '</div>';
+  return '<div class="tlist"><div class="tlh"><span></span><span>Task</span><span>' + (mode === 'both' ? 'Client · assignee' : mode === 'client' ? 'Client' : 'Assignee') + '</span><span>Due date</span><span></span></div>' + (rows.map(({ c, t }) => taskRow(c, t, mode)).join('') || '<p class="muted" style="padding:16px;margin:0">No tasks match.</p>') + '</div>';
 }
 function myTasksPage() {
-  const scope = isAdmin() ? S.mtScope : 'me', q = S.mtq.toLowerCase();
+  // admins and team members can widen this to everyone's tasks on their projects; vendors only ever see their own
+  const scope = vendorMe() ? 'me' : S.mtWho ? 'all' : S.mtScope, q = S.mtq.toLowerCase(), who = vendorMe() ? '' : S.mtWho || '';
+  const whoOk = t => !who || (who === '@client' ? t.owner === 'client' || (staged(t) && (curStage(t) || {}).owner === 'client') : who === '@none' ? t.owner !== 'client' && !t.assignee && !(t.stages || []).some(s => s.assignee) : t.assignee === who || L.stageMine(t, who));
   let rows = [];
-  S.clients.forEach(c => c.tasks.forEach(t => { if (canSee(c, t) && (scope === 'all' || t.assignee === S.me || L.stageMine(t, S.me)) && (!S.mtClient || c.id === S.mtClient) && (!q || (t.title + ' ' + c.company + ' ' + short(ql(c, t.svc))).toLowerCase().includes(q))) rows.push({ c, t }); }));
+  S.clients.forEach(c => c.tasks.forEach(t => { if (canSee(c, t) && whoOk(t) && (scope === 'all' || t.assignee === S.me || L.stageMine(t, S.me)) && (!S.mtClient || c.id === S.mtClient) && (!q || (t.title + ' ' + c.company + ' ' + short(ql(c, t.svc))).toLowerCase().includes(q))) rows.push({ c, t }); }));
   rows.sort((a, b) => (a.t.due || '9') < (b.t.due || '9') ? -1 : 1);
   const all = rows.map(r => r.t), shown = S.mtg ? rows.filter(r => groupOf(r.t.status) === S.mtg) : rows;
-  return '<div class="row between"><div><h1>My tasks</h1><p class="muted" style="margin:4px 0 0">' + (scope === 'all' ? 'Every task across clients.' : 'Your assignments across clients. Track progress and deliver work.') + '</p></div>' + '<div class="row">' + (isAdmin() ? '<div class="seg"><button data-a="mt-scope" data-s="me" aria-pressed="' + (scope === 'me') + '">Assigned to me</button><button data-a="mt-scope" data-s="all" aria-pressed="' + (scope === 'all') + '">Everyone</button></div>' : '') + (S.clients.length ? btn(I('plus', 'sm') + 'Add task', 'task-new') : '') + '</div></div>' +
-    '<div class="row" style="flex-wrap:nowrap"><div class="search" style="max-width:none">' + I('search') + '<input id="mt-q" type="search" data-mtq="1" placeholder="Search tasks, clients or workspaces…" value="' + esc(S.mtq) + '" aria-label="Search tasks"></div><button class="btn quiet" data-a="mt-filters" aria-expanded="' + S.mtFilters + '">' + I('filter', 'sm') + 'Filters' + (S.mtClient ? ' (1)' : '') + '</button></div>' +
-    (S.mtFilters ? '<div class="card row"><div class="field" style="min-width:240px"><label for="mt-client">Client</label><select id="mt-client" data-mtclient="1"><option value="">All clients</option>' + S.clients.map(c => '<option value="' + c.id + '"' + (S.mtClient === c.id ? ' selected' : '') + '>' + esc(cname(c)) + '</option>').join('') + '</select></div>' + (S.mtClient || S.mtg ? '<button class="link" data-a="mt-clear" style="align-self:end;margin-bottom:10px">Clear filters</button>' : '') + '</div>' : '') +
-    chipsHtml(all, S.mtg, 'mt-group') + taskTable(shown, 'client');
+  return '<div class="row between"><div><h1>My tasks</h1><p class="muted" style="margin:4px 0 0">' + (scope === 'all' ? (isAdmin() ? 'Every task across clients.' : 'Every task on the projects you work on.') : 'Your assignments across clients. Track progress and deliver work.') + '</p></div>' + '<div class="row">' + (!vendorMe() ? '<div class="seg"><button data-a="mt-scope" data-s="me" aria-pressed="' + (scope === 'me') + '">Assigned to me</button><button data-a="mt-scope" data-s="all" aria-pressed="' + (scope === 'all') + '">Everyone</button></div>' : '') + (S.clients.length ? btn(I('plus', 'sm') + 'Add task', 'task-new') : '') + '</div></div>' +
+    '<div class="row" style="flex-wrap:nowrap"><div class="search" style="max-width:none">' + I('search') + '<input id="mt-q" type="search" data-mtq="1" placeholder="Search tasks, clients or workspaces…" value="' + esc(S.mtq) + '" aria-label="Search tasks"></div><button class="btn quiet" data-a="mt-filters" aria-expanded="' + S.mtFilters + '">' + I('filter', 'sm') + 'Filters' + ((S.mtClient ? 1 : 0) + (who ? 1 : 0) ? ' (' + ((S.mtClient ? 1 : 0) + (who ? 1 : 0)) + ')' : '') + '</button></div>' +
+    (S.mtFilters ? '<div class="card row"><div class="field" style="min-width:240px"><label for="mt-client">Client</label><select id="mt-client" data-mtclient="1"><option value="">All clients</option>' + S.clients.map(c => '<option value="' + c.id + '"' + (S.mtClient === c.id ? ' selected' : '') + '>' + esc(cname(c)) + '</option>').join('') + '</select></div>' + (!vendorMe() ? '<div class="field" style="min-width:220px"><label for="mt-who">Assignee</label><select id="mt-who" data-mtwho="1"><option value="">Anyone</option>' + S.team.slice().sort((x, y) => x.name.localeCompare(y.name)).map(m => '<option value="' + m.id + '"' + (who === m.id ? ' selected' : '') + '>' + esc(m.name) + (m.id === S.me ? ' (you)' : '') + '</option>').join('') + '<option value="@client"' + (who === '@client' ? ' selected' : '') + '>Client</option><option value="@none"' + (who === '@none' ? ' selected' : '') + '>Unassigned</option></select></div>' : '') + (S.mtClient || S.mtg || who ? '<button class="link" data-a="mt-clear" style="align-self:end;margin-bottom:10px">Clear filters</button>' : '') + '</div>' : '') +
+    chipsHtml(all, S.mtg, 'mt-group') + taskTable(shown, scope === 'all' ? 'both' : 'client');
 }
 function filesPage() {
   return '<div class="row between"><div><h1>Files</h1><p class="muted" style="margin:4px 0 0">Each client\'s files, grouped by folder. Click a client or a folder to show or hide its files.</p></div></div>' + S.clients.map(c => { const open = S.wsOpen.includes('f:' + c.id);
@@ -551,13 +554,22 @@ function proposalPage(c0, rn) {
     (q.status === 'accepted' ? '<h2>Your invoices</h2>' + invoicesTab(c0, true) : rn ? '' : '<div class="stack"><h2>Your workspace</h2><p class="muted" style="margin:0">Once you accept, this is where we work together: you review and approve each piece, send us materials, and see your invoices.</p><div class="grid g3">' + q.lines.map(s => '<div class="wscard" style="cursor:default"><div class="row between"><span class="eyebrow">' + (s.billing === 'once' ? 'One-off' : 'Monthly') + '</span>' + pill('locked', 'Opens after payment') + '</div><h2>' + esc(short(s)) + '</h2><span class="small muted">' + (s.tasks || []).length + ' tasks' + (s.billing === 'monthly' ? ' each month' : '') + '</span></div>').join('') + '</div></div>') +
     (B.terms || (q.acceptedBy && q.acceptedBy.terms) ? (q.status === 'sent' ? '<div class="card stack" id="terms"><div class="row between"><h2>Terms and Conditions</h2><span class="small muted">Please read before accepting</span></div><div class="terms tbox">' + esc(B.terms) + '</div></div>' : '<details class="card" id="terms"' + (S.openTerms ? ' open' : '') + '><summary class="lab" style="cursor:pointer">' + (q.acceptedBy && q.acceptedBy.terms ? 'Terms and Conditions you agreed to' : 'Terms and Conditions') + '</summary><div class="terms" style="margin-top:10px">' + esc(q.acceptedBy && q.acceptedBy.terms || B.terms) + '</div></details>') : '') + act + '</div>';
 }
+/* a monthly service shows every month of the contract; months not yet paid are locked, with the invoice that opens them */
+function portalMonths(c, s) {
+  const n = c.quote.months, m = Math.min(Math.max(1, S.pwm || currentMonth(c)), n);
+  const tabs = '<div class="tabs" style="border-bottom:1px solid var(--line);overflow-x:auto">' + Array.from({ length: n }, (_, k) => k + 1).map(x => { const i = inv(c, x), paid = i && i.status === 'paid'; return '<button data-a="pwm" data-m="' + x + '" aria-selected="' + (x === m) + '">' + MONTHS[ym(c, x).mo].slice(0, 3) + ' ' + String(ym(c, x).y).slice(2) + (paid ? '' : ' 🔒') + '</button>'; }).join('') + '</div>';
+  const i = inv(c, m), planned = c.tasks.filter(t => t.svc === s.id && t.m === m);
+  if (i && i.status === 'paid') return { m, tabs, locked: '' };
+  return { m, tabs, locked: '<div class="lockbox">' + I('clock') + '<h2>' + esc(mName(c, m)) + ' is locked</h2><p>This month opens as soon as invoice <b>' + esc(i ? i.no : '') + '</b>' + (i ? ' (' + sm(invTotal(c, m)) + ')' : '') + ' is paid.' + (planned.length ? ' Here is what is planned:' : '') + '</p>' + (planned.length ? '<ul class="planned">' + planned.map(t => '<li>' + esc(t.title) + '</li>').join('') + '</ul>' : '') + (i && i.status !== 'void' ? '<div>' + btn(I('doc', 'sm') + 'View invoice', 'doc', { type: 'inv', m, cid: c.id }, 'ghost') + '</div>' : '') + '</div>' };
+}
 function portalTasks(c) {
   const ids = wsList(c).map(s => s.id); if (S.pws && !ids.includes(S.pws)) S.pws = '';
-  const all = c.tasks.filter(t => canSee(c, t) && (!S.pws || t.svc === S.pws)).sort((a, b) => (a.due || '9') < (b.due || '9') ? -1 : 1);
+  const ps = S.pws ? ql(c, S.pws) : null, pm = ps && ps.billing === 'monthly' && !ps.adhoc ? portalMonths(c, ps) : null;
+  const all = c.tasks.filter(t => canSee(c, t) && (!S.pws || t.svc === S.pws) && (!pm || t.m === pm.m)).sort((a, b) => (a.due || '9') < (b.due || '9') ? -1 : 1);
   const shown = S.ptg ? all.filter(t => groupOf(t.status) === S.ptg) : all;
   return '<div><h1>Tasks</h1><p class="muted" style="margin:4px 0 0">Review work, send what\'s needed and give your approvals.</p></div>' +
     '<label class="wsselect" for="p-ws">' + I('layers') + '<span style="flex:1;display:flex;flex-direction:column"><span class="small muted">Workspace</span><select id="p-ws" data-pws="1"><option value="">All workspaces</option>' + wsList(c).map(s => '<option value="' + esc(s.id) + '"' + (S.pws === s.id ? ' selected' : '') + '>' + esc(short(s)) + '</option>').join('') + '</select></span></label>' +
-    chipsHtml(all, S.ptg, 'p-group', { awaiting: 'Awaiting your approval' }) + taskTable(shown.map(t => ({ c, t })), 'assignee') + '<p class="small muted" style="margin:0">Monthly services show paid months only. Each new month appears once its invoice is paid.</p>';
+    (pm ? pm.tabs : '') + (pm && pm.locked ? pm.locked : chipsHtml(all, S.ptg, 'p-group', { awaiting: 'Awaiting your approval' }) + taskTable(shown.map(t => ({ c, t })), 'assignee')) + '<p class="small muted" style="margin:0">' + (pm ? 'Each month opens once its invoice is paid.' : 'Choose a workspace to see it month by month. Each month opens once its invoice is paid.') + '</p>';
 }
 function portalShell() {
   const c = client(), open = c.tasks.filter(t => canSee(c, t));
@@ -1191,12 +1203,13 @@ const ACT = {
   'note-open'(d) { S.menu = null; S.cid = d.cid; if (S.role === 'client') S.ptab = 'overview'; else { S.view = 'client'; S.ctab = 'activity'; } return api('seen', {}, { quiet: true }); },
   'open-client'(d) { S.cid = d.id; S.view = 'client'; S.ctab = 'overview'; S.q = ''; },
   'open-client-tab'(d) { S.cid = d.id; S.view = 'client'; S.ctab = d.t; S.q = ''; },
-  'open-ws'(d) { pickClient(d); S.ws = d.id; S.wm = +d.m || 1; S.q = ''; if (S.role === 'client') { S.ptab = 'tasks'; S.pws = d.id; S.ptg = ''; } else S.view = 'ws'; },
+  'open-ws'(d) { pickClient(d); S.ws = d.id; S.wm = +d.m || 1; S.q = ''; if (S.role === 'client') { S.ptab = 'tasks'; S.pws = d.id; S.ptg = ''; S.pwm = +d.m || 0; } else S.view = 'ws'; },
+  'pwm'(d) { S.pwm = +d.m; S.ptg = ''; },
   ctab(d) { S.ctab = d.t; }, ptab(d) { S.ptab = d.t; }, qtab(d) { S.qtab = d.t; }, ifilter(d) { S.ifilter = d.f; },
   ws(d) { S.ws = d.id; }, wm(d) { S.wm = +d.m; }, mode(d) { S.mode = d.m; },
   task(d) { S.editSteps = null; pickClient(d); S.back = { view: S.view, ptab: S.ptab }; S.tid = d.id; S.confirm = null; S.q = ''; if (staff()) S.view = 'task'; else S.ptab = 'task'; const mn = document.querySelector('.main'); if (mn) mn.scrollTop = 0; window.scrollTo(0, 0); },
   'task-back'() { const b = S.back || {}; S.confirm = null; if (staff()) S.view = b.view && b.view !== 'task' ? b.view : 'mytasks'; else S.ptab = b.ptab && b.ptab !== 'task' ? b.ptab : 'tasks'; },
-  'mt-scope'(d) { S.mtScope = d.s; }, 'mt-group'(d) { S.mtg = S.mtg === d.g ? '' : d.g; }, 'mt-filters'() { S.mtFilters = !S.mtFilters; }, 'mt-clear'() { S.mtClient = ''; S.mtg = ''; },
+  'mt-scope'(d) { S.mtScope = d.s; if (d.s === 'me') S.mtWho = ''; }, 'mt-group'(d) { S.mtg = S.mtg === d.g ? '' : d.g; }, 'mt-filters'() { S.mtFilters = !S.mtFilters; }, 'mt-clear'() { S.mtClient = ''; S.mtg = ''; S.mtWho = ''; },
   'p-group'(d) { S.ptg = S.ptg === d.g ? '' : d.g; },
   'ws-toggle'(d) { S.wsOpen = S.wsOpen.includes(d.id) ? S.wsOpen.filter(x => x !== d.id) : [...S.wsOpen, d.id]; },
   'ws-all'(d) { S.wsOpen = d.v === '1' ? S.clients.map(c => c.id) : []; },
@@ -1445,10 +1458,11 @@ document.addEventListener('change', async e => {
   else if (d.sdue) { const [id, i] = d.sdue.split('|'); await api('t-stage-due', { id, i: +i, due: e.target.value }); }
   else if (d.tval) await api('t-value', { id: d.tval, value: e.target.value }, { msg: e.target.value === '' ? 'Value split evenly again.' : 'Task value saved.' });
   else if (d.mtclient) { S.mtClient = e.target.value; }
+  else if (d.mtwho) { S.mtWho = e.target.value; }
   else if (d.fe) { const x = S.drawer.draft; syncFee(); if (d.fe === 'repeat') x.repeat = e.target.checked; else if (!['amount', 'pct'].includes(d.fe)) x[d.fe] = e.target.value; if (d.fe === 'cid') { x.svc = ''; x.m = 1; x.taskId = ''; x.stage = ''; } if (d.fe === 'svc') x.m = 1; if (d.fe === 'taskId') x.stage = ''; if (d.fe === 'amount') return; }
   else if (d.acs !== undefined && e.target.dataset.acs) { S.acs = e.target.value; }
   else if (e.target.dataset.afs) { S.afs = e.target.value; }
-  else if (d.pws) { S.pws = e.target.value; S.ptg = ''; }
+  else if (d.pws) { S.pws = e.target.value; S.ptg = ''; S.pwm = 0; }
   else if (d.qclient) { syncQuoteNew(); const keep = S.drawer; openQuote('new', e.target.value); Object.assign(S.drawer, { q: keep.q, name: keep.name, no: keep.no, welcome: keep.welcome }); }
   else if (d.qproj) { syncQuoteNew(); const keep = S.drawer; if (e.target.value === 'new') { openQuote('new', keep.aid); Object.assign(S.drawer, { q: keep.q, name: '', no: String(S.nextQuote) }); } else openQuote(e.target.value); }
   else if (d.pswitch) { S.cid = e.target.value; if (S.role === 'client') { S.ptab = 'overview'; S.pws = ''; } else if (['ws', 'task'].includes(S.view)) S.view = 'client'; }
