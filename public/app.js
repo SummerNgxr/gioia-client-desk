@@ -315,6 +315,27 @@ function taskRow(c, t, mode) {
 function taskTable(rows, mode) {
   return '<div class="tlist"><div class="tlh"><span></span><span>Task</span><span>' + (mode === 'both' ? 'Client · assignee' : mode === 'client' ? 'Client' : 'Assignee') + '</span><span>Due date</span><span></span></div>' + (rows.map(({ c, t }) => taskRow(c, t, mode)).join('') || '<p class="muted" style="padding:16px;margin:0">No tasks match.</p>') + '</div>';
 }
+/* ---------- My tasks, simple view: what needs doing now, by when; waiting-on-client and later folded away ---------- */
+const plusDays = n => { const d = new Date(TODAY + 'T00:00'); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+const waitsClient = t => ['cdraft', 'creview', 'awaiting'].includes(t.status) || (staged(t) ? (curStage(t) || {}).owner === 'client' : t.owner === 'client' && t.status !== 'done');
+function compactRow(c, t, showWho) {
+  const cs = curStage(t), late = t.due && t.due < TODAY && t.status !== 'done';
+  const sm2 = staged(t) && cs ? (cs.owner === 'client' ? null : member(cs.assignee)) : null, m = sm2 || member(t.assignee);
+  const bits = [cname(c), staged(t) && cs ? 'Step ' + (t.stage + 1) + ' of ' + t.stages.length + ': ' + cs.title : short(ql(c, t.svc))];
+  if (showWho) bits.push(waitsClient(t) ? 'Client' : m ? m.name : 'Unassigned');
+  return '<div class="tli tlic" data-a="task" data-id="' + t.id + '" data-cid="' + c.id + '"><span class="ticon sm">' + I(svcIcon(t.svc), 'sm') + '</span><span class="tlic-main"><b>' + esc(t.title) + '</b><span class="small muted clamp1">' + esc(bits.join(' · ')) + '</span></span>' +
+    '<span class="tlic-st">' + pill(t.status) + '</span><span class="small tlic-due' + (late ? ' late' : '') + '">' + (t.due ? dshort(t.due) : '<span class="muted">No date</span>') + '</span>' + I('chev', 'sm') + '</div>';
+}
+function simpleTasks(rows, showWho) {
+  const open = rows.filter(r => r.t.status !== 'done'), mine = open.filter(r => !waitsClient(r.t)), waiting = open.filter(r => waitsClient(r.t)), wk = plusDays(7);
+  const buckets = [['overdue', 'Overdue', mine.filter(r => r.t.due && r.t.due < TODAY), true], ['today', 'Due today', mine.filter(r => r.t.due === TODAY), true], ['week', 'Next 7 days', mine.filter(r => r.t.due > TODAY && r.t.due <= wk), true], ['later', 'Later', mine.filter(r => !r.t.due || r.t.due > wk), false], ['waiting', 'Waiting on the client', waiting, false]];
+  const sum = [[buckets[0][2].length, 'overdue'], [buckets[1][2].length, 'due today'], [buckets[2][2].length, 'due in the next 7 days'], [waiting.length, 'waiting on the client']].filter(x => x[0]).map(x => '<b>' + x[0] + '</b> ' + x[1]).join(' · ');
+  const open1 = k => S.mtOpen && k in S.mtOpen ? S.mtOpen[k] : null;
+  const body = buckets.filter(b => b[2].length).map(([k, l, list, dflt]) => { const isOpen = open1(k) === null ? dflt : open1(k), LIM = 8, more = S.mtMore && S.mtMore[k];
+    return '<div class="card mtgroup' + (k === 'overdue' ? ' crit' : '') + '"><button class="mtgh" data-a="mt-fold" data-k="' + k + '" aria-expanded="' + isOpen + '"><span class="row" style="gap:10px">' + I(isOpen ? 'chevd' : 'chev', 'sm') + '<b>' + l + '</b><span class="count">' + list.length + '</span></span>' + (k === 'waiting' ? '<span class="small muted">Nothing to do until the client responds</span>' : k === 'later' ? '<span class="small muted">Due after ' + dshort(wk) + '</span>' : '') + '</button>' +
+      (isOpen ? list.slice(0, more ? 999 : LIM).map(r => compactRow(r.c, r.t, showWho)).join('') + (list.length > LIM && !more ? '<button class="link mtmore" data-a="mt-more" data-k="' + k + '">Show all ' + list.length + '</button>' : '') : '') + '</div>'; }).join('');
+  return (sum ? '<p class="mtsum">' + sum + '</p>' : '') + (body || '<div class="card" style="padding:28px;text-align:center"><b>All clear.</b><br><span class="muted small">Nothing is waiting on you right now.</span></div>');
+}
 function myTasksPage() {
   // admins and team members can widen this to everyone's tasks on their projects; vendors only ever see their own
   const scope = vendorMe() ? 'me' : S.mtWho ? 'all' : S.mtScope, q = S.mtq.toLowerCase(), who = vendorMe() ? '' : S.mtWho || '';
@@ -323,10 +344,10 @@ function myTasksPage() {
   S.clients.forEach(c => c.tasks.forEach(t => { if (canSee(c, t) && whoOk(t) && (scope === 'all' || t.assignee === S.me || L.stageMine(t, S.me)) && (!S.mtClient || c.id === S.mtClient) && (!q || (t.title + ' ' + c.company + ' ' + short(ql(c, t.svc))).toLowerCase().includes(q))) rows.push({ c, t }); }));
   rows.sort((a, b) => (a.t.due || '9') < (b.t.due || '9') ? -1 : 1);
   const all = rows.map(r => r.t), shown = S.mtg ? rows.filter(r => groupOf(r.t.status) === S.mtg) : rows;
-  return '<div class="row between"><div><h1>My tasks</h1><p class="muted" style="margin:4px 0 0">' + (scope === 'all' ? (isAdmin() ? 'Every task across clients.' : 'Every task on the projects you work on.') : 'Your assignments across clients. Track progress and deliver work.') + '</p></div>' + '<div class="row">' + (!vendorMe() ? '<div class="seg"><button data-a="mt-scope" data-s="me" aria-pressed="' + (scope === 'me') + '">Assigned to me</button><button data-a="mt-scope" data-s="all" aria-pressed="' + (scope === 'all') + '">Everyone</button></div>' : '') + (S.clients.length ? btn(I('plus', 'sm') + 'Add task', 'task-new') : '') + '</div></div>' +
+  return '<div class="row between"><div><h1>My tasks</h1><p class="muted" style="margin:4px 0 0">' + (scope === 'all' ? (isAdmin() ? 'Every task across clients.' : 'Every task on the projects you work on.') : 'Your assignments across clients. Track progress and deliver work.') + '</p></div>' + '<div class="row">' + '<div class="seg" title="How tasks are shown"><button data-a="mt-mode" data-m="simple" aria-pressed="' + ((S.mtMode || 'simple') === 'simple') + '">Simple</button><button data-a="mt-mode" data-m="full" aria-pressed="' + (S.mtMode === 'full') + '">Full list</button></div>' + (!vendorMe() ? '<div class="seg"><button data-a="mt-scope" data-s="me" aria-pressed="' + (scope === 'me') + '">Assigned to me</button><button data-a="mt-scope" data-s="all" aria-pressed="' + (scope === 'all') + '">Everyone</button></div>' : '') + (S.clients.length ? btn(I('plus', 'sm') + 'Add task', 'task-new') : '') + '</div></div>' +
     '<div class="row" style="flex-wrap:nowrap"><div class="search" style="max-width:none">' + I('search') + '<input id="mt-q" type="search" data-mtq="1" placeholder="Search tasks, clients or deliverables…" value="' + esc(S.mtq) + '" aria-label="Search tasks"></div><button class="btn quiet" data-a="mt-filters" aria-expanded="' + S.mtFilters + '">' + I('filter', 'sm') + 'Filters' + ((S.mtClient ? 1 : 0) + (who ? 1 : 0) ? ' (' + ((S.mtClient ? 1 : 0) + (who ? 1 : 0)) + ')' : '') + '</button></div>' +
     (S.mtFilters ? '<div class="card row"><div class="field" style="min-width:240px"><label for="mt-client">Client</label><select id="mt-client" data-mtclient="1"><option value="">All clients</option>' + S.clients.map(c => '<option value="' + c.id + '"' + (S.mtClient === c.id ? ' selected' : '') + '>' + esc(cname(c)) + '</option>').join('') + '</select></div>' + (!vendorMe() ? '<div class="field" style="min-width:220px"><label for="mt-who">Assignee</label><select id="mt-who" data-mtwho="1"><option value="">Anyone</option>' + S.team.filter(m => isAdmin() || m.id === S.me || who === m.id || S.clients.some(c => c.tasks.some(t => t.assignee === m.id || (t.stages || []).some(z => z.assignee === m.id)))).sort((x, y) => x.name.localeCompare(y.name)).map(m => '<option value="' + m.id + '"' + (who === m.id ? ' selected' : '') + '>' + esc(m.name) + (m.id === S.me ? ' (you)' : '') + '</option>').join('') + '<option value="@client"' + (who === '@client' ? ' selected' : '') + '>Client</option><option value="@none"' + (who === '@none' ? ' selected' : '') + '>Unassigned</option></select></div>' : '') + (S.mtClient || S.mtg || who ? '<button class="link" data-a="mt-clear" style="align-self:end;margin-bottom:10px">Clear filters</button>' : '') + '</div>' : '') +
-    chipsHtml(all, S.mtg, 'mt-group') + taskTable(shown, scope === 'all' ? 'both' : 'client');
+    ((S.mtMode || 'simple') === 'simple' && !S.mtg ? simpleTasks(rows, scope === 'all') : chipsHtml(all, S.mtg, 'mt-group') + taskTable(shown, scope === 'all' ? 'both' : 'client'));
 }
 function filesPage() {
   return '<div class="row between"><div><h1>Files</h1><p class="muted" style="margin:4px 0 0">Each client\'s files, grouped by folder. Click a client or a folder to show or hide its files.</p></div></div>' + S.clients.map(c => { const open = S.wsOpen.includes('f:' + c.id);
@@ -1421,6 +1442,9 @@ const ACT = {
   ws(d) { S.ws = d.id; }, wm(d) { S.wm = +d.m; }, mode(d) { S.mode = d.m; },
   task(d) { S.editSteps = null; pickClient(d); S.back = { view: S.view, ptab: S.ptab }; S.tid = d.id; S.confirm = null; S.q = ''; if (staff()) S.view = 'task'; else S.ptab = 'task'; const mn = document.querySelector('.main'); if (mn) mn.scrollTop = 0; window.scrollTo(0, 0); },
   'task-back'() { const b = S.back || {}; S.confirm = null; if (staff()) S.view = b.view && b.view !== 'task' ? b.view : 'mytasks'; else S.ptab = b.ptab && b.ptab !== 'task' ? b.ptab : 'tasks'; },
+  'mt-mode'(d) { S.mtMode = d.m; S.mtg = ''; try { localStorage.setItem('mtMode', d.m); } catch (e) {} },
+  'mt-fold'(d) { const k = d.k, cur = S.mtOpen && k in S.mtOpen ? S.mtOpen[k] : ['overdue', 'today', 'week'].includes(k); S.mtOpen = Object.assign({}, S.mtOpen, { [k]: !cur }); },
+  'mt-more'(d) { S.mtMore = Object.assign({}, S.mtMore, { [d.k]: true }); },
   'mt-scope'(d) { S.mtScope = d.s; if (d.s === 'me') S.mtWho = ''; }, 'mt-group'(d) { S.mtg = S.mtg === d.g ? '' : d.g; }, 'mt-filters'() { S.mtFilters = !S.mtFilters; }, 'mt-clear'() { S.mtClient = ''; S.mtg = ''; S.mtWho = ''; },
   'p-group'(d) { S.ptg = S.ptg === d.g ? '' : d.g; },
   'ws-toggle'(d) { S.wsOpen = S.wsOpen.includes(d.id) ? S.wsOpen.filter(x => x !== d.id) : [...S.wsOpen, d.id]; },
