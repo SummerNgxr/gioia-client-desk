@@ -517,3 +517,4 @@ select.stpill{width:auto!important;flex:none;max-width:260px}
 .listrow.dropb{box-shadow:inset 0 2px 0 var(--accent,#1d3a2b)}
 .listrow.dropa{box-shadow:inset 0 -2px 0 var(--accent,#1d3a2b)}
 .planned{text-align:left;display:inline-block;margin:4px auto 12px;color:var(--muted)}
+.terms b.th{letter-spacing:.06em;font-size:.92em}

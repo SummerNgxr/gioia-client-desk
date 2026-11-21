@@ -162,6 +162,10 @@ function listHtml(list) {
     return '<div class="listrow' + (ed ? ' canmove' : '') + '" data-a="task" data-id="' + t.id + '"' + (ed ? ' draggable="true" data-ldrag="' + t.id + '"' : '') + '><span class="ttl">' + (ed ? '<span class="grip" title="Drag to reorder" aria-hidden="true">' + I('grip', 'sm') + '</span>' : '') + '<span class="box ' + (t.status === 'done' ? 'on' : '') + '">' + (t.status === 'done' ? I('tick', 'sm') : '') + '</span><span>' + esc(t.title) + '</span></span><span class="who small">' + who + '</span><span class="small">' + due + '</span><span>' + st + '</span></div>'; }).join('') + '</div>';
 }
 
+/* terms: plain text, with headings ("1. FEES AND PAYMENT") and clause numbers ("1.1") in bold */
+function termsHtml(t) {
+  return esc(t || '').split('\n').map(l => /^\s*(\d+\.\s+)?[A-Z][A-Z0-9 &,'\-\/()]{2,}$/.test(l) ? '<b class="th">' + l + '</b>' : l.replace(/^(\s*\d+\.\d+[a-z]?)(\s)/, '<b>$1</b>$2')).join('\n');
+}
 /* ---------- deliverable page ---------- */
 function workspacePage(c) {
   const s = ql(c, S.ws); if (!s) { S.view = 'client'; S.ctab = 'work'; return clientPage(c); }
@@ -552,7 +556,7 @@ function proposalPage(c0, rn) {
     '<div class="card stack"><h2>Investment</h2>' + investTable(c, dep, rn, total) + '</div>' +
     (q.status !== 'accepted' ? '<div class="card stack"><h2>What happens next</h2><ol class="nextsteps">' + steps.map(([h, p]) => '<li><b>' + esc(h) + '</b><span class="small muted">' + esc(p) + '</span></li>').join('') + '</ol></div>' : '') +
     (q.status === 'accepted' ? '<h2>Your invoices</h2>' + invoicesTab(c0, true) : rn ? '' : '<div class="stack"><h2>Your client portal</h2><p class="muted" style="margin:0">Once you accept, this is where we work together: you review and approve each piece, send us materials, and see your invoices.</p><div class="grid g3">' + q.lines.map(s => '<div class="wscard" style="cursor:default"><div class="row between"><span class="eyebrow">' + (s.billing === 'once' ? 'One-off' : 'Monthly') + '</span>' + pill('locked', 'Opens after payment') + '</div><h2>' + esc(short(s)) + '</h2><span class="small muted">' + (s.tasks || []).length + ' tasks' + (s.billing === 'monthly' ? ' each month' : '') + '</span></div>').join('') + '</div></div>') +
-    (B.terms || (q.acceptedBy && q.acceptedBy.terms) ? (q.status === 'sent' ? '<div class="card stack" id="terms"><div class="row between"><h2>Terms and Conditions</h2><span class="small muted">Please read before accepting</span></div><div class="terms tbox">' + esc(B.terms) + '</div></div>' : '<details class="card" id="terms"' + (S.openTerms ? ' open' : '') + '><summary class="lab" style="cursor:pointer">' + (q.acceptedBy && q.acceptedBy.terms ? 'Terms and Conditions you agreed to' : 'Terms and Conditions') + '</summary><div class="terms" style="margin-top:10px">' + esc(q.acceptedBy && q.acceptedBy.terms || B.terms) + '</div></details>') : '') + act + '</div>';
+    (B.terms || (q.acceptedBy && q.acceptedBy.terms) ? (q.status === 'sent' ? '<div class="card stack" id="terms"><div class="row between"><h2>Terms and Conditions</h2><span class="small muted">Please read before accepting</span></div><div class="terms tbox">' + termsHtml(B.terms) + '</div></div>' : '<details class="card" id="terms"' + (S.openTerms ? ' open' : '') + '><summary class="lab" style="cursor:pointer">' + (q.acceptedBy && q.acceptedBy.terms ? 'Terms and Conditions you agreed to' : 'Terms and Conditions') + '</summary><div class="terms" style="margin-top:10px">' + termsHtml(q.acceptedBy && q.acceptedBy.terms || B.terms) + '</div></details>') : '') + act + '</div>';
 }
 /* a monthly service shows every month of the contract; months not yet paid are locked, with the invoice that opens them */
 function portalMonths(c, s) {
