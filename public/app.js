@@ -1887,6 +1887,7 @@ function adopt(st) {
   D = st; if (!D.me || !['admin', 'team', 'client'].includes(D.me.role)) return;
   S.brand = D.brand; S.team = D.team || []; S.catalogue = D.catalogue || []; S.clients = D.clients || []; S.accounts = D.accounts || []; S.payouts = D.payouts || []; S.fees = D.fees || []; S.feed = (D.feed || []).map(e => personal(e)); S.nextQuote = D.nextQuote || 0; S.invFormat = D.invFormat || ''; S.templates = D.templates || []; S.prepTemplates = D.prepTemplates || []; S.bills = D.bills || []; S.myBank = D.myBank || null; S.myPay = D.myPay || '';
   S.clients.forEach(c => { c.adhoc = c.adhoc || []; c.extra = c.extra || []; c.files = c.files || []; c.tasks.forEach(t => { t.desc = t.desc || ''; t.due = t.due || ''; t.history = t.history || []; t.comments = t.comments || []; t.files = t.files || []; }); });
+  if (/signin=failed/.test(location.search)) try { history.replaceState(null, '', location.pathname); } catch (e) {}
   S.role = D.me.role === 'client' ? 'client' : 'admin'; S.me = D.me.id || '';
   if (!S.clients.find(c => c.id === S.cid)) S.cid = (D.me.role === 'client' && D.me.cid) || (S.clients[0] || {}).id || '';
   if (!S.init) { S.init = true; S.wsOpen = S.clients.filter(c => c.tasks.some(t => taskOpen(c, t))).map(c => c.id); }
@@ -2125,7 +2126,13 @@ const ACT = {
   'fee-type'(d) { syncFee(); S.drawer.draft.type = d.t; },
   'fee-kind'(d) { syncFee(); S.drawer.draft.kind = d.k; },
   'fee-rule'(d) { syncFee(); S.drawer.draft.rule = d.r; },
-  'fee-view'() { toast('If anything about this fee looks wrong, please let us know.'); },
+  'fee-view'(d) { // open the work the fee is for: the task, the deliverable's month, or the project
+    const f = S.fees.find(x => x.id === d.id), c = f && S.clients.find(x => x.id === f.cid);
+    if (!c) { toast('That project is no longer available to you.'); return 'skip'; }
+    if (f.kind === 'task' && c.tasks.some(t => t.id === f.taskId)) return ACT.task({ id: f.taskId, cid: c.id });
+    if ((f.kind === 'month' || !f.kind) && f.svc) return ACT['open-ws']({ cid: c.id, id: f.svc, m: f.m || 1 });
+    pickClient({ cid: c.id }); S.view = 'client'; S.ctab = 'overview';
+  },
   async 'fee-save'() {
     syncFee(); const d = S.drawer.draft;
     const r = await api('fee-save', { fee: { id: d.isNew ? '' : d.id, kind: d.kind, member: d.member, cid: d.cid, svc: d.svc, m: d.m, taskId: d.taskId, stage: d.stage, rule: d.rule, item: d.item, type: d.type, pct: d.pct, amount: d.amount, note: d.note, repeat: d.repeat } }, { msg: d.isNew ? 'Fee assigned. Only they and the admins can see it.' : 'Fee updated.' });

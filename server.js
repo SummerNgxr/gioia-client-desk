@@ -56,14 +56,14 @@ app.get('/auth/google', (req, res) => {
 });
 app.get('/auth/google/callback', async (req, res) => {
   try {
-    if (!req.query.code || !req.session.state || req.query.state !== req.session.state) return res.redirect('/?signin=failed');
+    if (!req.query.code || !req.session.state || req.query.state !== req.session.state) { console.log('sign-in not completed: ' + (req.query.error ? 'Google said ' + req.query.error : !req.query.code ? 'no code from Google' : !req.session.state ? 'the sign-in was started in another tab or before a restart' : 'the sign-in link was out of date')); return res.redirect(req.session.email ? '/' : '/?signin=failed'); }
     req.session.state = null;
     const r = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({ code: String(req.query.code), client_id: GOOGLE_ID, client_secret: GOOGLE_SECRET, redirect_uri: baseUrl(req) + '/auth/google/callback', grant_type: 'authorization_code' }) });
     const tok = await r.json();
     // The ID token comes straight from Google over TLS in exchange for our secret, so its claims can be trusted here.
     const claims = JSON.parse(Buffer.from(String(tok.id_token || '').split('.')[1] || '', 'base64url').toString() || '{}');
-    if (claims.aud !== GOOGLE_ID || !claims.email || claims.email_verified === false) return res.redirect('/?signin=failed');
+    if (claims.aud !== GOOGLE_ID || !claims.email || claims.email_verified === false) { console.log('sign-in not completed: the Google account could not be verified'); return res.redirect('/?signin=failed'); }
     req.session.email = String(claims.email).toLowerCase();
     // the photo usually comes in the sign-in token; if not, ask Google's profile endpoint with the same sign-in
     let picture = claims.picture || '';
