@@ -1604,13 +1604,18 @@ function render() {
   if (S.modal && S.modal.kind === 'setup') overlay += '<div class="modal" data-a="close-bg-modal"><div class="sheet stack"><h2>Copy this for Claude</h2><p class="small muted" style="margin:0">Your browser blocked automatic copying. Select all the text below and copy it.</p><textarea rows="16" class="mono" readonly>' + esc(S.modal.text) + '</textarea><div>' + btn('Close', 'close-modal', {}, 'quiet') + '</div></div></div>';
   const ae = document.activeElement, fid = ae && ae.id, sel = ae && ae.id && 'selectionStart' in ae ? [ae.selectionStart, ae.selectionEnd] : null;
   // stay where you were when the page itself is redrawn (opening a row, saving a field); start at the top on a new page
-  const route = [S.role, S.view, S.view === 'billing' ? '' : S.cid, S.ctab, S.ptab, S.tid, S.ws, S.qtab, S.asub, S.acat].join('|'), mEl = document.querySelector('.main'), keepTop = mEl ? mEl.scrollTop : 0, keepY = window.scrollY, same = route === lastRoute; lastRoute = route;
+  const route = [S.role, S.view, S.view === 'billing' ? '' : S.cid, S.ctab, S.ptab, S.tid, S.ws, S.qtab, S.asub, S.acat].join('|'), mEl = document.querySelector('.main'), keepTop = mEl ? mEl.scrollTop : 0, keepY = window.scrollY, same = route === lastRoute, prevRoute = lastRoute; lastRoute = route;
+  // each new page becomes a step in the browser history, so Back and Forward work
+  try { if (!S.popping) { if (!prevRoute) history.replaceState(navSnap(), ''); else if (!same) { const cur = Object.assign({}, history.state || {}, { scroll: mEl ? keepTop : keepY }); history.replaceState(cur, ''); history.pushState(navSnap(), ''); } } } catch (x) {}
   document.getElementById('app').innerHTML = (S.role === 'client' ? portalShell() : staffShell()) + overlay + (S.toast ? '<div class="toast" role="status">' + I('tick', 'sm') + esc(S.toast) + '</div>' : '');
-  { const m2 = document.querySelector('.main'); if (m2) m2.scrollTop = same ? keepTop : 0; window.scrollTo(0, same ? keepY : 0); }
+  { const m2 = document.querySelector('.main'), back = S.popping ? (S.popScroll || 0) : null; S.popping = false; S.popScroll = 0; if (m2) m2.scrollTop = back != null ? back : same ? keepTop : 0; window.scrollTo(0, back != null ? back : same ? keepY : 0); }
   if (S.focus) { const f = document.getElementById(S.focus); S.focus = null; if (f) { f.scrollIntoView({ block: f.id === 'cmts' ? 'start' : 'center' }); f.classList.add('flash'); setTimeout(() => f.classList.remove('flash'), 2400); } }
   drawTour();
   if (['mt-q', 'gsearch', 'ac-q', 'af-q', 'ml-q'].includes(fid)) { const el = document.getElementById(fid); if (el) { el.focus(); try { if (sel) el.setSelectionRange(sel[0], sel[1]); } catch (x) {} } }
 }
+const NAVK = ['view', 'cid', 'ctab', 'ptab', 'tid', 'ws', 'wm', 'asub', 'acat', 'afc', 'pws', 'qtab', 'ptg'];
+function navSnap() { const o = { app: 1 }; NAVK.forEach(k => { if (S[k] !== undefined) o[k] = S[k]; }); return JSON.parse(JSON.stringify(o)); }
+window.addEventListener('popstate', e => { const st = e.state; if (!st || !st.app || !S.role) return; NAVK.forEach(k => { S[k] = st[k]; }); S.menu = null; S.modal = null; S.popping = true; S.popScroll = st.scroll || 0; render(); });
 /* a short walkthrough the first time a client opens their portal; it can be replayed from the profile menu */
 const TOURS = {
   portal: [
