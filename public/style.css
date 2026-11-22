@@ -759,3 +759,9 @@ button.ccr{cursor:pointer}button.ccr:hover{background:var(--card-2)}
 .mitem.on,.mitem:hover{background:var(--accent-soft)}
 .mitem .av{width:26px;height:26px;font-size:11px}
 .flash{animation:flash 2.4s ease}@keyframes flash{0%,40%{background:var(--accent-soft)}100%{background:transparent}}
+.nitem{position:relative;border-radius:10px}
+.nitem.unread{background:var(--accent-soft)}
+.nitem.unread>span:last-child>span:first-child{font-weight:600}
+.nitem.unread::after{content:"";position:absolute;right:10px;top:16px;width:8px;height:8px;border-radius:50%;background:var(--accent)}
+.nitem:not(.unread){opacity:.85}
+.nitem{padding-right:28px !important}

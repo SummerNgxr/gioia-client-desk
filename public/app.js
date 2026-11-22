@@ -122,7 +122,8 @@ const isAdmin = () => S.role === 'admin' && !!member(S.me) && !!member(S.me).adm
 const staff = () => S.role !== 'client';
 const actor = () => S.role === 'client' ? 'Client' : (member(S.me) || {}).name || '';
 const canRead = () => true;
-const unreadFor = e => !!D && e.by !== D.me.key && e.at > (D.seen || '');
+const feedKey = e => String(e.at || '') + '|' + String(e.text || '').slice(0, 60);
+const unreadFor = e => !!D && e.by !== D.me.key && e.at > (D.seen || '') && !(D.read || []).includes(feedKey(e));
 const fmtAt = v => { if (!v) return ''; if (/^\d{4}-\d{2}-\d{2}T/.test(v)) { const d = new Date(v); return d.toLocaleString('en-SG', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }); } if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return dshort(v); return esc(v); };
 
 /* ---------- view helpers ---------- */
@@ -1117,7 +1118,7 @@ function sidebar() {
 }
 function bellMenu() {
   const v = viewer(), list = S.bellList = S.feed.filter(e => canRead(e, v)).slice(0, 8);
-  return '<div class="menu"><div class="row between" style="padding:4px 8px 8px"><h3>Notifications</h3><button class="link" data-a="seen-all">Mark all as read</button></div>' + list.map((e, i) => '<button class="mi" data-a="note-open" data-i="' + i + '" data-cid="' + e.cid + '"><span class="av">' + initials(e.who) + '</span><span><span style="' + (unreadFor(e, v) ? 'font-weight:600' : '') + '">' + esc(e.who) + ' · ' + esc(e.text) + '</span><br><span class="small muted">' + esc((S.clients.find(c => c.id === e.cid) || {}).company || '') + ' · ' + fmtAt(e.at) + '</span></span></button>').join('') + '<p class="small muted" style="padding:6px 8px 0;margin:0">Each of these is also emailed.</p></div>';
+  return '<div class="menu"><div class="row between" style="padding:4px 8px 8px"><h3>Notifications</h3><button class="link" data-a="seen-all">Mark all as read</button></div>' + list.map((e, i) => '<button class="mi nitem' + (unreadFor(e, v) ? ' unread' : '') + '" data-a="note-open" data-i="' + i + '" data-cid="' + e.cid + '"><span class="av">' + initials(e.who) + '</span><span><span>' + esc(e.who) + ' · ' + esc(e.text) + '</span><br><span class="small muted">' + esc((S.clients.find(c => c.id === e.cid) || {}).company || '') + ' · ' + fmtAt(e.at) + '</span></span></button>').join('') + '<p class="small muted" style="padding:6px 8px 0;margin:0">Each of these is also emailed.</p></div>';
 }
 function topRight() {
   const n = S.feed.filter(e => unreadFor(e, viewer())).length, who = S.role === 'client' ? client().contact : member(S.me).name;
@@ -1258,14 +1259,14 @@ function taskPage(c, t) {
   const cs = curStage(t);
   const status = '';
   const stepsEdit = E && S.editSteps === t.id ? '<div class="card stack"><div class="field"><label for="dr-steps">Steps, one per line. Start each with <b>Client:</b>, <b>Client reviews:</b>, <b>Client approves:</b>, <b>Team:</b> or a team member\'s name, such as <b>' + esc((S.team[1] || S.team[0] || { name: 'Jo' }).name.split(' ')[0]) + ':</b></label><textarea id="dr-steps" rows="9" placeholder="Client: Send the draft&#10;Jo: Edit and optimise&#10;Client approves: Approve the final version&#10;Team: Publish">' + esc(staged(t) ? L.stepsText(t.stages, S.team) : '') + '</textarea></div>' + tplBar('dr-steps') + '<p class="small muted" style="margin:0">' + (staged(t) ? 'Steps already completed stay completed. Clear the box to remove the steps.' : 'The task will start at step 1, and its status will follow whose step it is. The client sees the steps too.') + '</p><div class="row">' + btn('Save steps', 't-steps-save', { id: t.id }) + btn('Cancel', 'steps-cancel', {}, 'quiet') + '</div></div>' : '';
-  const stepsBox = stepsEdit ? '<div class="stack" style="gap:8px"><h2>Steps</h2>' + stepsEdit + '</div>' : !staged(t) ? (E ? '<div class="row between card"><span><b>No steps yet.</b> <span class="muted small">Add steps when this work passes back and forth with the client.</span></span>' + btn(I('plus', 'sm') + 'Add steps', 'steps-edit', { id: t.id }, 'ghost') + '</div>' : '') : staged(t) ? '<div class="stack" style="gap:8px"><div class="row between"><h2>Steps</h2>' + (E ? '<span class="row small" style="gap:8px"><label for="dr-stage" class="muted">Current step</label><select id="dr-stage" data-stage="' + t.id + '" style="width:auto">' + t.stages.map((x, i) => '<option value="' + i + '"' + (t.stage === i ? ' selected' : '') + '>' + (i + 1) + '. ' + esc(x.title) + '</option>').join('') + '<option value="' + t.stages.length + '"' + (t.stage >= t.stages.length ? ' selected' : '') + '>All completed</option></select><button class="link" data-a="steps-edit" data-id="' + t.id + '">Edit steps</button></span>' : '<span class="small muted">Step ' + Math.min(t.stage + 1, t.stages.length) + ' of ' + t.stages.length + '</span>') + '</div><div class="card steps">' +
+  const stepsBox = stepsEdit ? '<div class="stack" style="gap:8px"><h2>Steps</h2>' + stepsEdit + '</div>' : !staged(t) ? (E ? '<div class="row between card"><span><b>No steps yet.</b> <span class="muted small">Add steps when this work passes back and forth with the client.</span></span>' + btn(I('plus', 'sm') + 'Add steps', 'steps-edit', { id: t.id }, 'ghost') + '</div>' : '') : staged(t) ? '<div class="stack" id="steps" style="gap:8px;scroll-margin-top:90px"><div class="row between"><h2>Steps</h2>' + (E ? '<span class="row small" style="gap:8px"><label for="dr-stage" class="muted">Current step</label><select id="dr-stage" data-stage="' + t.id + '" style="width:auto">' + t.stages.map((x, i) => '<option value="' + i + '"' + (t.stage === i ? ' selected' : '') + '>' + (i + 1) + '. ' + esc(x.title) + '</option>').join('') + '<option value="' + t.stages.length + '"' + (t.stage >= t.stages.length ? ' selected' : '') + '>All completed</option></select><button class="link" data-a="steps-edit" data-id="' + t.id + '">Edit steps</button></span>' : '<span class="small muted">Step ' + Math.min(t.stage + 1, t.stages.length) + ' of ' + t.stages.length + '</span>') + '</div><div class="card steps">' +
     t.stages.map((x, i) => { const who = x.owner === 'client' ? (cl ? 'You' : esc(c.contact || 'Client')) + (x.kind === 'approve' ? ' · approval' : x.kind === 'review' ? ' · review' : '') : esc((member(x.assignee) || {}).name || 'Team'), late = x.due && !x.done && x.due < TODAY;
       const ctl = E && !x.done ? '<div class="stpctl">' + (x.owner === 'gioia' ? '<select data-sas="' + t.id + '|' + i + '" aria-label="Step ' + (i + 1) + ' assignee"><option value="">Team (unassigned)</option>' + teamOpts(x.assignee) + '</select>' : '') + '<input type="date" data-sdue="' + t.id + '|' + i + '" value="' + esc(x.due || '') + '" aria-label="Step ' + (i + 1) + ' due date"' + (late ? ' class="late"' : '') + '></div>' : '';
       const now = i === t.stage ? (A && x.owner === 'gioia' ? btn(I('tick', 'sm') + 'Mark done', 't-step', { id: t.id }, 'sm') : A ? btn('Done for client', 'stage-next', { id: t.id }, 'quiet sm') : cl && x.owner === 'client' && x.kind !== 'approve' ? btn(I('tick', 'sm') + 'Done', 't-step', { id: t.id }, 'sm') : '<span class="pill gold">Now</span>') : '';
       return '<div class="stp' + (i === t.stage ? ' now' : '') + (x.done ? ' done' : '') + '"><span class="dot ' + (x.done ? 'on' : '') + '">' + (x.done ? I('tick', 'sm') : i + 1) + '</span><div style="flex:1;min-width:0"><b>' + esc(x.title) + '</b><div class="small muted">' + who + (x.due && (!A || x.done) ? ' · <span' + (late ? ' style="color:var(--crit);font-weight:600"' : '') + '>due ' + dshort(x.due) + '</span>' : '') + (x.done && x.by ? ' · done by ' + esc(x.by) + (x.at ? ', ' + fmtAt(x.at) : '') : '') + '</div>' + ctl + '</div>' + now + (i === t.stage - 1 && x.done && (A ? isAdmin() || x.by === (member(S.me) || {}).name : cl && x.owner === 'client' && !(t.stages[t.stage] && t.stages[t.stage].owner === 'gioia' && t.status !== 'todo')) ? '<button class="link small" data-a="t-step-undo" data-id="' + t.id + '" title="Marked done by mistake? Put this step back.">Undo</button>' : '') + '</div>'; }).join('') + '</div></div>' : '';
 
   const canAdd = A || (cl && needsClient(t));
-  const files = '<div class="stack" style="gap:8px"><h2>Attachment (' + t.files.length + ')</h2>' + (t.files.length ? '<div class="card files" style="padding:0 14px">' + t.files.map(fileRow).join('').replace('class="file"', 'class="file" style="border-top:0"') + '</div>' : '<p class="small muted" style="margin:0">Nothing attached yet.</p>') + '<input type="file" id="up-' + t.id + '" data-up="' + t.id + '" multiple hidden>' +
+  const files = '<div class="stack" id="atts" style="gap:8px;scroll-margin-top:90px"><h2>Attachment (' + t.files.length + ')</h2>' + (t.files.length ? '<div class="card files" style="padding:0 14px">' + t.files.map(fileRow).join('').replace('class="file"', 'class="file" style="border-top:0"') + '</div>' : '<p class="small muted" style="margin:0">Nothing attached yet.</p>') + '<input type="file" id="up-' + t.id + '" data-up="' + t.id + '" multiple hidden>' +
     (canAdd ? '<div class="grid g2">' + btn(I('upload') + 'Upload file', 'pick-file', { key: t.id }, 'quiet block bigbtn') + btn(I('link') + 'Add Google link', 'link-open', { key: t.id }, 'quiet block bigbtn') + '</div>' : '') + '</div>';
   const comments = '<div class="stack" id="cmts" style="gap:8px;scroll-margin-top:90px"><h2>' + (cl ? 'Activity &amp; comments' : 'Comments') + ' (' + t.comments.length + ')</h2><div class="card stack" style="gap:0;padding:0 16px">' + t.comments.map(x => { const long = x.text.length > 600 && !(S.cmOpen || []).includes(x.id), mine = (x.mentions || []).includes(D.me.key) || (cl && (x.mentions || []).includes('client'));
       return '<div id="cm-' + esc(x.id) + '" class="cmt2' + (x.internal ? ' internal' : '') + (mine ? ' tagged' : '') + '"><span class="av" style="width:36px;height:36px">' + (x.client ? initials(c.contact) : initials(x.by)) + '</span><div style="flex:1;min-width:0"><div class="cmhead"><b>' + (cl && x.client ? 'You' : esc(x.client ? c.contact + ' (Client)' : x.by)) + '</b>' + (x.internal ? '<span class="chip">Team only</span>' : '') + (mine ? '<span class="chip tagchip">Mentions you</span>' : '') + '<span class="small muted" style="margin-left:auto;white-space:nowrap">' + fmtAt(x.at) + (isAdmin() || (x.key ? x.key === D.me.key : cl ? x.client : !x.client && x.by === (member(S.me) || {}).name) ? ' · <button class="link small" data-a="cm-del" data-id="' + t.id + '" data-c="' + esc(x.id) + '">Delete</button>' : '') + '</span></div><div class="cmtxt' + (long ? ' clamp' : '') + '">' + cmText(c, x) + '</div>' + (x.text.length > 600 ? '<button class="link small" data-a="cm-more" data-c="' + esc(x.id) + '">' + (long ? 'Show more' : 'Show less') + '</button>' : '') + '</div></div>'; }).join('') +
@@ -1392,6 +1393,45 @@ function cmText(c, x) {
   const names = (x.mentions || []).map(k => k === 'client' ? c.contact : (member(k.slice(2)) || {}).name).filter(Boolean);
   let h = esc(x.text); names.sort((a, b) => b.length - a.length).forEach(n => { h = h.split('@' + esc(n)).join('<span class="mention">@' + esc(n) + '</span>'); });
   return h;
+}
+/* where a notification leads: the task (and the comment, step or attachment), or the page or section it is about */
+function noteGo(e) {
+  const t0 = String(e.text || ''), cl = S.role === 'client', adm = isAdmin(), c = S.clients.find(x => x.id === e.cid), has = re => re.test(t0);
+  const to = (view, extra) => { S.view = view; S.menu = null; Object.assign(S, extra || {}); };
+  const acc = (asub, cid) => to('billing', { asub, afc: cid || '' });
+  const tab = (st, ct) => { if (cl) S.ptab = ct; else to('client', { ctab: st }); };
+  const fee = has(/\bfees?\b|earned|paid you|^paid |payment details/i);
+  if (!c) { // not about one project
+    if (cl) { S.ptab = 'overview'; return; }
+    if (String(e.cid || '').startsWith('a:') || has(/^deleted the client/i)) return to('clients');
+    if (has(/invoice/i)) return adm ? acc('teaminv') : to('earnings');
+    if (has(/^paid |removed the payment/i)) return adm ? acc('history') : to('earnings');
+    if (has(/payment details/i)) return adm ? to('team') : to('earnings');
+    if (has(/welcome email| is now (an admin|a vendor|a team member)|profile photo/i)) return to(adm ? 'team' : 'mytasks');
+    if (has(/step template/i)) return to('templates');
+    if (has(/reminder settings|daily reminders/i)) return to(adm ? 'settings' : 'mytasks');
+    return to(fee ? 'earnings' : 'mytasks');
+  }
+  S.cid = c.id; if (!cl) S.view = 'client';
+  const quoted = [...t0.matchAll(/"([^"]+)"/g)].map(m => m[1]), t = (e.tid && c.tasks.find(x => x.id === e.tid)) || c.tasks.find(x => quoted.includes(x.title));
+  const prep = () => { if (c.prep === 'open' || cl) { ACT['open-ws']({ cid: c.id, id: 'prep', m: 1 }); if (cl) S.ptab = 'tasks'; } else tab('work', 'workspaces'); };
+  // fees: the team member's own fees page; admins see the project's fees in Accounts
+  if (!cl && fee && !(t && has(/^(assigned you a fee|you have earned)/i))) return adm ? acc('fees', c.id) : to('earnings');
+  if (has(/^(preparation started|added \d+ preparation task|saved the preparation tasks)/i)) return prep();
+  if (t && (!cl || canSee(c, t))) {
+    ACT.task({ id: t.id, cid: c.id });
+    if (has(/comment|mentioned/i)) { S.focus = e.mid && t.comments.some(z => z.id === e.mid) ? 'cm-' + e.mid : 'cmts'; if (e.mid) S.cmOpen = [...(S.cmOpen || []), e.mid]; }
+    else if (has(/^(uploaded|shared a link)/i)) S.focus = 'atts';
+    else if (has(/step|steps|undid|moved .* to (completed|step)|is now (for the client|with the team)/i) && L.staged(t)) S.focus = 'steps';
+    return;
+  }
+  if (has(/^(uploaded|shared a link|deleted ")/i)) return tab('files', 'files');
+  if (has(/expense/i)) { if (adm) { S.acat = 'exp'; return acc('costcat', c.id); } return tab('overview', 'overview'); }
+  if (has(/deposit/i)) return adm ? acc('deposits', c.id) : tab('overview', 'invoices');
+  if (has(/quotation|proposal|renewal|\bsigned\b/i)) return tab(adm ? 'quote' : 'overview', 'proposal');
+  if (has(/invoice|payment|\bpaid\b|refund/i)) return tab(adm ? 'invoices' : 'overview', 'invoices');
+  if (has(/unfinished task|^deleted the task|^moved "/i)) return tab('work', 'workspaces');
+  return tab('overview', 'overview');
 }
 function smallModal(M) {
   const c = S.clients.find(x => x.id === M.cid), wrap = (h, body, act, label, cls) => '<div class="modal" data-a="close-bg-modal"><div class="sheet stack" style="max-width:480px"><h2>' + h + '</h2>' + body + '<div class="row">' + btn(label, act, {}, cls || '') + btn('Cancel', 'close-modal', {}, 'quiet') + '</div></div></div>';
@@ -1958,29 +1998,7 @@ const ACT = {
   nav(d) { S.view = d.v; S.menu = null; S.q = ''; if (d.v === 'billing') { S.asub = ''; S.afc = ''; } },
   menu(d) { S.menu = S.menu === d.m ? null : d.m; },
   'seen-all'() { return api('seen', {}, { quiet: true }); },
-  'note-open'(d) { // open what the notification is about: the task, the invoice or quotation, fees, files or deliverables
-    S.menu = null; const e = (S.bellList || [])[+d.i] || { cid: d.cid, text: '' }, t0 = String(e.text || ''), cl = S.role === 'client', c = S.clients.find(x => x.id === e.cid);
-    const go = () => api('seen', {}, { quiet: true }), fee = /\bfees?\b|earned|paid you|payment details/i.test(t0);
-    if (!c) {
-      if (cl) S.ptab = 'overview';
-      else if (String(e.cid || '').startsWith('a:')) S.view = 'clients';
-      else if (isAdmin() && /^(approved|question on|withdrew)? ?invoice\b|invoice \S+ (paid|submitted)/i.test(t0)) { S.view = 'billing'; S.asub = 'teaminv'; }
-      else if (isAdmin() && /^paid |removed the payment/i.test(t0)) { S.view = 'billing'; S.asub = 'history'; }
-      else if (fee || /payment|invoice|bank/i.test(t0)) S.view = 'earnings';
-      else S.view = 'mytasks';
-      return go();
-    }
-    const title = (t0.match(/"([^"]+)"/) || [])[1], t = (e.tid && c.tasks.find(x => x.id === e.tid)) || (title && c.tasks.find(x => x.title === title));
-    if (t && (!cl || canSee(c, t))) { ACT.task({ id: t.id, cid: c.id }); if (/comment|mentioned/i.test(t0)) { S.focus = e.mid && t.comments.some(z => z.id === e.mid) ? 'cm-' + e.mid : 'cmts'; if (e.mid) S.cmOpen = [...(S.cmOpen || []), e.mid]; } return go(); }
-    S.cid = c.id; const tab = (st, ct) => { if (cl) S.ptab = ct; else { S.view = 'client'; S.ctab = st; } };
-    if (!cl && fee) { if (isAdmin()) { S.view = 'billing'; S.asub = 'fees'; S.afc = c.id; } else S.view = 'earnings'; }
-    else if (/preparation|deliverable|unlock|locked|month/i.test(t0)) tab('work', 'workspaces');
-    else if (/quotation|proposal|renewal|accepted the|\bsigned\b/i.test(t0)) tab(isAdmin() ? 'quote' : 'overview', 'proposal');
-    else if (/invoice|deposit|payment|\bpaid\b|refund/i.test(t0)) tab(isAdmin() ? 'invoices' : 'overview', 'invoices');
-    else if (/file|upload|link|folder/i.test(t0)) tab('files', 'files');
-    else tab('overview', 'overview');
-    return go();
-  },
+  'note-open'(d) { S.menu = null; const e = (S.bellList || [])[+d.i] || { cid: d.cid, text: '' }, k = feedKey(e); noteGo(e); if (D && unreadFor(e)) { D.read = [k, ...(D.read || [])]; return api('seen-one', { k }, { quiet: true }); } },
   'open-client'(d) { S.cid = d.id; S.view = 'client'; S.ctab = 'overview'; S.q = ''; },
   'open-client-tab'(d) { S.cid = d.id; S.view = 'client'; S.ctab = d.t; S.q = ''; },
   'open-ws'(d) { pickClient(d); S.ws = d.id; S.wm = +d.m || 1; S.q = ''; if (S.role === 'client') { S.ptab = 'tasks'; S.pws = d.id; S.ptg = ''; S.pwm = +d.m || 0; } else S.view = 'ws'; },
