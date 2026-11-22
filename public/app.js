@@ -122,7 +122,7 @@ const isAdmin = () => S.role === 'admin' && !!member(S.me) && !!member(S.me).adm
 const staff = () => S.role !== 'client';
 const actor = () => S.role === 'client' ? 'Client' : (member(S.me) || {}).name || '';
 const canRead = () => true;
-const feedKey = e => String(e.at || '') + '|' + String(e.text || '').slice(0, 60);
+const feedKey = e => (String(e.at || '') + '|' + String(e.text || '').slice(0, 60)).trim();
 const unreadFor = e => !!D && e.by !== D.me.key && e.at > (D.seen || '') && !(D.read || []).includes(feedKey(e));
 const fmtAt = v => { if (!v) return ''; if (/^\d{4}-\d{2}-\d{2}T/.test(v)) { const d = new Date(v); return d.toLocaleString('en-SG', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }); } if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return dshort(v); return esc(v); };
 
@@ -1117,8 +1117,10 @@ function sidebar() {
     (isAdmin() ? '<div class="foot"><button class="nav" data-a="nav" data-v="settings" aria-current="' + (cur === 'settings') + '">' + I('cog') + '<span class="lbl">Settings</span></button></div>' : '') + '</aside>';
 }
 function bellMenu() {
-  const v = viewer(), list = S.bellList = S.feed.filter(e => canRead(e, v)).slice(0, 40);
-  return '<div class="menu bellmenu"><div class="row between" style="padding:4px 8px 8px"><h3>Notifications</h3><button class="link" data-a="seen-all">Mark all as read</button></div>' + list.map((e, i) => '<button class="mi nitem' + (unreadFor(e, v) ? ' unread' : '') + '" data-a="note-open" data-i="' + i + '" data-cid="' + e.cid + '"><span class="av">' + initials(e.who) + '</span><span><span>' + esc(e.who) + ' · ' + esc(e.text) + '</span><br><span class="small muted">' + esc((S.clients.find(c => c.id === e.cid) || {}).company || '') + ' · ' + fmtAt(e.at) + '</span></span></button>').join('') + '<p class="small muted" style="padding:6px 8px 0;margin:0">Each of these is also emailed.</p></div>';
+  const v = viewer(), all = S.feed.filter(e => canRead(e, v)), un = all.filter(e => unreadFor(e, v)).length, only = S.bellUnread && un;
+  // every unread one is listed, however old, plus the latest read ones
+  const list = S.bellList = only ? all.filter(e => unreadFor(e, v)) : all.filter((e, i) => i < 40 || unreadFor(e, v));
+  return '<div class="menu bellmenu"><div class="row between" style="padding:4px 8px 8px"><h3>Notifications' + (un ? ' <span class="small muted" style="font-weight:400">· ' + un + ' unread</span>' : '') + '</h3>' + (un ? '<span class="row" style="gap:12px"><button class="link small" data-a="bell-only">' + (only ? 'Show all' : 'Unread only') + '</button><button class="link small" data-a="seen-all">Mark all as read</button></span>' : '') + '</div>' + (!list.length ? '<p class="muted small" style="padding:8px">You are all caught up.</p>' : '') + list.map((e, i) => '<button class="mi nitem' + (unreadFor(e, v) ? ' unread' : '') + '" data-a="note-open" data-i="' + i + '" data-cid="' + e.cid + '"><span class="av">' + initials(e.who) + '</span><span><span>' + esc(e.who) + ' · ' + esc(e.text) + '</span><br><span class="small muted">' + esc((S.clients.find(c => c.id === e.cid) || {}).company || '') + ' · ' + fmtAt(e.at) + '</span></span></button>').join('') + '<p class="small muted" style="padding:6px 8px 0;margin:0">Each of these is also emailed.</p></div>';
 }
 function topRight() {
   const n = S.feed.filter(e => unreadFor(e, viewer())).length, who = S.role === 'client' ? client().contact : member(S.me).name;
@@ -1997,6 +1999,7 @@ const ACT = {
   print() { window.print(); return 'skip'; },
   nav(d) { S.view = d.v; S.menu = null; S.q = ''; if (d.v === 'billing') { S.asub = ''; S.afc = ''; } },
   menu(d) { S.menu = S.menu === d.m ? null : d.m; },
+  'bell-only'() { S.bellUnread = !S.bellUnread; S.menu = 'bell'; },
   'seen-all'() { return api('seen', {}, { quiet: true }); },
   'note-open'(d) { S.menu = null; const e = (S.bellList || [])[+d.i] || { cid: d.cid, text: '' }, k = feedKey(e); noteGo(e); if (D && unreadFor(e)) { D.read = [k, ...(D.read || [])]; return api('seen-one', { k }, { quiet: true }); } },
   'open-client'(d) { S.cid = d.id; S.view = 'client'; S.ctab = 'overview'; S.q = ''; },
