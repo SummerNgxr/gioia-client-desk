@@ -758,3 +758,4 @@ button.ccr{cursor:pointer}button.ccr:hover{background:var(--card-2)}
 .mitem{display:flex;align-items:center;gap:10px;padding:8px 10px;border:0;background:none;border-radius:8px;text-align:left;font:inherit;color:inherit;cursor:pointer}
 .mitem.on,.mitem:hover{background:var(--accent-soft)}
 .mitem .av{width:26px;height:26px;font-size:11px}
+.flash{animation:flash 2.4s ease}@keyframes flash{0%,40%{background:var(--accent-soft)}100%{background:transparent}}
