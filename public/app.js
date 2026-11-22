@@ -735,9 +735,9 @@ function projPLPage() {
     const f = fig(p), fut = (p.mode === 'm' ? p.m : p.y + '-01') > now;
     card = '<div class="card stack ppcard">' + (fut ? '<div class="plnote">' + I('info', 'sm') + 'This period is still to come, so these figures are planned, not actual.</div>' : '') + '<div class="sbox">' + sumRow('Service income', f.inc) + sumRow('Team fees', f.team, '', null, 'sub') + sumRow('Vendor fees', f.vendor, '', null, 'sub') + sumRow('Other expenses', f.exp, '', null, 'sub') + sumRow('Costs', f.cost) + totRow(f.inc - f.cost < 0 ? 'Estimated loss' : 'Estimated profit', f.inc - f.cost) + '</div></div>';
   }
-  const lk = (l, a, d) => btn(l, a, d, 'ghost');
-  const links = '<div class="row alinks">' + lk('Quotation', 'doc', { type: 'quote', cid: c.id }) + lk('Invoices', 'asub', { s: 'invoices', cid: c.id }) + lk('Payments', 'asub', { s: 'history', cid: c.id }) + lk('Team fees', 'acat', { c: 'team', cid: c.id }) + lk('Expenses', 'acat', { c: 'exp', cid: c.id }) + lk('Deposits', 'asub', { s: 'deposits', cid: c.id }) + lk('Deliverables', 'open-client-tab', { id: c.id, t: 'work' }) + '</div>';
-  return aHead('Project P&amp;L', esc(c.company) + ' · ' + esc(pname(c)) + ' · Agreed value <b>' + sm(agreed) + '</b> · ' + (full ? 'whole project' : perName(p)), '') + pickers + '<div style="max-width:820px" class="stack">' + card + links + '</div>';
+  const lk = (l, a, d, ic) => '<button class="cdrow" data-a="' + a + '" ' + Object.entries(d).map(([k, v]) => 'data-' + k + '="' + esc(v) + '"').join(' ') + '>' + I(ic) + '<span>' + l + '</span><span></span>' + I('chev', 'sm') + '</button>';
+  const links = '<div class="clinks pplinks">' + lk('View quotation', 'doc', { type: 'quote', cid: c.id }, 'doc') + lk('View invoices', 'asub', { s: 'invoices', cid: c.id }, 'receipt') + lk('View payments', 'asub', { s: 'history', cid: c.id }, 'clock') + lk('View team fees', 'acat', { c: 'team', cid: c.id }, 'users') + lk('View expenses', 'acat', { c: 'exp', cid: c.id }, 'coins') + lk('View deposits', 'asub', { s: 'deposits', cid: c.id }, 'lock') + lk('View deliverables', 'open-client-tab', { id: c.id, t: 'work' }, 'layers') + '</div>';
+  return aHead('Project P&amp;L', esc(c.company) + ' · ' + esc(pname(c)) + ' · Agreed value <b>' + sm(agreed) + '</b> · ' + (full ? 'whole project' : perName(p)), '') + pickers + '<div class="ppgrid"><div class="stack">' + card + '</div><div class="cside">' + links + '</div></div>';
 }
 function invoicesPage() {
   const now = nowKey(), q = (S.iq || '').toLowerCase(), st = S.ist || '', fc = S.afc || '';
