@@ -765,3 +765,8 @@ button.ccr{cursor:pointer}button.ccr:hover{background:var(--card-2)}
 .nitem.unread::after{content:"";position:absolute;right:10px;top:16px;width:8px;height:8px;border-radius:50%;background:var(--accent)}
 .nitem:not(.unread){opacity:.85}
 .nitem{padding-right:28px !important}
+/* the notification list scrolls on its own, not the page behind it */
+.menu.bellmenu{max-height:min(70vh,620px);overflow-y:auto;overscroll-behavior:contain;width:min(400px,92vw)}
+.menu.bellmenu>.row:first-child{position:sticky;top:-6px;background:var(--card);z-index:2;padding-top:8px !important}
+.menu.bellmenu{padding-top:0}.menu.bellmenu>.row:first-child{top:0;padding-top:12px !important;margin:0 -6px;padding-left:14px !important;padding-right:14px !important}
+.menu.bellmenu>.row:first-child{border-bottom:1px solid var(--line);margin-bottom:6px;padding-bottom:10px !important}

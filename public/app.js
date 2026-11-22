@@ -1117,8 +1117,8 @@ function sidebar() {
     (isAdmin() ? '<div class="foot"><button class="nav" data-a="nav" data-v="settings" aria-current="' + (cur === 'settings') + '">' + I('cog') + '<span class="lbl">Settings</span></button></div>' : '') + '</aside>';
 }
 function bellMenu() {
-  const v = viewer(), list = S.bellList = S.feed.filter(e => canRead(e, v)).slice(0, 8);
-  return '<div class="menu"><div class="row between" style="padding:4px 8px 8px"><h3>Notifications</h3><button class="link" data-a="seen-all">Mark all as read</button></div>' + list.map((e, i) => '<button class="mi nitem' + (unreadFor(e, v) ? ' unread' : '') + '" data-a="note-open" data-i="' + i + '" data-cid="' + e.cid + '"><span class="av">' + initials(e.who) + '</span><span><span>' + esc(e.who) + ' · ' + esc(e.text) + '</span><br><span class="small muted">' + esc((S.clients.find(c => c.id === e.cid) || {}).company || '') + ' · ' + fmtAt(e.at) + '</span></span></button>').join('') + '<p class="small muted" style="padding:6px 8px 0;margin:0">Each of these is also emailed.</p></div>';
+  const v = viewer(), list = S.bellList = S.feed.filter(e => canRead(e, v)).slice(0, 40);
+  return '<div class="menu bellmenu"><div class="row between" style="padding:4px 8px 8px"><h3>Notifications</h3><button class="link" data-a="seen-all">Mark all as read</button></div>' + list.map((e, i) => '<button class="mi nitem' + (unreadFor(e, v) ? ' unread' : '') + '" data-a="note-open" data-i="' + i + '" data-cid="' + e.cid + '"><span class="av">' + initials(e.who) + '</span><span><span>' + esc(e.who) + ' · ' + esc(e.text) + '</span><br><span class="small muted">' + esc((S.clients.find(c => c.id === e.cid) || {}).company || '') + ' · ' + fmtAt(e.at) + '</span></span></button>').join('') + '<p class="small muted" style="padding:6px 8px 0;margin:0">Each of these is also emailed.</p></div>';
 }
 function topRight() {
   const n = S.feed.filter(e => unreadFor(e, viewer())).length, who = S.role === 'client' ? client().contact : member(S.me).name;
