@@ -262,7 +262,7 @@ function wsCards(c) {
   const tagOf = s => s.billing === 'prep' ? '' : s.billing === 'general' ? 'Ad-hoc' : s.adhoc ? 'Added service' : 'One-off';
   const prepNotStarted = isAdmin() && c.prep !== 'open' && c.quote.lines.length && c.quote.status !== 'cancelled' ? '<div class="dvrow" style="cursor:default"><span class="dvname"><b>Preparation</b><span class="chip dvtag">Before ' + mName(c, 1) + '</span></span><span class="dvst">' + pill('upcoming', 'Not started') + '</span><span class="row" style="gap:6px;grid-column:span 3;justify-content:flex-end">' + btn(I('plus', 'sm') + 'Start preparation', 'prep-start', { cid: c.id }, 'ghost') + btn(I('list', 'sm') + 'Use a template', 'ptapply-open', { cid: c.id }, 'quiet') + '</span></div>' : '';
   const sec1 = one.length || prepNotStarted ? '<section class="stack" style="gap:4px"><h2 class="dvh">Preparation &amp; One-off</h2><p class="muted small" style="margin:0 0 8px">Set-up and one-off deliverables, not tied to a month.</p><div class="dvlist">' + prepNotStarted + one.map(s => row(s, s.adhoc || freeWs(s) ? 0 : 1, tagOf(s))).join('') + '</div></section>' : '';
-  const strip = months > 1 ? '<div class="dvstrip" role="tablist" aria-label="Month">' + Array.from({ length: months }, (_, k) => k + 1).map(x => { const lk = inv(c, x).status !== 'paid' && !L.covered(c, x), mo = MONTHS[ym(c, x).mo]; return '<button role="tab" data-a="dv-month" data-cid="' + c.id + '" data-m="' + x + '" aria-selected="' + (x === cur) + '" title="' + mo + ' ' + ym(c, x).y + (lk ? ': unlocks when its invoice is paid' : '') + '">' + (x === cur ? mo : mo.slice(0, 3)) + (lk ? ' ' + I('lock', 'sm') : '') + '</button>'; }).join('') + '</div>' : '';
+  const strip = months > 1 ? '<div class="dvstrip" role="tablist" aria-label="Month">' + Array.from({ length: months }, (_, k) => k + 1).map(x => { const iv = inv(c, x), lk = !iv || (iv.status !== 'paid' && !L.covered(c, x)), mo = MONTHS[ym(c, x).mo]; return '<button role="tab" data-a="dv-month" data-cid="' + c.id + '" data-m="' + x + '" aria-selected="' + (x === cur) + '" title="' + mo + ' ' + ym(c, x).y + (lk ? ': unlocks when its invoice is paid' : '') + '">' + (x === cur ? mo : mo.slice(0, 3)) + (lk ? ' ' + I('lock', 'sm') : '') + '</button>'; }).join('') + '</div>' : '';
   const sec2 = rec.length ? '<section class="stack" style="gap:4px"><div class="row between" style="align-items:flex-end;gap:16px"><div><h2 class="dvh">Recurring services</h2><p class="muted small" style="margin:0 0 8px">Monthly deliverables. Pick a month to see and manage its tasks.</p></div>' + strip + '</div><div class="dvlist">' + rec.map(s => row(s, cur, mName(c, cur))).join('') + '</div></section>' : '';
   return '<div class="stack" style="gap:30px">' + (sec1 + sec2 || '<div class="card"><p class="muted" style="margin:0">Deliverables appear once the quotation is accepted.</p></div>') + '</div>';
 }
@@ -1110,8 +1110,8 @@ function sidebar() {
     (isAdmin() ? '<div class="foot"><button class="nav" data-a="nav" data-v="settings" aria-current="' + (cur === 'settings') + '">' + I('cog') + '<span class="lbl">Settings</span></button></div>' : '') + '</aside>';
 }
 function bellMenu() {
-  const v = viewer(), list = S.feed.filter(e => canRead(e, v)).slice(0, 8);
-  return '<div class="menu"><div class="row between" style="padding:4px 8px 8px"><h3>Notifications</h3><button class="link" data-a="seen-all">Mark all as read</button></div>' + list.map(e => '<button class="mi" data-a="note-open" data-cid="' + e.cid + '"><span class="av">' + initials(e.who) + '</span><span><span style="' + (unreadFor(e, v) ? 'font-weight:600' : '') + '">' + esc(e.who) + ' · ' + esc(e.text) + '</span><br><span class="small muted">' + esc((S.clients.find(c => c.id === e.cid) || {}).company || '') + ' · ' + fmtAt(e.at) + '</span></span></button>').join('') + '<p class="small muted" style="padding:6px 8px 0;margin:0">Each of these is also emailed.</p></div>';
+  const v = viewer(), list = S.bellList = S.feed.filter(e => canRead(e, v)).slice(0, 8);
+  return '<div class="menu"><div class="row between" style="padding:4px 8px 8px"><h3>Notifications</h3><button class="link" data-a="seen-all">Mark all as read</button></div>' + list.map((e, i) => '<button class="mi" data-a="note-open" data-i="' + i + '" data-cid="' + e.cid + '"><span class="av">' + initials(e.who) + '</span><span><span style="' + (unreadFor(e, v) ? 'font-weight:600' : '') + '">' + esc(e.who) + ' · ' + esc(e.text) + '</span><br><span class="small muted">' + esc((S.clients.find(c => c.id === e.cid) || {}).company || '') + ' · ' + fmtAt(e.at) + '</span></span></button>').join('') + '<p class="small muted" style="padding:6px 8px 0;margin:0">Each of these is also emailed.</p></div>';
 }
 function topRight() {
   const n = S.feed.filter(e => unreadFor(e, viewer())).length, who = S.role === 'client' ? client().contact : member(S.me).name;
@@ -1951,7 +1951,29 @@ const ACT = {
   nav(d) { S.view = d.v; S.menu = null; S.q = ''; if (d.v === 'billing') { S.asub = ''; S.afc = ''; } },
   menu(d) { S.menu = S.menu === d.m ? null : d.m; },
   'seen-all'() { return api('seen', {}, { quiet: true }); },
-  'note-open'(d) { S.menu = null; if (!d.cid || !S.clients.some(c => c.id === d.cid)) { if (S.role !== 'client') S.view = 'mytasks'; return api('seen', {}, { quiet: true }); } S.cid = d.cid; if (S.role === 'client') S.ptab = 'overview'; else { S.view = 'client'; S.ctab = 'activity'; } return api('seen', {}, { quiet: true }); },
+  'note-open'(d) { // open what the notification is about: the task, the invoice or quotation, fees, files or deliverables
+    S.menu = null; const e = (S.bellList || [])[+d.i] || { cid: d.cid, text: '' }, t0 = String(e.text || ''), cl = S.role === 'client', c = S.clients.find(x => x.id === e.cid);
+    const go = () => api('seen', {}, { quiet: true }), fee = /\bfees?\b|earned|paid you|payment details/i.test(t0);
+    if (!c) {
+      if (cl) S.ptab = 'overview';
+      else if (String(e.cid || '').startsWith('a:')) S.view = 'clients';
+      else if (isAdmin() && /^(approved|question on|withdrew)? ?invoice\b|invoice \S+ (paid|submitted)/i.test(t0)) { S.view = 'billing'; S.asub = 'teaminv'; }
+      else if (isAdmin() && /^paid |removed the payment/i.test(t0)) { S.view = 'billing'; S.asub = 'history'; }
+      else if (fee || /payment|invoice|bank/i.test(t0)) S.view = 'earnings';
+      else S.view = 'mytasks';
+      return go();
+    }
+    const title = (t0.match(/"([^"]+)"/) || [])[1], t = (e.tid && c.tasks.find(x => x.id === e.tid)) || (title && c.tasks.find(x => x.title === title));
+    if (t && (!cl || canSee(c, t))) { ACT.task({ id: t.id, cid: c.id }); return go(); }
+    S.cid = c.id; const tab = (st, ct) => { if (cl) S.ptab = ct; else { S.view = 'client'; S.ctab = st; } };
+    if (!cl && fee) { if (isAdmin()) { S.view = 'billing'; S.asub = 'fees'; S.afc = c.id; } else S.view = 'earnings'; }
+    else if (/preparation|deliverable|unlock|locked|month/i.test(t0)) tab('work', 'workspaces');
+    else if (/quotation|proposal|renewal|accepted the|\bsigned\b/i.test(t0)) tab(isAdmin() ? 'quote' : 'overview', 'proposal');
+    else if (/invoice|deposit|payment|\bpaid\b|refund/i.test(t0)) tab(isAdmin() ? 'invoices' : 'overview', 'invoices');
+    else if (/file|upload|link|folder/i.test(t0)) tab('files', 'files');
+    else tab('overview', 'overview');
+    return go();
+  },
   'open-client'(d) { S.cid = d.id; S.view = 'client'; S.ctab = 'overview'; S.q = ''; },
   'open-client-tab'(d) { S.cid = d.id; S.view = 'client'; S.ctab = d.t; S.q = ''; },
   'open-ws'(d) { pickClient(d); S.ws = d.id; S.wm = +d.m || 1; S.q = ''; if (S.role === 'client') { S.ptab = 'tasks'; S.pws = d.id; S.ptg = ''; S.pwm = +d.m || 0; } else S.view = 'ws'; },
