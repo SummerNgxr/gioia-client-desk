@@ -1875,9 +1875,17 @@ let D = null;
 function checkFees() {}
 const task = id => client().tasks.find(t => t.id === id);
 function pickClient(d) { if (d.cid) S.cid = d.cid; }
+/* notes written to one person ("Assigned you a fee…") read in the third person for everyone else, e.g. admins */
+function personal(e) {
+  if (!e.priv || e.priv === ((D && D.me && D.me.id) || S.me)) return e;
+  const n = (member(e.priv) || {}).name || 'the team member', t = String(e.text || '');
+  const x = t.replace(/^Assigned you /, 'Assigned ' + n + ' ').replace(/^Paid you /, 'Paid ' + n + ' ').replace(/^You have earned (.*?) of your /, n + ' has earned $1 of their ')
+    .replace(/no longer on your list/, "no longer on " + n + "'s list").replace(/ is waiting for you\b/, ' is waiting for ' + n).replace(/ tasks are waiting for you\b/, ' tasks are waiting for ' + n).replace(/^Payment details saved$/, n + "'s payment details saved");
+  return x === t ? e : Object.assign({}, e, { text: x });
+}
 function adopt(st) {
   D = st; if (!D.me || !['admin', 'team', 'client'].includes(D.me.role)) return;
-  S.brand = D.brand; S.team = D.team || []; S.catalogue = D.catalogue || []; S.clients = D.clients || []; S.accounts = D.accounts || []; S.payouts = D.payouts || []; S.fees = D.fees || []; S.feed = D.feed || []; S.nextQuote = D.nextQuote || 0; S.invFormat = D.invFormat || ''; S.templates = D.templates || []; S.prepTemplates = D.prepTemplates || []; S.bills = D.bills || []; S.myBank = D.myBank || null; S.myPay = D.myPay || '';
+  S.brand = D.brand; S.team = D.team || []; S.catalogue = D.catalogue || []; S.clients = D.clients || []; S.accounts = D.accounts || []; S.payouts = D.payouts || []; S.fees = D.fees || []; S.feed = (D.feed || []).map(e => personal(e)); S.nextQuote = D.nextQuote || 0; S.invFormat = D.invFormat || ''; S.templates = D.templates || []; S.prepTemplates = D.prepTemplates || []; S.bills = D.bills || []; S.myBank = D.myBank || null; S.myPay = D.myPay || '';
   S.clients.forEach(c => { c.adhoc = c.adhoc || []; c.extra = c.extra || []; c.files = c.files || []; c.tasks.forEach(t => { t.desc = t.desc || ''; t.due = t.due || ''; t.history = t.history || []; t.comments = t.comments || []; t.files = t.files || []; }); });
   S.role = D.me.role === 'client' ? 'client' : 'admin'; S.me = D.me.id || '';
   if (!S.clients.find(c => c.id === S.cid)) S.cid = (D.me.role === 'client' && D.me.cid) || (S.clients[0] || {}).id || '';
