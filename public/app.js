@@ -1261,8 +1261,9 @@ function taskPage(c, t) {
   const canAdd = A || (cl && needsClient(t));
   const files = '<div class="stack" style="gap:8px"><h2>Attachment (' + t.files.length + ')</h2>' + (t.files.length ? '<div class="card files" style="padding:0 14px">' + t.files.map(fileRow).join('').replace('class="file"', 'class="file" style="border-top:0"') + '</div>' : '<p class="small muted" style="margin:0">Nothing attached yet.</p>') + '<input type="file" id="up-' + t.id + '" data-up="' + t.id + '" multiple hidden>' +
     (canAdd ? '<div class="grid g2">' + btn(I('upload') + 'Upload file', 'pick-file', { key: t.id }, 'quiet block bigbtn') + btn(I('link') + 'Add Google link', 'link-open', { key: t.id }, 'quiet block bigbtn') + '</div>' : '') + '</div>';
-  const comments = '<div class="stack" style="gap:8px"><h2>' + (cl ? 'Activity &amp; comments' : 'Comments') + ' (' + t.comments.length + ')</h2><div class="card stack" style="gap:0;padding:0 16px">' + t.comments.map(x => '<div class="row cmt' + (x.internal ? ' internal' : '') + '" style="flex-wrap:nowrap;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--line)"><span class="av" style="width:36px;height:36px">' + (x.client ? initials(c.contact) : initials(x.by)) + '</span><div style="flex:1"><div class="row between"><b>' + (cl && x.client ? 'You (Client)' : esc(x.client ? c.contact + ' (Client)' : x.by)) + '</b>' + (x.internal ? ' <span class="chip">Team only</span>' : '') + '<span class="small muted" style="margin-left:auto">' + fmtAt(x.at) + (isAdmin() || (x.key ? x.key === D.me.key : cl ? x.client : !x.client && x.by === (member(S.me) || {}).name) ? ' · <button class="link small" data-a="cm-del" data-id="' + t.id + '" data-c="' + esc(x.id) + '">Delete</button>' : '') + '</span></div><div>' + esc(x.text) + '</div></div></div>').join('') +
-    (A ? '' : '') + '<div class="field" style="padding:12px 0"><label for="cm-text">' + (cl && t.status === 'awaiting' ? 'Your comment (needed to request changes, optional when approving)' : cl && staged(t) && cs && cs.owner === 'client' ? 'Add a note for the team (optional)' : 'Add a comment') + '</label><textarea id="cm-text" class="grow"></textarea>' + (cl && (t.status === 'awaiting' || (staged(t) && cs && cs.owner === 'client')) ? '' : '<div class="row">' + btn('Post comment', 't-comment', { id: t.id }, 'ghost') + (A ? '<label class="small row" style="gap:6px;cursor:pointer"><input type="checkbox" id="cm-internal"> Team only (the client won\'t see it)</label>' : '') + '</div>') + '</div></div></div>';
+  const comments = '<div class="stack" style="gap:8px"><h2>' + (cl ? 'Activity &amp; comments' : 'Comments') + ' (' + t.comments.length + ')</h2><div class="card stack" style="gap:0;padding:0 16px">' + t.comments.map(x => { const long = x.text.length > 600 && !(S.cmOpen || []).includes(x.id), mine = (x.mentions || []).includes(D.me.key) || (cl && (x.mentions || []).includes('client'));
+      return '<div class="cmt2' + (x.internal ? ' internal' : '') + (mine ? ' tagged' : '') + '"><span class="av" style="width:36px;height:36px">' + (x.client ? initials(c.contact) : initials(x.by)) + '</span><div style="flex:1;min-width:0"><div class="cmhead"><b>' + (cl && x.client ? 'You' : esc(x.client ? c.contact + ' (Client)' : x.by)) + '</b>' + (x.internal ? '<span class="chip">Team only</span>' : '') + (mine ? '<span class="chip tagchip">Mentions you</span>' : '') + '<span class="small muted" style="margin-left:auto;white-space:nowrap">' + fmtAt(x.at) + (isAdmin() || (x.key ? x.key === D.me.key : cl ? x.client : !x.client && x.by === (member(S.me) || {}).name) ? ' · <button class="link small" data-a="cm-del" data-id="' + t.id + '" data-c="' + esc(x.id) + '">Delete</button>' : '') + '</span></div><div class="cmtxt' + (long ? ' clamp' : '') + '">' + cmText(c, x) + '</div>' + (x.text.length > 600 ? '<button class="link small" data-a="cm-more" data-c="' + esc(x.id) + '">' + (long ? 'Show more' : 'Show less') + '</button>' : '') + '</div></div>'; }).join('') +
+    (A ? '' : '') + '<div class="field" style="padding:12px 0"><label for="cm-text">' + (cl && t.status === 'awaiting' ? 'Your comment (needed to request changes, optional when approving)' : cl && staged(t) && cs && cs.owner === 'client' ? 'Add a note for the team (optional)' : 'Add a comment') + '</label><div class="mwrap"><textarea id="cm-text" class="grow" data-mention="' + c.id + '" placeholder="Write a comment. Type @ to tag someone."></textarea><div class="mlist" id="mlist" hidden></div></div><p class="small muted" style="margin:4px 0 0">' + (A ? 'Admins are told about every comment. Type @ to notify someone else on the project.' : 'Type @ to notify someone on the project.') + '</p>' + (cl && (t.status === 'awaiting' || (staged(t) && cs && cs.owner === 'client')) ? '' : '<div class="row">' + btn('Post comment', 't-comment', { id: t.id }, 'ghost') + (A ? '<label class="small row" style="gap:6px;cursor:pointer"><input type="checkbox" id="cm-internal"> Team only (the client won\'t see it)</label>' : '') + '</div>') + '</div></div></div>';
   let main = '';
   if (staged(t)) {
     if (!cs) main = '';
@@ -1373,6 +1374,18 @@ function svcDrawer() {
     field('e-bullets', 'Quotation description, one point per line', d.bullets.join('\n'), 'area') + field('e-note', 'Small note under the description', d.note) + '<h3>Deliverable tasks</h3>' +
     d.tasks.map((t, i) => { const txt = Array.isArray(t[3]) ? L.stepsText(t[3]) : (t[3] || ''), n = L.parseSteps(txt).length, open = (d.open || []).includes(i) || n; return '<div class="stack" style="gap:6px"><div class="trow"><input id="et-title-' + i + '" type="text" value="' + esc(t[0]) + '" aria-label="Task ' + (i + 1) + '" placeholder="Task"><select id="et-owner-' + i + '" aria-label="Task ' + (i + 1) + ' owner"><option value="gioia"' + (t[1] === 'gioia' ? ' selected' : '') + '>Team</option><option value="client"' + (t[1] === 'client' ? ' selected' : '') + '>Client</option></select><label class="small"><input id="et-appr-' + i + '" type="checkbox"' + (t[2] ? ' checked' : '') + '> Approval</label><span class="row" style="gap:10px"><button class="link" data-a="svc-steps" data-i="' + i + '">' + (n ? n + ' steps' : 'Add steps') + '</button><button class="link" data-a="svc-row-del" data-i="' + i + '">Remove</button></span></div>' + (open ? '<textarea id="et-steps-' + i + '" rows="5" aria-label="Steps for task ' + (i + 1) + '" placeholder="Client: …&#10;Team: …&#10;Client approves: …">' + esc(txt) + '</textarea>' + tplBar('et-steps-' + i) : '') + '</div>'; }).join('') + '<p class="small muted" style="margin:0">Steps: one per line, starting with <b>Client:</b>, <b>Client reviews:</b>, <b>Client approves:</b> or <b>Team:</b>. A task with steps passes back and forth, and its status follows the current step.</p>' +
     '<div>' + btn(I('plus', 'sm') + 'Add task', 'svc-row-add', {}, 'quiet') + '</div><h3>Preparation tasks</h3><p class="small muted" style="margin:-6px 0 0">Added when you click Start preparation on a project with this service, before the first month. One per line; start with <b>Client:</b> for things the client sends.</p><textarea id="e-prep" rows="4" placeholder="Client: Send website login details&#10;Kick-off call and goals">' + esc((d.prep || []).map(p => (p[1] === 'client' ? 'Client: ' : '') + p[0]).join('\n')) + '</textarea><p class="small muted" style="margin:0">Changes apply to new quotations. Existing ones keep their own copy.</p><div class="row">' + btn('Save service', 'svc-save') + btn('Cancel', 'close', {}, 'quiet') + (d.isNew ? '' : btn('Delete', 'svc-delete', {}, 'quiet')) + '</div></div></div></div>';
+}
+/* @mentions: who can be tagged on this project's comments */
+function mentionables(c, internal) {
+  const onProj = m => m.admin || c.tasks.some(t => t.assignee === m.id || (t.stages || []).some(x => x.assignee === m.id)) || S.fees.some(f => f.cid === c.id && f.member === m.id);
+  const ppl = S.team.filter(m => m.active !== false && onProj(m) && 'm:' + m.id !== D.me.key).map(m => ({ key: 'm:' + m.id, name: m.name, sub: 'Gioia team' }));
+  if (staff() && !internal && c.contact) ppl.push({ key: 'client', name: c.contact, sub: 'Client · ' + c.company });
+  return ppl;
+}
+function cmText(c, x) {
+  const names = (x.mentions || []).map(k => k === 'client' ? c.contact : (member(k.slice(2)) || {}).name).filter(Boolean);
+  let h = esc(x.text); names.sort((a, b) => b.length - a.length).forEach(n => { h = h.split('@' + esc(n)).join('<span class="mention">@' + esc(n) + '</span>'); });
+  return h;
 }
 function smallModal(M) {
   const c = S.clients.find(x => x.id === M.cid), wrap = (h, body, act, label, cls) => '<div class="modal" data-a="close-bg-modal"><div class="sheet stack" style="max-width:480px"><h2>' + h + '</h2>' + body + '<div class="row">' + btn(label, act, {}, cls || '') + btn('Cancel', 'close-modal', {}, 'quiet') + '</div></div></div>';
@@ -1984,7 +1997,10 @@ const ACT = {
   't-done'(d) { return api('t-done', { id: d.id }); },
   't-sent'(d) { return api('t-sent', { id: d.id }); },
   async 't-approve'(d) { const onPage = S.ptab === 'task'; const r = await api('t-approve', { id: d.id, text: val('cm-text') }); if (r && onPage) S.confirm = d.id; },
-  't-comment'(d) { const x = val('cm-text'), int = document.getElementById('cm-internal'); if (!x) { toast('Write a comment first.'); return; } return api('t-comment', { id: d.id, text: x, internal: !!(int && int.checked) }, { msg: int && int.checked ? 'Team-only comment posted. The client can\'t see it.' : 'Comment posted.' }); },
+  't-comment'(d) { const x = val('cm-text'), int = document.getElementById('cm-internal'), c = client(); if (!x) { toast('Write a comment first.'); return; }
+    const ment = c ? mentionables(c, !!(int && int.checked)).filter(m => x.includes('@' + m.name)).map(m => m.key) : [];
+    return api('t-comment', { id: d.id, text: x, internal: !!(int && int.checked), mentions: ment }, { msg: (int && int.checked ? 'Team-only comment posted. The client can\'t see it.' : 'Comment posted.') + (ment.length ? ' ' + ment.length + (ment.length === 1 ? ' person' : ' people') + ' notified.' : '') }); },
+  'cm-more'(d) { S.cmOpen = S.cmOpen || []; S.cmOpen = S.cmOpen.includes(d.c) ? S.cmOpen.filter(z => z !== d.c) : [...S.cmOpen, d.c]; },
   async 'q-accept-go'(d) { const ag = document.getElementById('qx-agree'), p = { decision: 'accept', agree: !!(ag && ag.checked), name: val('qx-name') }; const r = d.rid ? await api('rn-respond', Object.assign(p, { id: d.rid }), { msg: 'Thank you. Your renewal is accepted.' }) : await api('q-respond', p, { msg: 'Thank you. Your proposal is accepted.' }); if (r) window.scrollTo(0, 0); },
   'q-decline-open'(d) { S.modal = { kind: 'qdecline', rid: d.rid || '' }; },
   async 'q-decline-go'() { const rid = S.modal.rid, r = await api(rid ? 'rn-respond' : 'q-respond', { id: rid, decision: 'decline', text: val('qx-reason') }, { msg: 'Thank you for letting us know.' }); if (r) S.modal = null; },
@@ -2367,3 +2383,29 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && D && D.me)
 load();
 /* a photo that will not load (for example a Google address that has expired) falls back to initials */
 document.addEventListener('error', e => { const img = e.target; if (img && img.tagName === 'IMG' && img.parentElement && img.parentElement.classList.contains('pic')) { const av = img.parentElement, nm = av.getAttribute('title') || (D && D.me && D.me.name) || '?'; av.classList.remove('pic'); av.textContent = initials(nm); } }, true);
+/* @mention suggestions in the comment box: type @ and pick a person; the text keeps "@Full Name" */
+(() => {
+  let sel = 0, items = [], start = -1;
+  const box = () => document.getElementById('mlist'), ta = () => document.querySelector('textarea[data-mention]');
+  const hide = () => { const b = box(); if (b) b.hidden = true; items = []; start = -1; };
+  const show = t => {
+    const c = S.clients.find(x => x.id === t.dataset.mention), pos = t.selectionStart, before = t.value.slice(0, pos), m = before.match(/(^|\s)@([^\s@]{0,30})$/);
+    if (!c || !m) return hide();
+    const q = m[2].toLowerCase(), int = document.getElementById('cm-internal');
+    items = mentionables(c, !!(int && int.checked)).filter(p => !q || p.name.toLowerCase().split(/\s+/).some(w => w.startsWith(q)) || p.name.toLowerCase().startsWith(q)).slice(0, 6);
+    start = pos - m[2].length - 1; sel = Math.min(sel, Math.max(0, items.length - 1));
+    const b = box(); if (!b) return; if (!items.length) return hide();
+    b.innerHTML = items.map((p, i) => '<button type="button" class="mitem' + (i === sel ? ' on' : '') + '" data-mi="' + i + '">' + (p.key === 'client' ? '<span class="av">' + initials(p.name) + '</span>' : avatar(p.key.slice(2))) + '<span><b>' + esc(p.name) + '</b><span class="small muted"> · ' + esc(p.sub) + '</span></span></button>').join('');
+    b.hidden = false;
+  };
+  const pick = i => { const t = ta(), p = items[i]; if (!t || !p || start < 0) return; const end = t.selectionStart, ins = '@' + p.name + ' '; t.value = t.value.slice(0, start) + ins + t.value.slice(end); const at = start + ins.length; t.focus(); t.setSelectionRange(at, at); hide(); };
+  document.addEventListener('input', e => { if (e.target.matches && e.target.matches('textarea[data-mention]')) { sel = 0; show(e.target); } });
+  document.addEventListener('keydown', e => {
+    if (!e.target.matches || !e.target.matches('textarea[data-mention]') || !items.length || box().hidden) return;
+    if (e.key === 'ArrowDown') { sel = (sel + 1) % items.length; show(e.target); e.preventDefault(); }
+    else if (e.key === 'ArrowUp') { sel = (sel - 1 + items.length) % items.length; show(e.target); e.preventDefault(); }
+    else if (e.key === 'Enter' || e.key === 'Tab') { pick(sel); e.preventDefault(); }
+    else if (e.key === 'Escape') { hide(); e.preventDefault(); }
+  });
+  document.addEventListener('mousedown', e => { const b = e.target.closest && e.target.closest('[data-mi]'); if (b) { e.preventDefault(); pick(+b.dataset.mi); } else if (!(e.target.closest && e.target.closest('#mlist'))) hide(); });
+})();
