@@ -1380,10 +1380,11 @@ function timelineHtml(t, c) {
   const tidy = x => String(x || '').replace(new RegExp(',? (on|to|from|in) ' + qt + '(?=$|[:,.]| \\()', 'g'), '').replace(new RegExp(qt, 'g'), 'this task').replace(/\s+$/, '');
   const rows = [...(t.history || []).filter(h => !ats.has(h.at)).map(h => ({ at: h.at, title: h.text, who: h.by })),
     ...fd.map(e => ({ at: e.at, title: tidy(personal(e).text), who: e.client && c.contact ? c.contact : e.who, internal: e.internal }))]
-    .sort((a, b) => String(a.at).localeCompare(String(b.at)));
-  const all = (S.tlAll || {})[t.id], shown = all ? rows : rows.slice(-5), nx = nextStep(t);
+    .sort((a, b) => String(b.at).localeCompare(String(a.at)));
+  // newest first; what comes next sits at the very top
+  const all = (S.tlAll || {})[t.id], shown = all ? rows : rows.slice(0, 5), nx = nextStep(t);
   const steps = shown.map(r => ['on', r.title, r.who + (r.internal ? ' · team only' : ''), fmtAt(r.at)]);
-  if (nx) steps.push(['', nx[0], nx[1], '']);
+  if (nx) steps.unshift(['', 'Next: ' + nx[0], nx[1], '']);
   if (!steps.length) return '<p class="small muted" style="margin:0">No activity yet.</p>';
   return (rows.length > 5 ? '<div class="row between" style="margin-bottom:8px"><span class="small muted">' + (all ? 'All ' + rows.length + ' entries' : 'Latest 5 of ' + rows.length) + '</span><button class="link" data-a="tl-all" data-id="' + t.id + '">' + (all ? 'Show latest only' : 'Show all') + '</button></div>' : '') +
     '<div class="tl">' + steps.map(([on, title, sub, at]) => '<div class="tls"><span class="dot ' + on + '">' + (on ? I('tick', 'sm') : '') + '</span><div><b>' + esc(title) + '</b><div class="small muted">' + esc(sub) + '</div></div><span class="small muted">' + at + '</span></div>').join('') + '</div>';
