@@ -1777,6 +1777,20 @@ const TOURS = {
     ['.topbar .iconbtn', 'Notifications', 'Updates appear here. We also email you whenever something needs you.'],
     ['[data-t="details"]', 'My details', 'Your contact details and email settings. You can replay this tour from the menu at the top right.']
   ],
+  admin: [
+    ['[data-v="clients"]', 'Clients', 'Every client and project. Open one for its overview, deliverables, files, activity, quotation and invoices. New project starts a client from here.'],
+    ['[data-v="billing"]', 'Accounts', 'Income, costs and P&L by month or year, per client and per project. Also invoices, deposits, team invoices waiting for you, and Export to Excel for your finance.'],
+    ['[data-v="mytasks"]', 'My tasks', 'Tasks assigned to you, with due dates. Switch to Everyone to see every task across your projects.'],
+    ['[data-v="earnings"]', 'Fees & payouts', 'Fees agreed with the team for each task or month, what is owing, and payments made.'],
+    ['[data-v="files"]', 'Files', 'Every project\'s files, sorted into folders and saved in Google Drive.'],
+    ['[data-v="team"]', 'Team', 'Add team members with their Google email, make someone an admin, and keep payment details.'],
+    ['[data-v="templates"]', 'Templates', 'Saved step lists and preparation task lists to reuse on new work.'],
+    ['[data-v="catalogue"]', 'Service catalogue', 'The services and prices your quotations are built from.'],
+    ['[data-v="help"]', 'Help and manual', 'The admin manual with the rules to remember, such as the 2 revision rounds, plus answers to common questions.'],
+    ['[data-v="settings"]', 'Settings', 'Terms and Conditions, reminder time, email setup and backups.'],
+    ['.topbar .iconbtn', 'Notifications', 'Client approvals, comments, uploads and team updates appear here. Tap one to go straight to it.'],
+    ['.topbar .me', 'Your menu', 'Email settings, sign out, and Show me around to replay this tour.']
+  ],
   team: [
     ['[data-v="mytasks"]', 'My tasks', 'Everything assigned to you across all projects, with due dates. Start here each day. The number shows what is waiting on you.'],
     ['[data-v="clients"]', 'Clients', 'The projects you are working on. Open one to see its deliverables, tasks and files.'],
@@ -1828,11 +1842,11 @@ const TOURS = {
     ['[data-t="details"]', 'My details', 'Your contact details and email settings. You can replay this tour from the menu at the top right.']
   ]
 };
-function tourKind() { if (S.role !== 'client') return vendorMe() ? 'vendor' : isAdmin() ? '' : 'team'; const c = client(); return c && hasAccess(c) ? 'portal' : 'proposal'; }
+function tourKind() { if (S.role !== 'client') return vendorMe() ? 'vendor' : isAdmin() ? 'admin' : 'team'; const c = client(); return c && hasAccess(c) ? 'portal' : 'proposal'; }
 function tourSteps() { return (TOURS[S.tour.kind] || []).filter(st => { const el = document.querySelector(st[0]); return el && el.getClientRects().length; }); }
 function drawTour() {
   let box = document.getElementById('tour');
-  if (!S.tour && !S.tourChecked && D.tours) { S.tourChecked = true; const k = tourKind(); if (k && !D.tours[k] && !S.modal && !S.drawer) S.tour = { kind: k, i: 0 }; }
+  if (!S.tour && !S.tourChecked && D.tours) { S.tourChecked = true; const k = tourKind(); if (k && k !== 'admin' && !D.tours[k] && !S.modal && !S.drawer) S.tour = { kind: k, i: 0 }; }
   if (!S.tour && D.tours && D.tours[tourKind()] && !S.modal && !S.drawer) {
     const pk = S.role === 'client' ? (S.ptab === 'task' ? 'ctask' : S.ptab === 'invoices' ? 'cinv' : '') : isAdmin() ? '' : S.view === 'earnings' ? 'payouts' : S.view === 'task' ? 'task' : '';
     if (pk && !D.tours[pk]) S.tour = { kind: pk, i: 0 };
