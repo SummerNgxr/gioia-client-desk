@@ -1236,11 +1236,22 @@ function portalShell() {
   return '<div class="app">' + side + '<div class="main"><header class="topbar"><div class="row" style="gap:10px">' + logoTile(c.company, c.logo, 'width:36px;height:36px;font-size:13px;border-radius:8px') + '<b>' + esc(c.company) + '</b>' + (S.clients.length > 1 ? projectSwitch(c) : '<span class="small muted">' + esc(pname(c)) + '</span>') + '</div>' + topRight() + '</header><main class="page">' + body + '</main></div></div>';
 }
 /* ---------- drawers ---------- */
-function timelineHtml(t) {
-  const steps = (t.history || []).slice(-5).map(h => ['on', h.text, h.by, fmtAt(h.at)]), nx = nextStep(t);
+function timelineHtml(t, c) {
+  // the task's full record: steps, files, comments, assignment and dates, oldest first
+  const v = viewer(), title = '"' + t.title + '"';
+  const fd = c ? S.feed.filter(e => e.cid === c.id && !e.priv && !e.rem && canRead(e, v) && (e.tid === t.id || (!e.tid && /^(uploaded|shared a link|deleted) /i.test(e.text || '') && String(e.text).includes(title)))) : [];
+  const ats = new Set(fd.map(e => e.at));
+  const qt = title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const tidy = x => String(x || '').replace(new RegExp(',? (on|to|from|in) ' + qt + '(?=$|[:,.]| \\()', 'g'), '').replace(new RegExp(qt, 'g'), 'this task').replace(/\s+$/, '');
+  const rows = [...(t.history || []).filter(h => !ats.has(h.at)).map(h => ({ at: h.at, title: h.text, who: h.by })),
+    ...fd.map(e => ({ at: e.at, title: tidy(personal(e).text), who: e.client && c.contact ? c.contact : e.who, internal: e.internal }))]
+    .sort((a, b) => String(a.at).localeCompare(String(b.at)));
+  const all = (S.tlAll || {})[t.id], shown = all ? rows : rows.slice(-5), nx = nextStep(t);
+  const steps = shown.map(r => ['on', r.title, r.who + (r.internal ? ' · team only' : ''), fmtAt(r.at)]);
   if (nx) steps.push(['', nx[0], nx[1], '']);
   if (!steps.length) return '<p class="small muted" style="margin:0">No activity yet.</p>';
-  return '<div class="tl">' + steps.map(([on, title, sub, at]) => '<div class="tls"><span class="dot ' + on + '">' + (on ? I('tick', 'sm') : '') + '</span><div><b>' + esc(title) + '</b><div class="small muted">' + esc(sub) + '</div></div><span class="small muted">' + at + '</span></div>').join('') + '</div>';
+  return (rows.length > 5 ? '<div class="row between" style="margin-bottom:8px"><span class="small muted">' + (all ? 'All ' + rows.length + ' entries' : 'Latest 5 of ' + rows.length) + '</span><button class="link" data-a="tl-all" data-id="' + t.id + '">' + (all ? 'Show latest only' : 'Show all') + '</button></div>' : '') +
+    '<div class="tl">' + steps.map(([on, title, sub, at]) => '<div class="tls"><span class="dot ' + on + '">' + (on ? I('tick', 'sm') : '') + '</span><div><b>' + esc(title) + '</b><div class="small muted">' + esc(sub) + '</div></div><span class="small muted">' + at + '</span></div>').join('') + '</div>';
 }
 const tpw = (id, h) => h ? '<div id="' + id + '" class="stack" style="gap:inherit">' + h + '</div>' : '';
 function taskPage(c, t) {
@@ -1250,7 +1261,7 @@ function taskPage(c, t) {
   if (cl && S.confirm === t.id) {
     const mine = t.comments.filter(x => x.client).slice(-1)[0];
     return '<div class="tpage"><button class="backlink" data-a="task-back">' + I('back') + '<h1>Review submitted</h1></button><div class="banner"><span class="big">' + I('tick') + '</span><div><h2 style="font-size:26px">Approved</h2><p style="margin:4px 0 0">You have approved “' + esc(t.title) + '”.</p></div></div>' +
-      (mine ? '<div class="stack"><h2>Your comment</h2><div class="card row" style="flex-wrap:nowrap">' + I('chat') + '<span>' + esc(mine.text) + '</span></div></div>' : '') + '<div class="stack"><h2>Activity timeline</h2><div class="card">' + timelineHtml(t) + '</div></div>' + btn(I('back', 'sm') + 'Back to tasks', 'task-back', {}, 'block bigbtn') + '</div>';
+      (mine ? '<div class="stack"><h2>Your comment</h2><div class="card row" style="flex-wrap:nowrap">' + I('chat') + '<span>' + esc(mine.text) + '</span></div></div>' : '') + '<div class="stack"><h2>Activity timeline</h2><div class="card">' + timelineHtml(t, c) + '</div></div>' + btn(I('back', 'sm') + 'Back to tasks', 'task-back', {}, 'block bigbtn') + '</div>';
   }
   const label = cLabel(t);
   const assignee = staged(t) ? withNow(c, t) : E ? '<select id="dr-as" data-as="' + t.id + '" aria-label="Assignee"><option value="@client"' + (t.owner === 'client' ? ' selected' : '') + '>Client</option><option value=""' + (t.owner !== 'client' && !t.assignee ? ' selected' : '') + '>Team · unassigned</option>' + teamOpts(t.owner === 'client' ? '' : t.assignee) + '</select>' : E && t.owner === 'gioia' ? '<select id="dr-as" data-as="' + t.id + '" aria-label="Assignee"><option value="">Unassigned</option>' + teamOpts(t.assignee) + '</select>' : '<b>' + (t.owner === 'client' ? (cl ? 'You' : esc(c.contact || 'Client')) : esc(m ? m.name : 'Unassigned')) + '</b>';
@@ -1292,7 +1303,7 @@ function taskPage(c, t) {
   const canPost = isAdmin() && t.m >= 1 && !['general', 'prep'].includes(t.svc) && !t.adhoc && t.status !== 'done' && t.m < c.quote.months;
   if (!taskOpen(c, t)) main = '<div class="lockbox" style="padding:14px">' + I('lock', 'sm') + ' This task is in a locked month. You can plan it now (title, steps, assignee, due date); it can be worked on once its month unlocks.</div>';
   const banner = A && t.status === 'approved' && !staged(t) ? '<div class="banner"><span class="big">' + I('tick') + '</span><div><h2 style="font-size:26px">Client approved</h2><p style="margin:4px 0 0">The client has approved “' + esc(t.title) + '”.</p></div></div>' : '';
-  return '<div class="tpage"><button class="backlink" data-a="task-back">' + I('back') + '<h1>' + (banner ? 'Client approved' : 'Task details') + '</h1></button>' + banner + tpw('tk-head', head) + tpw('tk-steps', stepsBox) + tpw('tk-desc', desc) + status + tpw('tk-files', files) + tpw('tk-comments', comments) + '<div class="stack" style="gap:8px"><h2>Activity timeline</h2><div class="card">' + timelineHtml(t) + '</div></div>' + tpw('tk-main', main + (isAdmin() && t.status !== 'done' && taskOpen(c, t) ? btn(I('bell', 'sm') + 'Send reminder', 'nudge-open', { id: t.id }, 'ghost block') : '') + (canPost ? btn(I('cal', 'sm') + 'Postpone task', 'tpost-open', { id: t.id }, 'ghost block') : '')) + '</div>';
+  return '<div class="tpage"><button class="backlink" data-a="task-back">' + I('back') + '<h1>' + (banner ? 'Client approved' : 'Task details') + '</h1></button>' + banner + tpw('tk-head', head) + tpw('tk-steps', stepsBox) + tpw('tk-desc', desc) + status + tpw('tk-files', files) + tpw('tk-comments', comments) + '<div class="stack" style="gap:8px"><h2>Activity timeline</h2><div class="card">' + timelineHtml(t, c) + '</div></div>' + tpw('tk-main', main + (isAdmin() && t.status !== 'done' && taskOpen(c, t) ? btn(I('bell', 'sm') + 'Send reminder', 'nudge-open', { id: t.id }, 'ghost block') : '') + (canPost ? btn(I('cal', 'sm') + 'Postpone task', 'tpost-open', { id: t.id }, 'ghost block') : '')) + '</div>';
 }
 function tplBar(ta) {
   return '<div class="tplbar"><select data-tpl="' + ta + '" aria-label="Use a step template"><option value="">Use a saved template…</option>' + S.templates.map(t => '<option value="' + t.id + '">' + esc(t.name) + ' (' + t.count + ' steps)</option>').join('') + '</select><button class="link" data-a="tpl-save-open" data-ta="' + ta + '">Save these steps as a template</button><button class="link" data-a="tpl-manage">Manage templates</button></div>';
@@ -2024,6 +2035,7 @@ const ACT = {
   'note-open'(d) { S.menu = null; const e = (S.bellList || [])[+d.i] || { cid: d.cid, text: '' }, k = feedKey(e); noteGo(e); if (D && unreadFor(e)) { D.read = [k, ...(D.read || [])]; return api('seen-one', { k }, { quiet: true }); } },
   'open-client'(d) { S.cid = d.id; S.view = 'client'; S.ctab = 'overview'; S.q = ''; },
   'open-client-tab'(d) { S.cid = d.id; S.view = 'client'; S.ctab = d.t; S.q = ''; },
+  'tl-all'(d) { S.tlAll = Object.assign({}, S.tlAll, { [d.id]: !(S.tlAll || {})[d.id] }); },
   'open-ws'(d) { pickClient(d); S.ws = d.id; S.wm = +d.m || 1; S.q = ''; if (S.role === 'client') { S.ptab = 'tasks'; S.pws = d.id; S.ptg = ''; S.pwm = +d.m || 0; } else S.view = 'ws'; },
   'pwm'(d) { S.pwm = +d.m; S.ptg = ''; },
   ctab(d) { S.ctab = d.t; }, ptab(d) { S.ptab = d.t; if (d.t === 'tasks' && S.role === 'client') { const c = client(), open = c ? c.tasks.filter(t => canSee(c, t)) : []; S.ptg = open.some(t => tGroup(t) === 'client') ? 'client' : open.some(t => tGroup(t) === 'awaiting') ? 'awaiting' : ''; } }, qtab(d) { S.qtab = d.t; }, ifilter(d) { S.ifilter = d.f; },
