@@ -1802,7 +1802,8 @@ const TOURS = {
     ['[data-t="invoices"]', 'Invoices', 'Your invoices with our bank and PayNow details, and your deposit if you have one.'],
     ['[data-t="proposal"]', 'Proposal', 'The proposal you accepted, when it was signed, and the Terms and Conditions you agreed to. You can view it as a PDF any time.'],
     ['.topbar .iconbtn', 'Notifications', 'Updates appear here. We also email you whenever something needs you.'],
-    ['[data-t="details"]', 'My details', 'Your contact details and email settings. You can replay this tour from the menu at the top right.']
+    ['[data-t="details"]', 'My details', 'Your contact details and email settings. You can replay this tour from the menu at the top right.'],
+    ['.topbar .me', 'Add to home screen', 'Open this menu and choose Add to home screen. It puts the portal on your phone or desktop, so it opens like an app.']
   ],
   team: [
     ['[data-v="mytasks"]', 'My tasks', 'Everything assigned to you across all projects, with due dates. Start here each day. The number shows what is waiting on you.'],
@@ -1811,14 +1812,16 @@ const TOURS = {
     ['[data-v="files"]', 'Files', 'Files for your projects, sorted into folders.'],
     ['[data-v="templates"]', 'Templates', 'Saved step lists for work that passes back and forth with the client, such as articles, and ready-made preparation task lists.'],
     ['.topbar .iconbtn', 'Notifications', 'Updates on your tasks appear here. We also email you when something needs you.'],
-    ['.topbar .me', 'Your menu', 'Email settings, sign out, and Show me around to replay this tour.']
+    ['.topbar .me', 'Your menu', 'Email settings, sign out, and Show me around to replay this tour.'],
+    ['.topbar .me', 'Add to home screen', 'Also in this menu: Add to home screen. It puts the portal on your phone or desktop, so it opens like an app.']
   ],
   vendor: [
     ['[data-v="mytasks"]', 'My tasks', 'The tasks Gioia has assigned to you, with due dates. Open one to update it, upload files or comment.'],
     ['[data-v="clients"]', 'Projects', 'The projects your tasks belong to.'],
     ['[data-v="earnings"]', 'Fees & payouts', 'What Gioia has agreed to pay you for each task, what is owing, and where you send Gioia your invoice to get paid.'],
     ['[data-v="files"]', 'Files', 'Files on your tasks.'],
-    ['.topbar .me', 'Your menu', 'Email settings, sign out, and Show me around to replay this tour.']
+    ['.topbar .me', 'Your menu', 'Email settings, sign out, and Show me around to replay this tour.'],
+    ['.topbar .me', 'Add to home screen', 'Also in this menu: Add to home screen. It puts the portal on your phone or desktop, so it opens like an app.']
   ],
   task: [
     ['#tk-head', 'This task', 'The client, project, who it is with and the due date. Click the status pill to change where it stands.'],
