@@ -17,6 +17,7 @@
     if (!url.startsWith('/api/')) return real(url, opt);
     await ready;
     if (url.startsWith('/api/state')) { const cl = await pool.connect(); return reply(await Core.buildState(cl, await Core.identify(cl, who))); }
+    if (url.startsWith('/api/task-log')) { const q = new URLSearchParams(url.split('?')[1] || ''); try { return reply(await Core.taskLog(who, q.get('cid'), q.get('tid'))); } catch (e) { return reply({ error: e.message }); } }
     if (url.startsWith('/api/upload')) {
       const q = new URLSearchParams(url.split('?')[1] || ''), body = opt.body;
       try { await Core.uploadTarget(who, q.get('cid'), q.get('key'), q.get('svc')); const id = 'proto-' + (++fileSeq); FILES.set(id, body);

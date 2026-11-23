@@ -86,6 +86,10 @@ if (DEV_LOGIN) app.get('/auth/dev', (req, res) => { req.session.email = str(req.
 
 /* tells open pages when a new version of the app has been deployed */
 const APP_VERSION = process.env.RAILWAY_GIT_COMMIT_SHA || process.env.RAILWAY_DEPLOYMENT_ID || String(Date.now());
+app.get('/api/task-log', async (req, res) => {
+  try { res.json(await Core.taskLog(req.session.email, req.query.cid, req.query.tid)); }
+  catch (e) { if (e instanceof Core.Refuse) return res.status(403).json({ error: e.message }); console.error(e); res.status(500).json({ error: 'Could not load the activity.' }); }
+});
 app.get('/api/state', async (req, res) => {
   try {
     const cl = await pool.connect();
