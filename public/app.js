@@ -1236,6 +1236,12 @@ function portalShell() {
   return '<div class="app">' + side + '<div class="main"><header class="topbar"><div class="row" style="gap:10px">' + logoTile(c.company, c.logo, 'width:36px;height:36px;font-size:13px;border-radius:8px') + '<b>' + esc(c.company) + '</b>' + (S.clients.length > 1 ? projectSwitch(c) : '<span class="small muted">' + esc(pname(c)) + '</span>') + '</div>' + topRight() + '</header><main class="page">' + body + '</main></div></div>';
 }
 /* ---------- drawers ---------- */
+// the client's Approve / Request changes buttons, with how many revision rounds are left
+function decideBtns(t) {
+  const r = t.rounds || 0, used = r >= 2;
+  return '<div class="grid g2">' + btn(I('tick') + 'Approve', 't-approve', { id: t.id }, 'block bigbtn') + btn(I('chat') + (r === 1 ? 'Request final changes' : 'Request changes'), 't-changes', { id: t.id }, 'ghost block bigbtn', used) + '</div>' +
+    '<p class="small muted" style="margin:0;text-align:center">' + (used ? 'Additional changes are quoted separately. Contact project manager for details.' : r === 1 ? 'You have 1 revision round left' : 'You have 2 revision rounds') + '</p>';
+}
 // fetch the task's own full record (newest activity first decides when to refresh it)
 function loadTaskLog(c, t) {
   if (!c || !staff()) return;
@@ -1300,7 +1306,7 @@ function taskPage(c, t) {
     if (!cs) main = '';
     else if (A && cs.owner === 'gioia') { const nx = t.stages[t.stage + 1]; main = btn(I('send') + 'Complete step ' + (t.stage + 1) + (nx ? ' and pass to ' + (nx.owner === 'client' ? 'the client' : 'the team') : ' and finish'), 't-step', { id: t.id }, 'block bigbtn'); }
     else if (A) main = '<div class="lockbox" style="padding:14px">Waiting for the client: ' + esc(cs.title) + '.</div>' + btn('Mark the client\'s step as done on their behalf', 'stage-next', { id: t.id }, 'quiet block');
-    else if (cs.owner === 'client' && cs.kind === 'approve') main = '<div class="grid g2">' + btn(I('tick') + 'Approve', 't-approve', { id: t.id }, 'block bigbtn') + btn(I('chat') + 'Request changes', 't-changes', { id: t.id }, 'ghost block bigbtn', t.rounds >= 2) + '</div>' + (t.rounds >= 2 ? '<p class="small muted" style="margin:0;text-align:center">Both included revision rounds are used. Further changes are quoted separately.</p>' : '');
+    else if (cs.owner === 'client' && cs.kind === 'approve') main = decideBtns(t);
     else if (cs.owner === 'client') main = btn(I('send') + 'Done, send to the team', 't-step', { id: t.id }, 'block bigbtn') + '<p class="small muted" style="margin:0;text-align:center">Add any links above first. The team is notified straight away.</p>';
   } else if (A) {
     if (t.owner === 'gioia' && t.approve && ['todo', 'progress', 'changes', 'cdraft', 'creview'].includes(t.status)) main = btn(I('send') + (t.status === 'changes' ? 'Resubmit for client review' : 'Submit for client review'), 't-submit', { id: t.id }, 'block bigbtn');
@@ -1308,7 +1314,7 @@ function taskPage(c, t) {
     else if (t.owner === 'client' && t.status !== 'done') main = btn(I('tick') + 'Mark as received', 't-done', { id: t.id }, 'block bigbtn');
     else if (t.status === 'awaiting') main = '<div class="lockbox" style="padding:14px">Waiting for the client to review. You\'ll be notified when they respond.</div>';
   } else {
-    if (t.status === 'awaiting') main = '<div class="grid g2">' + btn(I('tick') + 'Approve', 't-approve', { id: t.id }, 'block bigbtn') + btn(I('chat') + 'Request changes', 't-changes', { id: t.id }, 'ghost block bigbtn', t.rounds >= 2) + '</div>' + (t.rounds >= 2 ? '<p class="small muted" style="margin:0;text-align:center">Both included revision rounds are used. Further changes are quoted separately.</p>' : '');
+    if (t.status === 'awaiting') main = decideBtns(t);
     else if (t.owner === 'client' && ['todo', 'cdraft'].includes(t.status)) main = btn(I('send') + 'Mark as sent to the team', 't-sent', { id: t.id }, 'block bigbtn');
   }
   const canPost = isAdmin() && t.m >= 1 && !['general', 'prep'].includes(t.svc) && !t.adhoc && t.status !== 'done' && t.m < c.quote.months;
