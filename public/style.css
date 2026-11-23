@@ -770,3 +770,6 @@ button.ccr{cursor:pointer}button.ccr:hover{background:var(--card-2)}
 .menu.bellmenu>.row:first-child{position:sticky;top:-6px;background:var(--card);z-index:2;padding-top:8px !important}
 .menu.bellmenu{padding-top:0}.menu.bellmenu>.row:first-child{top:0;padding-top:12px !important;margin:0 -6px;padding-left:14px !important;padding-right:14px !important}
 .menu.bellmenu>.row:first-child{border-bottom:1px solid var(--line);margin-bottom:6px;padding-bottom:10px !important}
+
+.btnpair{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.btnpair>*{width:100%;margin:0}
