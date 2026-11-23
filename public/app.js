@@ -859,6 +859,120 @@ function financeWorkbook() {
   const expS = [['Date', 'Client', 'Project', 'Expense', 'Category', 'Paid by', 'Amount (S$)', 'Receipt']].concat(S.clients.flatMap(c => (c.expenses || []).filter(e => inR(pkIso(e.date))).map(e => [e.date, c.company, proj(c), e.name, e.category || '', e.paidBy || '', r2(e.amount), e.fileName || ''])));
   return { name, blob: xlsx([{ name: 'Summary', rows: summary }, { name: 'Income', rows: incomeS }, { name: 'Costs', rows: costS }, { name: 'Invoices', rows: invS }, { name: 'Money in', rows: inS }, { name: 'Money out', rows: outS }, { name: 'Expenses', rows: expS }, { name: 'Deposits', rows: depS }]) };
 }
+/* ---------- Manual: how the Client Desk works and the rules it follows; admins and the team each get their own version ---------- */
+const MANUAL = {
+  admin: [
+    ['Key rules to remember', `| Area | Rule |
+| Revisions | Each piece of work includes **2 rounds of changes**. The client's second request is labelled "Request final changes". After that the button is greyed out and further changes are quoted separately. |
+| Requesting changes | The client must write a comment saying what to change. Approving needs no comment. |
+| Undoing a step | Anyone can undo a step they marked done by mistake, but **must give a reason**. It is recorded and sent to the others involved. |
+| Months | Each month unlocks for the client only when that month's invoice is paid. |
+| Starting work | After the first invoice or deposit is paid, click Start preparation. |
+| Team-only comments | Tick Team only and the client never sees the comment, in the app or by email. |
+| Comments | Admins are told about every comment. Anyone else must be @mentioned. |
+| Postponing | Only admins can postpone, and only a monthly task with a later month to move into. |
+| Client reminders | Waiting on the client for 3 days, or an invoice due in 3 days or today: one email and a bell note. |
+| Team reminders | Each morning after 9am: tasks due tomorrow or overdue, one email. |
+| Due soon | Tasks due within the next 3 days. |
+| Deleting files | Only the person who added it, or an admin. Uploads go to the shared drive's trash. |
+| Fees | Earned when the task or step is marked done. Fee activity never shows in task timelines. |
+| Activity timeline | Admins: every task. Team: tasks on their projects. Clients: never. |`],
+    ['Roles and access', `| | Admin | Team member | Client |
+| Projects | All | Only where they have a task, step or fee | Their company's |
+| Quotations and invoices | Create, send, mark paid | No | View, accept, pay |
+| Tasks | Everything, incl. postpone and reminders | Their tasks and steps | Approve, request changes, send what's asked |
+| Team-only comments | Yes | Yes | Never |
+| Activity timeline | Every task | Their projects | No |
+| Accounts, P&L, others' fees, expenses | Yes | No | No |
+Add team members on the Team page with their Google email; they get a welcome email. Clients get access through the portal invite on their project.`],
+    ['New client: proposal to live project', `1. New project: add the company and the client's Google email.
+2. Build the quotation from the Service catalogue: services, months, discounts and any deposit.
+3. Send the proposal. The client agrees to the Terms and accepts in the portal. Signed on paper? Mark it accepted and use Record the signed copy.
+4. Email the portal invite.
+5. When the first invoice or deposit is paid: Mark as paid, then Start preparation and apply a preparation template.
+- The client can accept, request changes or decline. Each resent version gets a new version number.
+- The Terms are set in Settings. Each client keeps the version they accepted.
+- Deposits: a percentage, fixed amount or months of fees. Taken off the first invoice, or held as a security deposit to use or refund.
+- Renewals: Save draft keeps it private. Send to client adds a Renewal proposal tab. Extend directly adds the months without asking.`],
+    ['Tasks and steps', `- **Statuses:** Not started, In progress, My task (the client sends something), Ready for approval, Completed.
+- Approval doesn't complete a task. The team marks it completed, and the client is notified.
+- **Steps:** the current step shows who it is with. Finishing a step passes it on. Admins can mark the client's step done on their behalf.
+- Step lists are saved and reused from Templates.
+- If the client requests changes, the task goes back to the last team step before their review.
+- **Revisions:** the client sees "You have 2 revision rounds", then "Request final changes" with "You have 1 revision round left", then "Additional changes are quoted separately. Contact project manager for details."
+- **Undo:** beside the last completed step, reason required. Others are told; the person who undid it is not.
+- **Postpone task** (left) moves a monthly task to a later month. **Send reminder** (right) nudges whoever it is waiting on.
+- **Reassigning:** the old and new person are both emailed. You choose whether the fee moves.`],
+    ['Files and comments', `- Attach files on the task they belong to. They're saved in the project's Google Drive folder, and the client sees them there.
+- Files can also go on a deliverable, or on the project in general (Files tab). Google links work too.
+- Type @ to tag someone. Tick Team only for notes the client must not see.
+- Admins are told about every comment; the assignee about client comments.`],
+    ['Notifications and emails', `Every email's button opens the exact place it's about, even after signing in.
+| Event | Who is told | Button opens |
+| Client approves, reviews or completes a step | Admins, the assignee, the next person | The task |
+| Client requests changes | Admins and the assignee | The task |
+| Client shares a file | Admins | The task's attachments, the deliverable, or Files |
+| Comment | Admins and anyone @mentioned | The comment |
+| Step undone | Everyone involved except who undid it | The task |
+| Task or step assigned | That person, and the previous one | The task |
+The bell shows the latest 40 plus every unread. Tap one to open it and mark it read. Emails can be turned off under your name at the top right.`],
+    ['Money', `- All amounts are in S$. Income counts in the month it's scheduled for, not when it's paid.
+- One invoice per project month, plus ad-hoc invoices. Mark as paid records date, method and reference. Part payments show as Partly paid.
+- A deposit used to pay an invoice isn't new income; the invoice it pays is.
+- Team members bill Gioia from Fees & payouts; their invoices arrive in Accounts, Invoices from the team. Approve or Question, then Mark paid after paying.
+- Record a payment pays what's owing without an invoice; fees already invoiced are left out.
+- Project expenses (with receipts) count as costs in the project's P&L.
+- Accounts: pick a month or year. Export to Excel gives finance one workbook with every sheet.`],
+    ['Records and housekeeping', `- **Task timeline:** steps, files (incl. deleted), comments, assignment and due dates. Latest 5, Show all.
+- **Project Activity tab:** everything on the project. **Accounts, Audit and History:** money changes.
+- **Team, Templates, Service catalogue, Settings:** people, step lists, prices, Terms, reminder time, email and backups.
+- Browser Back and Forward move between pages. "A new version of the app is ready": tap Reload.`]
+  ],
+  team: [
+    ['Key rules to remember', `| Area | Rule |
+| Revisions | Each piece of work includes **2 rounds of changes** for the client. The second is labelled "Request final changes", so get it right that round. |
+| Undoing a step | You can undo a step you marked done by mistake, but **must give a reason**. Others on the task are told. |
+| Team-only comments | Tick Team only and the client never sees the comment, in the app or by email. |
+| Tagging | Type @ to notify someone. Admins are told about every comment. |
+| Reminders | Each morning after 9am, if you have tasks due tomorrow or overdue, you get one email. |
+| Due soon | Tasks due within the next 3 days. |
+| Deleting files | Only files you added. |
+| Fees | Earned when your task or step is marked done. |`],
+    ['Your day', `- **My tasks** shows everything assigned to you, with due dates. Switch to Everyone to see all tasks on your projects; Filters narrow by client, assignee or status.
+- You see only the projects where you have a task, a step or a fee.
+- Turn emails on or off under your name at the top right.`],
+    ['Tasks and steps', `- **Statuses:** Not started, In progress, Ready for approval (with the client), Completed.
+- Change the status with the pill at the top of the task. For client-approved work: Submit for client review, the client approves or requests changes, then Mark as completed.
+- **Steps:** the current step shows who it's with. When you finish yours, it passes to the next person or the client.
+- If the client requests changes, the task comes back to the last team step before their review.
+- Step lists can be reused from Templates.
+- **Undo** sits beside the last completed step; a reason is required.
+- **Activity timeline** at the bottom of each task shows steps, files, comments and changes.`],
+    ['Files and comments', `- Attach files on the task they belong to. They're saved in the project's Google Drive and the client sees them on that task.
+- Comment on the task the question is about, so the right person sees it with the work.
+- Tick Team only for anything the client must not see.`],
+    ['Notifications', `- You're emailed when a task or step is assigned to you, when it's moved away from you, and when you're @mentioned.
+- Every email's button opens the exact task or comment.
+- The bell lists your latest notifications; tap one to open it.`],
+    ['Fees and getting paid', `1. On Fees & payouts, add your payment details (bank account and PayNow).
+2. When fees are ready, click Create invoice and tick the fees to include.
+3. Preview and Send to Gioia, or upload your own invoice with the same number and total.
+- If Gioia has a question, you get an email and the invoice shows it. Reply, or withdraw and resend.
+- You're emailed when your invoice is marked paid; it's listed under Payments to you.`]
+  ]
+};
+function manualHtml(md) {
+  const inl = s => esc(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+  let out = '', list = '', rows = [];
+  const flush = () => { if (list) { out += '</' + list + '>'; list = ''; } if (rows.length) { out += '<div class="mtable"><table><thead><tr>' + rows[0].map(c => '<th>' + inl(c) + '</th>').join('') + '</tr></thead><tbody>' + rows.slice(1).map(r => '<tr>' + r.map(c => '<td>' + inl(c) + '</td>').join('') + '</tr>').join('') + '</tbody></table></div>'; rows = []; } };
+  md.split('\n').forEach(l => {
+    if (/^\|/.test(l)) { if (list) flush(); rows.push(l.replace(/^\||\|$/g, '').split('|').map(s => s.trim())); return; }
+    const b = l.match(/^- (.*)/), n = l.match(/^\d+\. (.*)/), k = b ? 'ul' : n ? 'ol' : '';
+    if (rows.length || (list && list !== k)) flush();
+    if (k) { if (!list) { out += '<' + k + '>'; list = k; } out += '<li>' + inl((b || n)[1]) + '</li>'; } else if (l.trim()) out += '<p>' + inl(l) + '</p>';
+  });
+  flush(); return out;
+}
 /* ---------- Help: short how-to answers, written for each role ---------- */
 const HELP = {
   client: [
@@ -948,6 +1062,7 @@ function helpPage() {
   const tours = S.role === 'client' ? [['tour-start', 'Replay the portal tour']] : [['tour-start', 'Replay the tour'], ...(isAdmin() ? [] : [['tour-pay-go', 'How billing works']])];
   return '<div><h1>Help</h1><p class="muted" style="margin:4px 0 0">Short answers to common questions. Type a word to find one.</p></div>' +
     '<div class="row" style="gap:10px"><div class="search" style="flex:1;max-width:520px">' + I('search', 'sm') + '<input id="help-q" placeholder="Search help, e.g. invoice, approve, locked" autocomplete="off"></div>' + tours.map(([a, l]) => btn(I('help', 'sm') + l, a, {}, 'quiet')).join('') + '</div>' +
+    (S.role === 'client' ? '' : '<section class="stack helpsec" style="gap:8px"><h3 style="margin:0">Manual: how things work</h3>' + (isAdmin() ? MANUAL.admin : MANUAL.team).map(([h, md], i) => '<details class="card faq manual"' + (i === 0 ? ' open' : '') + '><summary>' + esc(h) + '</summary><div class="mbody">' + manualHtml(md) + '</div></details>').join('') + '</section><h3 style="margin:8px 0 0">Questions</h3>') +
     helpSections().map(([h, qs]) => '<section class="stack helpsec" style="gap:8px"><h3 style="margin:0">' + esc(h) + '</h3>' + qs.map(([q, a]) => '<details class="card faq"><summary>' + esc(q) + '</summary><p>' + esc(a).replace(/(^|\s)(\d)\. /g, '$1<br><b>$2.</b> ').replace(/^<br>/, '') + '</p></details>').join('') + '</section>').join('') +
     '<p class="muted small" id="help-none" hidden>Nothing matches that. Try another word, or ' + (S.role === 'client' ? 'comment on a task or reply to any email from us.' : 'ask in the comments on the task.') + '</p>' +
     '<div class="card row" style="gap:12px;flex-wrap:nowrap">' + I('chat') + '<span class="small">' + (S.role === 'client' ? 'Still stuck? Comment on the task it is about, or reply to any email from Gioia, and we will help.' : 'Still stuck? Ask in the comments on the task, or message Gioia.') + '</span></div>';
