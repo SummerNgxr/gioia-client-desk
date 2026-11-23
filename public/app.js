@@ -873,6 +873,7 @@ const MANUAL = {
 | Postponing | Only admins can postpone, and only a monthly task with a later month to move into. |
 | Client reminders | Waiting on the client for 3 days, or an invoice due in 3 days or today: one email and a bell note. |
 | Team reminders | Each morning after 9am: tasks due tomorrow or overdue, one email. |
+| Fee summary | On the last day of each month, anyone with fees ready to invoice gets one email with the total and a list. |
 | Due soon | Tasks due within the next 3 days. |
 | Deleting files | Only the person who added it, or an admin. Uploads go to the shared drive's trash. |
 | Fees | Earned when the task or step is marked done. Fee activity never shows in task timelines. |
@@ -937,6 +938,7 @@ The bell shows the latest 40 plus every unread. Tap one to open it and mark it r
 | Team-only comments | Tick Team only and the client never sees the comment, in the app or by email. |
 | Tagging | Type @ to notify someone. Admins are told about every comment. |
 | Reminders | Each morning after 9am, if you have tasks due tomorrow or overdue, you get one email. |
+| Fee summary | On the last day of each month you get one email with the fees ready to invoice. |
 | Due soon | Tasks due within the next 3 days. |
 | Deleting files | Only files you added. |
 | Fees | Earned when your task or step is marked done. |`],
@@ -1550,6 +1552,7 @@ function cmText(c, x) {
 function openGo(go) {
   const [kind, cid, tid, mid] = String(go).split(':'), cl = S.role === 'client', c = S.clients.find(x => x.id === cid);
   if (kind === 'mytasks') { if (cl) S.ptab = 'tasks'; else S.view = 'mytasks'; return; }
+  if (kind === 'fees') { if (!cl) S.view = 'earnings'; return; }
   if (!c) return;
   const t = tid && c.tasks.find(x => x.id === tid);
   if (kind === 'att' && t && (!cl || canSee(c, t))) { ACT.task({ id: t.id, cid: c.id }); S.focus = 'atts'; return; }
