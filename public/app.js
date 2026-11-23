@@ -915,6 +915,8 @@ Add team members on the Team page with their Google email; they get a welcome em
 | Comment | Admins and anyone @mentioned | The comment |
 | Step undone | Everyone involved except who undid it | The task |
 | Task or step assigned | That person, and the previous one | The task |
+| Someone completes another person's step or task | The person it was assigned to | The task |
+| The team completes a task | The client (several at once: one email) | The task |
 The bell shows the latest 40 plus every unread. Tap one to open it and mark it read. Emails can be turned off under your name at the top right.`],
     ['Money', `- All amounts are in S$. Income counts in the month it's scheduled for, not when it's paid.
 - One invoice per project month, plus ad-hoc invoices. Mark as paid records date, method and reference. Part payments show as Partly paid.
@@ -951,7 +953,8 @@ The bell shows the latest 40 plus every unread. Tap one to open it and mark it r
     ['Files and comments', `- Attach files on the task they belong to. They're saved in the project's Google Drive and the client sees them on that task.
 - Comment on the task the question is about, so the right person sees it with the work.
 - Tick Team only for anything the client must not see.`],
-    ['Notifications', `- You're emailed when a task or step is assigned to you, when it's moved away from you, and when you're @mentioned.
+    ['Notifications', `- You're emailed when a task or step is assigned to you, when it's moved away from you, when someone else completes your step or task, and when you're @mentioned.
+- When a task is completed, the client is emailed that it's done.
 - Every email's button opens the exact task or comment.
 - The bell lists your latest notifications; tap one to open it.`],
     ['Fees and getting paid', `1. On Fees & payouts, add your payment details (bank account and PayNow).
