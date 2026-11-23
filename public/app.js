@@ -1402,6 +1402,9 @@ function openGo(go) {
   if (kind === 'mytasks') { if (cl) S.ptab = 'tasks'; else S.view = 'mytasks'; return; }
   if (!c) return;
   const t = tid && c.tasks.find(x => x.id === tid);
+  if (kind === 'att' && t && (!cl || canSee(c, t))) { ACT.task({ id: t.id, cid: c.id }); S.focus = 'atts'; return; }
+  if (kind === 'ws' && tid) { ACT['open-ws']({ cid: c.id, id: tid, m: 1 }); return; }
+  if (kind === 'files') { S.cid = c.id; if (cl) S.ptab = 'files'; else { S.view = 'client'; S.ctab = 'files'; } return; }
   if ((kind === 'task' || kind === 'cm') && t && (!cl || canSee(c, t))) { ACT.task({ id: t.id, cid: c.id }); if (kind === 'cm') { S.focus = mid && t.comments.some(z => z.id === mid) ? 'cm-' + mid : 'cmts'; if (mid) S.cmOpen = [...(S.cmOpen || []), mid]; } return; }
   S.cid = c.id; if (cl) S.ptab = 'overview'; else { S.view = 'client'; S.ctab = 'overview'; }
 }
@@ -1965,7 +1968,7 @@ function adopt(st) {
   D = st;
   // a link from an email (?go=…): remember it through sign-in, then open it once
   const goQ = new URLSearchParams(location.search).get('go'); let go = goQ; try { if (goQ) sessionStorage.setItem('go', goQ); else go = sessionStorage.getItem('go'); } catch (e) {}
-  if (D.me && ['admin', 'team', 'client'].includes(D.me.role) && go && !S.goDone) { S.goDone = true; try { sessionStorage.removeItem('go'); history.replaceState(null, '', location.pathname); } catch (e) {} setTimeout(() => { openGo(go); render(); }, 0); }
+  if (D.me && ['admin', 'team', 'client'].includes(D.me.role) && go && !S.goDone) { S.goDone = true; try { sessionStorage.removeItem('go'); history.replaceState(history.state, '', location.pathname); } catch (e) {} setTimeout(() => { openGo(go); render(); }, 0); }
   if (!D.me || !['admin', 'team', 'client'].includes(D.me.role)) return;
   S.brand = D.brand; S.team = D.team || []; S.catalogue = D.catalogue || []; S.clients = D.clients || []; S.accounts = D.accounts || []; S.payouts = D.payouts || []; S.fees = D.fees || []; S.feed = (D.feed || []).map(e => personal(e)); S.nextQuote = D.nextQuote || 0; S.invFormat = D.invFormat || ''; S.templates = D.templates || []; S.prepTemplates = D.prepTemplates || []; S.bills = D.bills || []; S.myBank = D.myBank || null; S.myPay = D.myPay || '';
   S.clients.forEach(c => { c.adhoc = c.adhoc || []; c.extra = c.extra || []; c.files = c.files || []; c.tasks.forEach(t => { t.desc = t.desc || ''; t.due = t.due || ''; t.history = t.history || []; t.comments = t.comments || []; t.files = t.files || []; }); });
