@@ -859,6 +859,21 @@ function financeWorkbook() {
   const expS = [['Date', 'Client', 'Project', 'Expense', 'Category', 'Paid by', 'Amount (S$)', 'Receipt']].concat(S.clients.flatMap(c => (c.expenses || []).filter(e => inR(pkIso(e.date))).map(e => [e.date, c.company, proj(c), e.name, e.category || '', e.paidBy || '', r2(e.amount), e.fileName || ''])));
   return { name, blob: xlsx([{ name: 'Summary', rows: summary }, { name: 'Income', rows: incomeS }, { name: 'Costs', rows: costS }, { name: 'Invoices', rows: invS }, { name: 'Money in', rows: inS }, { name: 'Money out', rows: outS }, { name: 'Expenses', rows: expS }, { name: 'Deposits', rows: depS }]) };
 }
+/* ---------- add the portal to a home screen or desktop ---------- */
+const A2HS = {
+  iphone: ['iPhone & iPad', [['Open the portal in Safari', 'Other browsers on iPhone can do this too, but Safari is the simplest.'], ['Tap Share', 'The square with an arrow pointing up, at the bottom or top of the screen.'], ['Choose Add to Home Screen', 'Scroll down the list if you don\'t see it, then tap Add.']]],
+  android: ['Android', [['Open the portal in Chrome', 'Make sure you are signed in.'], ['Tap the menu', 'The three dots at the top right.'], ['Choose Add to Home screen', 'It may say Install app instead. Tap Install or Add.']]],
+  windows: ['Windows', [['Open the portal in Chrome or Edge', 'Make sure you are signed in.'], ['Open the browser menu', 'The three dots at the top right.'], ['Install it', 'Chrome: Cast, save and share, then Install page as app. Edge: Apps, then Install this site as an app.']]],
+  mac: ['Mac', [['Open the portal in Safari', 'Or in Chrome, see the last step.'], ['Open the File menu', 'In the menu bar at the top of the screen.'], ['Choose Add to Dock', 'Then click Add. In Chrome: the three dots menu, Cast, save and share, then Install page as app.']]]
+};
+const myDevice = () => { const u = navigator.userAgent || ''; return /iPhone|iPad|iPod/.test(u) || (/Macintosh/.test(u) && navigator.maxTouchPoints > 1) ? 'iphone' : /Android/.test(u) ? 'android' : /Windows/.test(u) ? 'windows' : /Macintosh/.test(u) ? 'mac' : 'iphone'; };
+function a2hsHtml() {
+  const k = S.a2hs || myDevice(), [, steps] = A2HS[k];
+  return '<section class="a2hs" id="a2hs"><h2>Keep the portal close at hand</h2><p>Add a shortcut to your home screen or desktop. It opens straight into the portal, like an app.</p>' +
+    '<div class="a2tabs" role="tablist">' + Object.keys(A2HS).map(d => '<button role="tab" aria-selected="' + (d === k) + '" data-a="a2hs-dev" data-id="' + d + '">' + A2HS[d][0] + '</button>').join('') + '</div>' +
+    '<ol class="a2steps">' + steps.map(([h, t], i) => '<li><span class="a2n">' + (i + 1) + '</span><b>' + esc(h) + '</b><span>' + esc(t) + '</span></li>').join('') + '</ol>' +
+    '<p class="a2foot">You stay signed in for 30 days, so it opens straight to your page. Only add it on your own device.</p></section>';
+}
 /* ---------- Manual: how the Client Desk works and the rules it follows; admins and the team each get their own version ---------- */
 const MANUAL = {
   admin: [
@@ -1068,6 +1083,7 @@ function helpPage() {
   const tours = S.role === 'client' ? [['tour-start', 'Replay the portal tour']] : isAdmin() ? [] : [['tour-start', 'Replay the tour'], ['tour-pay-go', 'How billing works']];
   return '<div><h1>Help</h1><p class="muted" style="margin:4px 0 0">Short answers to common questions. Type a word to find one.</p></div>' +
     '<div class="row" style="gap:10px"><div class="search" style="flex:1;max-width:520px">' + I('search', 'sm') + '<input id="help-q" placeholder="Search help, e.g. invoice, approve, locked" autocomplete="off"></div>' + tours.map(([a, l]) => btn(I('help', 'sm') + l, a, {}, 'quiet')).join('') + '</div>' +
+    a2hsHtml() +
     (S.role === 'client' ? '' : '<section class="stack helpsec" style="gap:8px"><h3 style="margin:0">Manual: how things work</h3>' + (isAdmin() ? MANUAL.admin : MANUAL.team).map(([h, md], i) => '<details class="card faq manual"' + (i === 0 ? ' open' : '') + '><summary>' + esc(h) + '</summary><div class="mbody">' + manualHtml(md) + '</div></details>').join('') + '</section><h3 style="margin:8px 0 0">Questions</h3>') +
     helpSections().map(([h, qs]) => '<section class="stack helpsec" style="gap:8px"><h3 style="margin:0">' + esc(h) + '</h3>' + qs.map(([q, a]) => '<details class="card faq"><summary>' + esc(q) + '</summary><p>' + esc(a).replace(/(^|\s)(\d)\. /g, '$1<br><b>$2.</b> ').replace(/^<br>/, '') + '</p></details>').join('') + '</section>').join('') +
     '<p class="muted small" id="help-none" hidden>Nothing matches that. Try another word, or ' + (S.role === 'client' ? 'comment on a task or reply to any email from us.' : 'ask in the comments on the task.') + '</p>' +
@@ -1603,6 +1619,7 @@ function noteGo(e) {
   return tab('overview', 'overview');
 }
 function smallModal(M) {
+  if (M.kind === 'a2hs') return '<div class="modal" data-a="close-bg-modal"><div class="sheet stack" style="max-width:720px;padding:0;overflow:hidden">' + a2hsHtml() + '<div class="row" style="padding:0 20px 18px;justify-content:flex-end">' + btn('Done', 'close-modal', {}, '') + '</div></div></div>';
   const c = S.clients.find(x => x.id === M.cid), wrap = (h, body, act, label, cls) => '<div class="modal" data-a="close-bg-modal"><div class="sheet stack" style="max-width:480px"><h2>' + h + '</h2>' + body + '<div class="row">' + btn(label, act, {}, cls || '') + btn('Cancel', 'close-modal', {}, 'quiet') + '</div></div></div>';
   if (M.kind === 'undo') { const t = c && c.tasks.find(z => z.id === M.id), st = t && t.stages[t.stage - 1];
     return wrap('Undo step ' + (t ? t.stage : '') + '?', '<p class="muted" style="margin:0">' + (st ? '"' + esc(st.title) + '" goes back to not done, and the task returns to this step.' : '') + ' Everyone on the task can see the reason.</p><div class="field"><label for="un-why">Why are you undoing it? <span class="req">*</span></label><textarea id="un-why" rows="3" placeholder="For example: marked done by mistake, the files are not ready yet"></textarea></div>', 'undo-go', 'Undo step', 'danger'); }
@@ -1749,7 +1766,7 @@ function render() {
   if (S.modal && S.modal.kind === 'doc') { const dc = S.modal.temp || S.clients.find(x => x.id === S.modal.cid) || c; overlay += S.modal.type === 'bill' ? '<div class="modal" data-a="close-bg-modal"><div class="sheet"><div class="row between noprint" style="margin-bottom:12px"><h2>' + (S.modal.back ? 'Preview: invoice ' : 'Invoice ') + esc(S.modal.bill.no) + '</h2><div class="row">' + btn(I('download', 'sm') + 'Print or save as PDF', 'print', {}, 'ghost') + btn(S.modal.back ? 'Back' : 'Close', S.modal.back ? 'bill-back' : 'close-modal', {}, 'quiet') + '</div></div>' + billDoc(S.modal.bill) + '</div></div>' : '<div class="modal" data-a="close-bg-modal"><div class="sheet"><div class="row between noprint" style="margin-bottom:12px"><h2>' + (S.modal.type === 'quote' ? (S.modal.temp ? 'Preview: quotation ' : 'Quotation ') + esc(dc.quote.no) : 'Invoice') + '</h2><div class="row">' + btn(I('download', 'sm') + 'Print or save as PDF', 'print', {}, 'ghost') + btn(S.modal.temp ? 'Back to the quotation' : 'Close', 'close-modal', {}, 'quiet') + '</div></div>' + docHtml(dc, S.modal.type, S.modal.m) + '</div></div>'; }
   if (S.modal && S.modal.kind === 'link') overlay += linkDrawer();
   if (S.modal && S.modal.kind === 'exp') overlay += expModal(S.modal);
-  if (S.modal && ['num', 'undo', 'parts', 'delacct', 'qdel', 'qcancel', 'payout', 'export', 'pay', 'depuse', 'deprefund', 'tmd', 'ptpl', 'ptapply', 'ptsave', 'tdel', 'rfee', 'bank', 'billnew', 'billpay', 'billquery', 'photo', 'remcfg', 'tpost', 'logo', 'nudge'].includes(S.modal.kind)) overlay += smallModal(S.modal);
+  if (S.modal && ['num', 'undo', 'parts', 'delacct', 'qdel', 'qcancel', 'payout', 'export', 'pay', 'depuse', 'deprefund', 'tmd', 'ptpl', 'ptapply', 'ptsave', 'tdel', 'rfee', 'bank', 'billnew', 'billpay', 'billquery', 'photo', 'remcfg', 'tpost', 'logo', 'nudge', 'a2hs'].includes(S.modal.kind)) overlay += smallModal(S.modal);
   if (S.modal && S.modal.kind === 'tpl') overlay += tplModal(S.modal);
   if (S.modal && S.modal.kind === 'filedel') { const c0 = S.clients.find(x => x.id === S.modal.cid), f0 = c0 && c0.files.find(x => L.fkey(x) === S.modal.k) || {}; overlay += '<div class="modal" data-a="close-bg-modal"><div class="sheet stack" style="max-width:460px"><h2>Delete "' + esc(f0.name || 'this file') + '"?</h2><p style="margin:0">' + (f0.drive ? 'It is removed from the app and moved to the Google Drive trash, where it can be restored for 30 days.' : 'The link is removed from the app. The file it points to is not touched.') + '</p><div class="row">' + btn('Delete', 'file-del-go', {}, 'danger') + btn('Cancel', 'close-modal', {}, 'quiet') + '</div></div></div>'; }
   if (S.modal && S.modal.kind === 'mailview') { const m = ((D.google || {}).log || []).find(x => x.id === S.modal.id) || {}; overlay += '<div class="modal" data-a="close-bg-modal"><div class="sheet stack" style="max-width:680px"><div class="row between"><h2 style="font-size:20px">' + esc(m.subject || '') + '</h2><button class="iconbtn" data-a="close-modal" aria-label="Close">' + I('x') + '</button></div><span class="small muted">To ' + esc(m.to || '') + ' · ' + fmtAt(m.at) + (m.sim ? ' · prototype preview, not sent' : '') + '</span>' + (m.html ? '<iframe class="mailframe" title="Email preview" srcdoc="' + esc(m.html) + '"></iframe>' : '<p class="muted">The preview is only kept for the latest emails.</p>') + '</div></div>'; }
@@ -2161,7 +2178,7 @@ function emailPrefCard() {
   return '<div class="card stack" style="max-width:560px"><h2>Email updates</h2><label class="opt ' + (D.emailOn ? 'on' : '') + '"><input type="checkbox" data-epref="1"' + (D.emailOn ? ' checked' : '') + '><span><b>Email me when something needs me</b><br><span class="small muted">Proposals, invoices, work ready for your review or approval, and comments from the team. Sent to ' + esc(D.me.email) + '.</span></span></label></div>';
 }
 function meMenu() {
-  return '<div class="menu" style="width:270px"><div style="padding:8px 10px 10px"><b>' + esc(D.me.name || '') + '</b><br><span class="small muted">' + esc(D.me.email) + '</span><br><span class="small muted">' + (S.role === 'client' ? 'Client' : isAdmin() ? 'Admin' : 'Gioia team') + '</span></div>' + (S.role !== 'client' ? '<label class="mi" style="cursor:pointer"><input type="checkbox" data-epref="1"' + (D.emailOn ? ' checked' : '') + ' style="width:auto"><span>Email me about my work</span></label>' : '') + (tourKind() ? '<button class="mi" data-a="tour-start">' + I('help') + '<span>Show me around</span></button>' : '') + '<button class="mi" data-a="photo-open">' + I('user') + '<span>Profile photo</span></button><button class="mi" data-a="help-open">' + I('help') + '<span>Help</span></button>' + '<a class="mi" href="/auth/logout">' + I('out') + '<span>Sign out</span></a></div>';
+  return '<div class="menu" style="width:270px"><div style="padding:8px 10px 10px"><b>' + esc(D.me.name || '') + '</b><br><span class="small muted">' + esc(D.me.email) + '</span><br><span class="small muted">' + (S.role === 'client' ? 'Client' : isAdmin() ? 'Admin' : 'Gioia team') + '</span></div>' + (S.role !== 'client' ? '<label class="mi" style="cursor:pointer"><input type="checkbox" data-epref="1"' + (D.emailOn ? ' checked' : '') + ' style="width:auto"><span>Email me about my work</span></label>' : '') + (tourKind() ? '<button class="mi" data-a="tour-start">' + I('help') + '<span>Show me around</span></button>' : '') + '<button class="mi" data-a="a2hs-open">' + I('download') + '<span>Add to home screen</span></button>' + '<button class="mi" data-a="photo-open">' + I('user') + '<span>Profile photo</span></button><button class="mi" data-a="help-open">' + I('help') + '<span>Help</span></button>' + '<a class="mi" href="/auth/logout">' + I('out') + '<span>Sign out</span></a></div>';
 }
 
 /* ---------- actions ---------- */
@@ -2181,6 +2198,8 @@ const ACT = {
   'open-client'(d) { S.cid = d.id; S.view = 'client'; S.ctab = 'overview'; S.q = ''; },
   'open-client-tab'(d) { S.cid = d.id; S.view = 'client'; S.ctab = d.t; S.q = ''; },
   async 't-appr'(d) { await api('t-approve-set', { id: d.id, on: d.on === '1' }); },
+  'a2hs-dev'(d) { S.a2hs = d.id; },
+  'a2hs-open'() { S.menu = null; S.modal = { kind: 'a2hs' }; },
   'tl-all'(d) { S.tlAll = Object.assign({}, S.tlAll, { [d.id]: !(S.tlAll || {})[d.id] }); },
   'open-ws'(d) { pickClient(d); S.ws = d.id; S.wm = +d.m || 1; S.q = ''; if (S.role === 'client') { S.ptab = 'tasks'; S.pws = d.id; S.ptg = ''; S.pwm = +d.m || 0; } else S.view = 'ws'; },
   'pwm'(d) { S.pwm = +d.m; S.ptg = ''; },
