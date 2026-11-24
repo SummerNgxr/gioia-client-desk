@@ -1903,7 +1903,9 @@ const TOURS = {
   ]
 };
 function tourKind() { if (S.role !== 'client') return vendorMe() ? 'vendor' : isAdmin() ? '' : 'team'; const c = client(); return c && hasAccess(c) ? 'portal' : 'proposal'; }
-function tourSteps() { return (TOURS[S.tour.kind] || []).filter(st => { const el = document.querySelector(st[0]); return el && el.getClientRects().length; }); }
+// the visible match: on phones the menu items live in the bottom tab bar, not the hidden side menu
+const tourEl = sel => [...document.querySelectorAll(sel)].find(e => e.getClientRects().length) || null;
+function tourSteps() { return (TOURS[S.tour.kind] || []).filter(st => !!tourEl(st[0])); }
 function drawTour() {
   let box = document.getElementById('tour');
   if (!S.tour && !S.tourChecked && D.tours) { S.tourChecked = true; const k = tourKind(); if (k && !D.tours[k] && !S.modal && !S.drawer) S.tour = { kind: k, i: 0 }; }
@@ -1914,7 +1916,7 @@ function drawTour() {
   if (!S.tour) { if (box) box.remove(); return; }
   const steps = tourSteps(); if (!steps.length) { S.tour = null; if (box) box.remove(); return; }
   if (S.tour.i >= steps.length) S.tour.i = steps.length - 1;
-  const [sel, h, t] = steps[S.tour.i], el = document.querySelector(sel);
+  const [sel, h, t] = steps[S.tour.i], el = tourEl(sel);
   el.scrollIntoView({ block: 'nearest', inline: 'center' });
   const r = el.getBoundingClientRect(), pad = 6, W = innerWidth, H = innerHeight, tw = Math.min(340, W - 24), below = r.bottom + 190 < H || r.top < 200;
   const left = Math.max(12, Math.min(W - tw - 12, r.left + r.width / 2 - tw / 2)), top = below ? Math.min(H - 180, r.bottom + 14) : Math.max(12, r.top - 14 - 170);
