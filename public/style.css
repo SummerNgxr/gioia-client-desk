@@ -851,3 +851,28 @@ details.manual .mbody li{margin:4px 0}
   .toast{bottom:20px !important}
   .proto-bar{bottom:12px !important}
 }
+.av.gmark{background:var(--side);color:#f6f1e7;font-family:var(--display);font-weight:700}
+.av.pic img{object-fit:cover}
+/* phones: client header, tabs and deliverables kept tidy */
+@media (max-width:820px){
+  .chead>.row{flex-wrap:nowrap;align-items:flex-start;gap:12px}
+  .chead .tilelogo{width:52px !important;height:52px !important;font-size:16px !important;border-radius:12px !important;flex:none}
+  .chead h1{font-size:24px;line-height:1.2}
+  .chead .stack{min-width:0}
+  .chead .tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-left:0;gap:0;-webkit-overflow-scrolling:touch}
+  .chead .tabs::-webkit-scrollbar{display:none}
+  .chead .tabs button{white-space:nowrap;padding:10px 12px;font-size:14px;flex:none}
+  .dvh{font-size:19px}
+  .dvstrip{flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start;scrollbar-width:none;padding-bottom:2px;margin:0 -2px}
+  .dvstrip::-webkit-scrollbar{display:none}
+  .dvstrip button{flex:none;padding:6px 12px;font-size:13px}
+  .dvrow{grid-template-columns:minmax(0,1fr) 16px;grid-template-rows:auto auto;gap:6px 10px;padding:12px 6px}
+  .dvrow .dvname{grid-column:1;grid-row:1;flex-wrap:wrap;gap:6px 8px}
+  .dvrow .dvname b{font:600 16px var(--body);white-space:normal}
+  .dvrow .dvst{grid-column:1;grid-row:2}
+  .dvrow>svg:last-child,.dvrow>.ico:last-child{grid-column:2;grid-row:1/3;align-self:center}
+  .dvtag{font-size:11px;padding:2px 8px}
+}
+@media (max-width:820px){.dvhrow{flex-direction:column;align-items:stretch !important;gap:6px !important}.dvhrow .dvstrip{width:100%}}
+@media (max-width:820px){.chead .stack>.row{flex-wrap:wrap;min-width:0}.chead .pswitch{max-width:100%;min-width:0;flex:1 1 100%}.chead .pswitch select{min-width:0;width:100%;text-overflow:ellipsis}.chead .stack>.row>.small{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}}
+@media (max-width:820px){.chead,.chead>.row,.chead .tabs{min-width:0;max-width:100%}.chead>.row>.stack{flex:1 1 auto}}
