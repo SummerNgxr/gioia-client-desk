@@ -1307,7 +1307,7 @@ function topRight() {
 }
 function staffShell() {
   const c = client(), page = { help: helpPage, task: () => taskPage(c, c.tasks.find(x => x.id === S.tid)), clients: clientsPage, client: () => c ? clientPage(c) : clientsPage(), ws: () => c ? workspacePage(c) : clientsPage(), workspaces: workspacesPage, mytasks: myTasksPage, files: filesPage, billing: billingPage, acct: () => c ? acctPage(c) : billingPage(), import: importPage, earnings: earningsPage, templates: templatesPage, newproj: wizardPage, catalogue: cataloguePage, team: teamPage, settings: settingsPage }[S.view]();
-  return '<div class="app">' + sidebar() + tabbar() + '<div class="main"><header class="topbar"><div class="search">' + I('search') + '<input id="gsearch" type="search" placeholder="Search clients, deliverables, tasks, files…" value="' + esc(S.q) + '" autocomplete="off" aria-label="Search"><div id="sres"></div></div>' + topRight() + '</header><main class="page">' + page + '</main></div></div>';
+  return '<div class="app">' + sidebar() + '<div class="main"><header class="topbar"><div class="search">' + I('search') + '<input id="gsearch" type="search" placeholder="Search clients, deliverables, tasks, files…" value="' + esc(S.q) + '" autocomplete="off" aria-label="Search"><div id="sres"></div></div>' + topRight() + '</header><main class="page">' + page + '</main></div></div>';
 }
 
 /* ---------- client portal ---------- */
@@ -1793,7 +1793,7 @@ function toast(t) { S.toast = t; clearTimeout(toastT); const app = document.getE
 let lastRoute = '';
 function render() {
   if (!D) return;
-  if (!D.me || !['admin', 'team', 'client'].includes(D.me.role)) { document.getElementById('app').innerHTML = gateHtml(); return; }
+  if (!D.me || !['admin', 'team', 'client'].includes(D.me.role)) { const tb = document.getElementById('tabbar-root'); if (tb) tb.innerHTML = ''; document.getElementById('app').innerHTML = gateHtml(); return; }
   const c = client();
   let overlay = '';
   if (S.drawer) {
@@ -1825,6 +1825,8 @@ function render() {
   const route = [S.role, S.view, S.view === 'billing' ? '' : S.cid, S.ctab, S.ptab, S.tid, S.ws, S.qtab, S.asub, S.acat].join('|'), mEl = document.querySelector('.main'), keepTop = mEl ? mEl.scrollTop : 0, keepY = window.scrollY, same = route === lastRoute, prevRoute = lastRoute; lastRoute = route;
   // each new page becomes a step in the browser history, so Back and Forward work
   try { if (!S.popping) { if (!prevRoute) history.replaceState(navSnap(), ''); else if (!same) { const cur = Object.assign({}, history.state || {}, { scroll: mEl ? keepTop : keepY }); history.replaceState(cur, ''); history.pushState(navSnap(), ''); } } } catch (x) {}
+  // the phone tab bar lives outside the app, straight under <body>, so it stays fixed to the bottom of the screen
+  { let tb = document.getElementById('tabbar-root'); if (!tb) { tb = document.createElement('div'); tb.id = 'tabbar-root'; document.body.appendChild(tb); } tb.innerHTML = S.role === 'client' ? '' : tabbar(); }
   document.getElementById('app').innerHTML = (S.role === 'client' ? portalShell() : staffShell()) + overlay + (S.toast ? '<div class="toast" role="status">' + I('tick', 'sm') + esc(S.toast) + '</div>' : '');
   { const m2 = document.querySelector('.main'), back = S.popping ? (S.popScroll || 0) : null; S.popping = false; S.popScroll = 0; if (m2) m2.scrollTop = back != null ? back : same ? keepTop : 0; window.scrollTo(0, back != null ? back : same ? keepY : 0); }
   // on narrow screens the notifications panel spans the screen just under the bell, so nothing is cut off
