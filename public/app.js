@@ -1292,7 +1292,8 @@ function settingsPage() {
 }
 
 /* ---------- shell ---------- */
-function myOpenCount() { let n = 0; S.clients.forEach(c => c.tasks.forEach(t => { if ((t.assignee === S.me || L.stageMine(t, S.me)) && taskOpen(c, t) && !['done', 'awaiting'].includes(t.status)) n++; })); return n; }
+// the badge counts only tasks waiting on you right now: your current step, or your task when it isn't with the client
+function myOpenCount() { let n = 0; S.clients.forEach(c => c.tasks.forEach(t => { if (!taskOpen(c, t) || t.status === 'done') return; const cs = curStage(t); if (staged(t) ? (cs && cs.owner === 'gioia' && cs.assignee === S.me) : (t.assignee === S.me && !waitsClient(t))) n++; })); return n; }
 function sidebar() {
   const nav = vendorMe() ? [['mytasks', 'My tasks', 'check'], ['clients', 'Projects', 'building'], ['earnings', 'Fees & payouts', 'coins'], ['files', 'Files', 'folder'], ['help', 'Help', 'help']] : [['mytasks', 'My tasks', 'check'], ['clients', 'Clients', 'building'], ['billing', 'Accounts', 'chart', 'admin'], ['earnings', 'Fees & payouts', 'coins'], ['files', 'Files', 'folder'], ['team', 'Team', 'users', 'admin'], ['templates', 'Templates', 'list'], ['catalogue', 'Service catalogue', 'layers', 'admin'], ['help', 'Help', 'help']];
   const bv = ['import', 'newproj'].includes(S.view) ? 'clients' : S.view === 'task' ? (S.back || {}).view : S.view, cur = bv === 'acct' ? 'billing' : bv === 'client' ? 'clients' : bv === 'ws' || bv === 'workspaces' ? 'clients' : bv, n = myOpenCount();
