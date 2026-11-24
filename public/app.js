@@ -1825,8 +1825,8 @@ function render() {
   const route = [S.role, S.view, S.view === 'billing' ? '' : S.cid, S.ctab, S.ptab, S.tid, S.ws, S.qtab, S.asub, S.acat].join('|'), mEl = document.querySelector('.main'), keepTop = mEl ? mEl.scrollTop : 0, keepY = window.scrollY, same = route === lastRoute, prevRoute = lastRoute; lastRoute = route;
   // each new page becomes a step in the browser history, so Back and Forward work
   try { if (!S.popping) { if (!prevRoute) history.replaceState(navSnap(), ''); else if (!same) { const cur = Object.assign({}, history.state || {}, { scroll: mEl ? keepTop : keepY }); history.replaceState(cur, ''); history.pushState(navSnap(), ''); } } } catch (x) {}
-  // the phone tab bar lives outside the app, straight under <body>, so it stays fixed to the bottom of the screen
-  { let tb = document.getElementById('tabbar-root'); if (!tb) { tb = document.createElement('div'); tb.id = 'tabbar-root'; document.body.appendChild(tb); } tb.innerHTML = S.role === 'client' ? '' : tabbar(); }
+  // the phone tab bar sits above the app and sticks to the top of the screen
+  { let tb = document.getElementById('tabbar-root'); if (!tb) { tb = document.createElement('div'); tb.id = 'tabbar-root'; const app = document.getElementById('app'); app.parentNode.insertBefore(tb, app); } tb.innerHTML = S.role === 'client' ? '' : tabbar(); }
   document.getElementById('app').innerHTML = (S.role === 'client' ? portalShell() : staffShell()) + overlay + (S.toast ? '<div class="toast" role="status">' + I('tick', 'sm') + esc(S.toast) + '</div>' : '');
   { const m2 = document.querySelector('.main'), back = S.popping ? (S.popScroll || 0) : null; S.popping = false; S.popScroll = 0; if (m2) m2.scrollTop = back != null ? back : same ? keepTop : 0; window.scrollTo(0, back != null ? back : same ? keepY : 0); }
   // on narrow screens the notifications panel spans the screen just under the bell, so nothing is cut off

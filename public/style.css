@@ -842,3 +842,12 @@ details.manual .mbody li{margin:4px 0}
 }
 @media (max-width:820px){.proto-bar{bottom:calc(84px + env(safe-area-inset-bottom));left:auto;right:8px;width:190px;padding:7px;gap:5px;font-size:11px}.proto-bar [data-reset]{display:none}}
 @media (max-width:820px){html,body{height:auto;min-height:100%}#app{height:auto}.tabbar{transform:translateZ(0)}}
+@media (max-width:820px){
+  #tabbar-root{position:sticky;top:0;z-index:30}
+  .tabbar{position:relative;bottom:auto;padding:calc(4px + env(safe-area-inset-top)) 4px 4px;box-shadow:0 6px 20px rgba(20,35,28,.18);transform:none}
+  .main{padding-bottom:0}
+  .tbsheet{bottom:auto;top:calc(100% + 6px);position:absolute}
+  .tbsheet-bg{position:fixed}
+  .toast{bottom:20px !important}
+  .proto-bar{bottom:12px !important}
+}
