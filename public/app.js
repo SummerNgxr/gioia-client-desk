@@ -94,7 +94,7 @@ function nextStep(t) {
 }
 /* ---------- data (filled from the server) ---------- */
 const S = {
-  role: 'admin', me: '', view: 'clients', cid: '', ctab: 'overview', ws: null, wm: 1, mode: 'list', ifilter: 'all', qtab: 'invoices', ptab: 'overview',
+  role: 'admin', me: '', view: 'mytasks', cid: '', ctab: 'overview', ws: null, wm: 1, mode: 'list', ifilter: 'all', qtab: 'invoices', ptab: 'overview',
   drawer: null, modal: null, menu: null, q: '', toast: null, drag: null, nextQuote: 0, tid: null, back: null, confirm: null, mtg: '', mtq: '', mtClient: '', mtScope: 'me', mtMode: (() => { try { return localStorage.getItem('mtMode') || 'simple'; } catch (e) { return 'simple'; } })(), mtFilters: false, pws: '', ptg: '',
   wsOpen: [], billOpen: [], fOpen: [], fees: [], acq: '', acs: '', afq: '', afs: '', init: false,
   brand: { mark: 'GIOIA' }, team: [], catalogue: [], clients: [], accounts: [], payouts: [], feed: [], showArchived: false, invFormat: '', templates: []
@@ -1263,7 +1263,7 @@ function settingsPage() {
 /* ---------- shell ---------- */
 function myOpenCount() { let n = 0; S.clients.forEach(c => c.tasks.forEach(t => { if ((t.assignee === S.me || L.stageMine(t, S.me)) && taskOpen(c, t) && !['done', 'awaiting'].includes(t.status)) n++; })); return n; }
 function sidebar() {
-  const nav = vendorMe() ? [['mytasks', 'My tasks', 'check'], ['clients', 'Projects', 'building'], ['earnings', 'Fees & payouts', 'coins'], ['files', 'Files', 'folder'], ['help', 'Help', 'help']] : [['clients', 'Clients', 'building'], ['billing', 'Accounts', 'coins', 'admin'], ['mytasks', 'My tasks', 'check'], ['earnings', 'Fees & payouts', 'coins'], ['files', 'Files', 'folder'], ['team', 'Team', 'users', 'admin'], ['templates', 'Templates', 'list'], ['catalogue', 'Service catalogue', 'layers', 'admin'], ['help', 'Help', 'help']];
+  const nav = vendorMe() ? [['mytasks', 'My tasks', 'check'], ['clients', 'Projects', 'building'], ['earnings', 'Fees & payouts', 'coins'], ['files', 'Files', 'folder'], ['help', 'Help', 'help']] : [['mytasks', 'My tasks', 'check'], ['clients', 'Clients', 'building'], ['billing', 'Accounts', 'coins', 'admin'], ['earnings', 'Fees & payouts', 'coins'], ['files', 'Files', 'folder'], ['team', 'Team', 'users', 'admin'], ['templates', 'Templates', 'list'], ['catalogue', 'Service catalogue', 'layers', 'admin'], ['help', 'Help', 'help']];
   const bv = ['import', 'newproj'].includes(S.view) ? 'clients' : S.view === 'task' ? (S.back || {}).view : S.view, cur = bv === 'acct' ? 'billing' : bv === 'client' ? 'clients' : bv === 'ws' || bv === 'workspaces' ? 'clients' : bv, n = myOpenCount();
   return '<aside class="side"><div class="logo">' + logoImg('white', 46) + '<span class="desk">Dashboard</span></div><div class="sidelab">' + (isAdmin() ? 'Admin' : 'Team') + '</div>' + nav.filter(x => !x[3] || (x[3] === 'admin' ? isAdmin() : !isAdmin())).map(([k, l, ic]) => '<button class="nav" data-a="nav" data-v="' + k + '" aria-current="' + (cur === k) + '">' + I(ic) + '<span class="lbl">' + l + '</span>' + (k === 'mytasks' && n ? '<span class="badge">' + n + '</span>' : '') + (k === 'billing' && billsWaiting() ? '<span class="badge">' + billsWaiting() + '</span>' : '') + '</button>').join('') +
     (isAdmin() ? '<div class="foot"><button class="nav" data-a="nav" data-v="settings" aria-current="' + (cur === 'settings') + '">' + I('cog') + '<span class="lbl">Settings</span></button></div>' : '') + '</aside>';
@@ -2168,9 +2168,12 @@ function adopt(st) {
   if (/signin=failed/.test(location.search)) try { history.replaceState(null, '', location.pathname); } catch (e) {}
   S.role = D.me.role === 'client' ? 'client' : 'admin'; S.me = D.me.id || '';
   if (!S.clients.find(c => c.id === S.cid)) S.cid = (D.me.role === 'client' && D.me.cid) || (S.clients[0] || {}).id || '';
+  // a refresh reopens the page you were on (a fresh visit starts on My tasks)
+  if (!S.init && !go && history.state && history.state.app && S.role !== 'client') NAVK.forEach(k => { if (history.state[k] !== undefined) S[k] = history.state[k]; });
+  if (!S.init && S.view === 'task' && !(S.clients.find(c => c.id === S.cid) || { tasks: [] }).tasks.some(t => t.id === S.tid)) S.view = 'mytasks';
   if (!S.init) { S.init = true; S.wsOpen = S.clients.filter(c => c.tasks.some(t => taskOpen(c, t))).map(c => c.id); }
-  if (!isAdmin() && ['billing', 'acct', 'catalogue', 'team', 'settings'].includes(S.view)) S.view = 'clients';
-  if (!client() && ['client', 'ws', 'task'].includes(S.view)) S.view = 'clients';
+  if (!isAdmin() && ['billing', 'acct', 'catalogue', 'team', 'settings'].includes(S.view)) S.view = 'mytasks';
+  if (!client() && ['client', 'ws', 'task'].includes(S.view)) S.view = 'mytasks';
   document.body.classList.toggle('no-upload', !D.uploads); document.body.classList.toggle('no-email', !D.email);
 }
 async function load() {
