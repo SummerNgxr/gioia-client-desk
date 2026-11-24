@@ -1800,6 +1800,8 @@ function render() {
   try { if (!S.popping) { if (!prevRoute) history.replaceState(navSnap(), ''); else if (!same) { const cur = Object.assign({}, history.state || {}, { scroll: mEl ? keepTop : keepY }); history.replaceState(cur, ''); history.pushState(navSnap(), ''); } } } catch (x) {}
   document.getElementById('app').innerHTML = (S.role === 'client' ? portalShell() : staffShell()) + overlay + (S.toast ? '<div class="toast" role="status">' + I('tick', 'sm') + esc(S.toast) + '</div>' : '');
   { const m2 = document.querySelector('.main'), back = S.popping ? (S.popScroll || 0) : null; S.popping = false; S.popScroll = 0; if (m2) m2.scrollTop = back != null ? back : same ? keepTop : 0; window.scrollTo(0, back != null ? back : same ? keepY : 0); }
+  // on narrow screens the notifications panel spans the screen just under the bell, so nothing is cut off
+  { const bm = document.querySelector('.menu.bellmenu'); if (bm && innerWidth <= 700) { const r = bm.parentElement.getBoundingClientRect(), top = Math.round(r.bottom + 8); bm.style.top = top + 'px'; bm.style.maxHeight = (innerHeight - top - 12) + 'px'; } }
   if (S.focus) { const f = document.getElementById(S.focus); S.focus = null; if (f) { f.scrollIntoView({ block: f.id === 'cmts' ? 'start' : 'center' }); f.classList.add('flash'); setTimeout(() => f.classList.remove('flash'), 2400); } }
   drawTour();
   if (['mt-q', 'gsearch', 'ac-q', 'af-q', 'ml-q'].includes(fid)) { const el = document.getElementById(fid); if (el) { el.focus(); try { if (sel) el.setSelectionRange(sel[0], sel[1]); } catch (x) {} } }
