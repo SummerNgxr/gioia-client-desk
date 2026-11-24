@@ -474,11 +474,11 @@ function stCtl(c, t) {
   return '<select class="inl pill stsel ' + (TONE[t.status] || '') + '" data-lst="' + t.id + '" data-lcid="' + c.id + '" aria-label="Status">' + opts.map(k => '<option value="' + k + '"' + (k === t.status ? ' selected' : '') + '>' + esc(STATUS[k]) + '</option>').join('') + '</select>';
 }
 function taskRow(c, t, mode) {
-  const s = ql(c, t.svc), m = member(t.assignee), cs = curStage(t), sub = (staged(t) && !stCtl(c, t).includes('data-lstage') ? (cs ? 'Step ' + (t.stage + 1) + ' of ' + t.stages.length + ': ' + cs.title + (cs.owner === 'client' ? (S.role === 'client' ? ' (you)' : ' (client)') : ' (team)') : 'All ' + t.stages.length + ' steps completed') + ' · ' : '') + (t.desc || (short(s) + (t.m ? ' · ' + mName(c, t.m) : '')));
+  const s = ql(c, t.svc), m = member(t.assignee), cs = curStage(t), ctl = stCtl(c, t), sub = taskInfo(c, t, ctl);
   const sm2 = staged(t) && cs ? (cs.owner === 'client' ? null : member(cs.assignee)) : null;
   const who = (staged(t) && cs ? cs.owner === 'client' : t.owner === 'client') ? (S.role === 'client' ? 'You' : esc(c.contact || 'Client')) : esc(sm2 ? sm2.name : m ? m.name : staged(t) && cs ? 'Team' : 'Unassigned');
   const late = t.due && t.due < TODAY && t.status !== 'done';
-  return '<div class="tli" data-a="task" data-id="' + t.id + '" data-cid="' + c.id + '"><span class="ticon">' + I(svcIcon(t.svc)) + '</span><div class="stack" style="gap:4px;min-width:0"><b>' + esc(t.title) + '</b><span class="small muted clamp">' + esc(sub) + '</span><span>' + stCtl(c, t) + '</span></div>' +
+  return '<div class="tli" data-a="task" data-id="' + t.id + '" data-cid="' + c.id + '"><span class="ticon">' + I(svcIcon(t.svc)) + '</span><div class="stack" style="gap:4px;min-width:0"><b>' + esc(t.title) + '</b><span class="small muted clamp">' + esc(sub) + '</span><span>' + ctl + '</span></div>' +
     '<span class="row small c3" style="gap:8px;flex-wrap:nowrap">' + (mode === 'both' ? '<span class="tlic-logo" title="' + esc(c.company) + '">' + logoTile(c.company, c.logo, 'width:22px;height:22px;font-size:8px;border-radius:5px') + '</span>' + '<span><span class="muted">' + esc(pname(c)) + '</span><br><span class="row" style="gap:6px;margin-top:3px;flex-wrap:nowrap">' + whoAv(c, t, 'sm') + who + '</span></span>' : mode === 'client' ? '<span class="tlic-logo" title="' + esc(c.company) + '">' + logoTile(c.company, c.logo, 'width:22px;height:22px;font-size:8px;border-radius:5px') + '</span>' + '<span class="muted">' + esc(pname(c)) + '</span>' : whoAv(c, t) + '<span>' + who + '</span>') + '</span><span class="row small c4" style="gap:8px;flex-wrap:nowrap' + (late ? ';color:var(--crit);font-weight:600' : '') + '">' + (t.due ? I('cal', 'sm') + dlong(t.due) : '<span class="muted">No due date</span>') + '</span>' + I('chev', 'sm') + '</div>';
 }
 function taskTable(rows, mode) {
@@ -487,10 +487,16 @@ function taskTable(rows, mode) {
 /* ---------- My tasks, simple view: what needs doing now, by when; waiting-on-client and later folded away ---------- */
 const plusDays = n => { const d = new Date(TODAY + 'T00:00'); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
 const waitsClient = t => ['cdraft', 'creview', 'awaiting'].includes(t.status) || (staged(t) ? (curStage(t) || {}).owner === 'client' : t.owner === 'client' && t.status !== 'done');
+// one details line for a task in any list: the step (unless the step picker already shows it), the service, the month
+function taskInfo(c, t, ctl) {
+  const cs = curStage(t), stepInPill = String(ctl || '').includes('data-lstage');
+  const step = staged(t) && !stepInPill ? (cs ? 'Step ' + (t.stage + 1) + ' of ' + t.stages.length + ': ' + cs.title + (cs.owner === 'client' ? (S.role === 'client' ? ' (you)' : ' (client)') : '') : 'All ' + t.stages.length + ' steps completed') : '';
+  return [step, short(ql(c, t.svc)), t.m ? mName(c, t.m) : ''].filter(Boolean).join(' · ');
+}
 function compactRow(c, t, showWho) {
   const cs = curStage(t), late = t.due && t.due < TODAY && t.status !== 'done';
   const sm2 = staged(t) && cs ? (cs.owner === 'client' ? null : member(cs.assignee)) : null, m = sm2 || member(t.assignee);
-  const ctl = stCtl(c, t), stepInPill = ctl.includes('data-lstage'), bits = [pname(c), staged(t) && cs && !stepInPill ? 'Step ' + (t.stage + 1) + ' of ' + t.stages.length + ': ' + cs.title : short(ql(c, t.svc))];
+  const ctl = stCtl(c, t), bits = [pname(c), taskInfo(c, t, ctl)];
   if (showWho) bits.push(waitsClient(t) ? 'Client' : m ? m.name : 'Unassigned');
   return '<div class="tli tlic" data-a="task" data-id="' + t.id + '" data-cid="' + c.id + '"><span class="ticon sm">' + I(svcIcon(t.svc), 'sm') + '</span><span class="tlic-main"><b>' + esc(t.title) + '</b><span class="small muted tlic-sub"><span class="tlic-logo" title="' + esc(c.company) + '">' + logoTile(c.company, c.logo, 'width:20px;height:20px;font-size:8px;border-radius:5px') + '</span><span class="clamp1">' + esc(bits.join(' · ')) + '</span></span></span>' +
     '<span class="tlic-av">' + (showWho ? whoAv(c, t, 'sm') : '') + '</span><span class="tlic-st">' + ctl + '</span><span class="small tlic-due' + (late ? ' late' : '') + '">' + (t.due ? dshort(t.due) : '<span class="muted">No date</span>') + '</span>' + I('chev', 'sm') + '</div>';
