@@ -453,12 +453,23 @@ function withNow(c, t) {
   if (!cur) return '<span class="stack" style="gap:2px"><b>All steps done</b><span class="avstack">' + people.map(x => stepAv(c, x, 'sm')).join('') + '</span></span>';
   return '<span class="stack" style="gap:3px"><b>' + esc(stepName(c, cur)) + '</b><span class="small muted">Step ' + (i + 1) + ' of ' + t.stages.length + (nxt ? ' · next: ' + esc(stepName(c, nxt)) : ' · last step') + '</span><span class="avstack" title="Everyone on this task">' + people.map(x => stepAv(c, x, 'sm')).join('') + '</span></span>';
 }
+// status (or current step) changeable straight from a task list, for the team; clients and vendors see the pill
+function stCtl(c, t) {
+  if (!(staff() && !vendorMe()) || !taskOpen(c, t)) return pill(t.status, cLabel(t));
+  if (staged(t)) {
+    const n = t.stages.length, cur = Math.min(t.stage || 0, n);
+    return '<select class="inl pill stsel ' + (TONE[t.status] || '') + '" data-lstage="' + t.id + '" data-lcid="' + c.id + '" aria-label="Current step" title="Current step">' + t.stages.map((z, i) => '<option value="' + i + '"' + (i === cur ? ' selected' : '') + '>Step ' + (i + 1) + ' of ' + n + ': ' + esc(z.title) + (z.owner === 'client' ? ' (client)' : '') + '</option>').join('') + '<option value="' + n + '"' + (cur >= n ? ' selected' : '') + '>All steps completed</option></select>';
+  }
+  const opts = statusOpts(t);
+  if (opts.length < 2) return pill(t.status, cLabel(t));
+  return '<select class="inl pill stsel ' + (TONE[t.status] || '') + '" data-lst="' + t.id + '" data-lcid="' + c.id + '" aria-label="Status">' + opts.map(k => '<option value="' + k + '"' + (k === t.status ? ' selected' : '') + '>' + esc(STATUS[k]) + '</option>').join('') + '</select>';
+}
 function taskRow(c, t, mode) {
   const s = ql(c, t.svc), m = member(t.assignee), cs = curStage(t), sub = (staged(t) ? (cs ? 'Step ' + (t.stage + 1) + ' of ' + t.stages.length + ': ' + cs.title + (cs.owner === 'client' ? (S.role === 'client' ? ' (you)' : ' (client)') : ' (team)') : 'All ' + t.stages.length + ' steps completed') + ' · ' : '') + (t.desc || (short(s) + (t.m ? ' · ' + mName(c, t.m) : '')));
   const sm2 = staged(t) && cs ? (cs.owner === 'client' ? null : member(cs.assignee)) : null;
   const who = (staged(t) && cs ? cs.owner === 'client' : t.owner === 'client') ? (S.role === 'client' ? 'You' : esc(c.contact || 'Client')) : esc(sm2 ? sm2.name : m ? m.name : staged(t) && cs ? 'Team' : 'Unassigned');
   const late = t.due && t.due < TODAY && t.status !== 'done';
-  return '<div class="tli" data-a="task" data-id="' + t.id + '" data-cid="' + c.id + '"><span class="ticon">' + I(svcIcon(t.svc)) + '</span><div class="stack" style="gap:4px;min-width:0"><b>' + esc(t.title) + '</b><span class="small muted clamp">' + esc(sub) + '</span><span>' + pill(t.status, cLabel(t)) + '</span></div>' +
+  return '<div class="tli" data-a="task" data-id="' + t.id + '" data-cid="' + c.id + '"><span class="ticon">' + I(svcIcon(t.svc)) + '</span><div class="stack" style="gap:4px;min-width:0"><b>' + esc(t.title) + '</b><span class="small muted clamp">' + esc(sub) + '</span><span>' + stCtl(c, t) + '</span></div>' +
     '<span class="row small c3" style="gap:8px;flex-wrap:nowrap">' + (mode === 'both' ? I('building', 'sm') + '<span>' + esc(c.company) + '<br><span class="muted">' + esc(pname(c)) + '</span><br><span class="row" style="gap:6px;margin-top:3px;flex-wrap:nowrap">' + whoAv(c, t, 'sm') + who + '</span></span>' : mode === 'client' ? I('building', 'sm') + '<span>' + esc(c.company) + '<br><span class="muted">' + esc(pname(c)) + '</span></span>' : whoAv(c, t) + '<span>' + who + '</span>') + '</span><span class="row small c4" style="gap:8px;flex-wrap:nowrap' + (late ? ';color:var(--crit);font-weight:600' : '') + '">' + (t.due ? I('cal', 'sm') + dlong(t.due) : '<span class="muted">No due date</span>') + '</span>' + I('chev', 'sm') + '</div>';
 }
 function taskTable(rows, mode) {
@@ -473,7 +484,7 @@ function compactRow(c, t, showWho) {
   const bits = [cname(c), staged(t) && cs ? 'Step ' + (t.stage + 1) + ' of ' + t.stages.length + ': ' + cs.title : short(ql(c, t.svc))];
   if (showWho) bits.push(waitsClient(t) ? 'Client' : m ? m.name : 'Unassigned');
   return '<div class="tli tlic" data-a="task" data-id="' + t.id + '" data-cid="' + c.id + '"><span class="ticon sm">' + I(svcIcon(t.svc), 'sm') + '</span><span class="tlic-main"><b>' + esc(t.title) + '</b><span class="small muted clamp1">' + esc(bits.join(' · ')) + '</span></span>' +
-    '<span class="tlic-av">' + (showWho ? whoAv(c, t, 'sm') : '') + '</span><span class="tlic-st">' + pill(t.status, cLabel(t)) + '</span><span class="small tlic-due' + (late ? ' late' : '') + '">' + (t.due ? dshort(t.due) : '<span class="muted">No date</span>') + '</span>' + I('chev', 'sm') + '</div>';
+    '<span class="tlic-av">' + (showWho ? whoAv(c, t, 'sm') : '') + '</span><span class="tlic-st">' + stCtl(c, t) + '</span><span class="small tlic-due' + (late ? ' late' : '') + '">' + (t.due ? dshort(t.due) : '<span class="muted">No date</span>') + '</span>' + I('chev', 'sm') + '</div>';
 }
 function simpleTasks(rows, showWho) {
   const open = rows.filter(r => r.t.status !== 'done'), mine = open.filter(r => !waitsClient(r.t)), waiting = open.filter(r => waitsClient(r.t)), wk = plusDays(7);
@@ -2529,7 +2540,8 @@ document.addEventListener('change', async e => {
   if (d.pat) { S.modal.tid = e.target.value; render(); return; }
   if (d.lass !== undefined) { await changeAssignee(d.lass, e.target.value); render(); return; }
   if (d.ldue !== undefined) { await api('t-due', { id: d.ldue, due: e.target.value }, { msg: e.target.value ? 'Due date set.' : 'Due date cleared.' }); render(); return; }
-  if (d.lst !== undefined) { await api('t-status', { id: d.lst, status: e.target.value }, { msg: 'Status updated.' }); render(); return; }
+  if (d.lst !== undefined) { await api('t-status', { id: d.lst, status: e.target.value }, { msg: 'Status updated.', cid: d.lcid }); render(); return; }
+  if (d.lstage !== undefined) { await api('t-stage-set', { id: d.lstage, stage: +e.target.value }, { msg: 'Step updated.', cid: d.lcid }); render(); return; }
   if (d.mlst !== undefined) { S.mlSt = e.target.value; S.mlN = 8; render(); return; }
   if (e.target.id === 'nt-owner') { const as = document.getElementById('nt-as'); if (as) { as.innerHTML = '<option value="">' + (e.target.value === 'client' ? '—' : 'Unassigned') + '</option>' + (e.target.value === 'client' ? '' : teamOpts(as.value, false, e.target.value === 'vendor' ? 'vendor' : 'team')); as.disabled = e.target.value === 'client'; } return; }
   if (d.epref) { await api('email-pref', { on: e.target.checked }, { msg: e.target.checked ? 'Emails are on.' : 'Emails are off. You will still see everything in the app.' }); return; }

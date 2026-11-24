@@ -799,3 +799,5 @@ details.manual .mbody li{margin:4px 0}
 .a2steps span:last-child{font-size:13px;opacity:.75}
 .a2foot{font-size:12px;opacity:.65;margin:14px 0 0}
 @media (max-width:640px){.a2tabs{grid-template-columns:repeat(2,1fr);display:grid}.a2steps{grid-template-columns:1fr;gap:14px}.a2steps li+li{border-left:0;border-top:1px solid rgba(255,255,255,.18);padding-top:14px}.a2hs h2{font-size:23px}}
+
+.stsel{width:auto;max-width:260px;text-overflow:ellipsis;cursor:pointer}
