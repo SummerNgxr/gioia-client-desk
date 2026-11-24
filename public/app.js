@@ -1282,6 +1282,19 @@ function sidebar() {
   return '<aside class="side"><div class="logo">' + logoImg('white', 46) + '<span class="desk">Dashboard</span></div><div class="sidelab">' + (isAdmin() ? 'Admin' : 'Team') + '</div>' + nav.filter(x => !x[3] || (x[3] === 'admin' ? isAdmin() : !isAdmin())).map(([k, l, ic]) => '<button class="nav" data-a="nav" data-v="' + k + '" aria-current="' + (cur === k) + '">' + I(ic) + '<span class="lbl">' + l + '</span>' + (k === 'mytasks' && n ? '<span class="badge">' + n + '</span>' : '') + (k === 'billing' && billsWaiting() ? '<span class="badge">' + billsWaiting() + '</span>' : '') + '</button>').join('') +
     (isAdmin() ? '<div class="foot"><button class="nav" data-a="nav" data-v="settings" aria-current="' + (cur === 'settings') + '">' + I('cog') + '<span class="lbl">Settings</span></button></div>' : '') + '</aside>';
 }
+// phones: a bottom tab bar with names; "More" opens the rest
+function tabbar() {
+  const bv = ['import', 'newproj'].includes(S.view) ? 'clients' : S.view === 'task' ? (S.back || {}).view : S.view, cur = bv === 'acct' ? 'billing' : ['client', 'ws', 'workspaces'].includes(bv) ? 'clients' : bv, n = myOpenCount();
+  const main = vendorMe() ? [['mytasks', 'My tasks', 'check'], ['clients', 'Projects', 'building'], ['earnings', 'Fees', 'coins'], ['files', 'Files', 'folder']]
+    : isAdmin() ? [['mytasks', 'My tasks', 'check'], ['clients', 'Clients', 'building'], ['billing', 'Accounts', 'chart'], ['earnings', 'Fees', 'coins']]
+    : [['mytasks', 'My tasks', 'check'], ['clients', 'Clients', 'building'], ['earnings', 'Fees', 'coins'], ['files', 'Files', 'folder']];
+  const more = (vendorMe() ? [['help', 'Help', 'help']] : [['files', 'Files', 'folder'], ['team', 'Team', 'users', 'admin'], ['templates', 'Templates', 'list'], ['catalogue', 'Service catalogue', 'layers', 'admin'], ['help', 'Help', 'help'], ['settings', 'Settings', 'cog', 'admin']])
+    .filter(x => !main.some(m => m[0] === x[0]) && (!x[3] || isAdmin()));
+  const inMore = more.some(x => x[0] === cur);
+  return (S.moreOpen ? '<div class="tbsheet-bg" data-a="tb-more"></div><div class="tbsheet" role="menu">' + more.map(([k, l, ic]) => '<button class="tbrow" role="menuitem" data-a="nav" data-v="' + k + '" aria-current="' + (cur === k) + '">' + I(ic) + '<span>' + l + '</span>' + I('chev', 'sm') + '</button>').join('') + '<button class="tbrow" data-a="a2hs-open">' + I('download') + '<span>Add to home screen</span>' + I('chev', 'sm') + '</button></div>' : '') +
+    '<nav class="tabbar" aria-label="Main">' + main.map(([k, l, ic]) => '<button data-a="nav" data-v="' + k + '" aria-current="' + (cur === k) + '">' + I(ic) + (k === 'mytasks' && n ? '<span class="tbbadge">' + n + '</span>' : '') + '<span>' + l + '</span></button>').join('') +
+    '<button data-a="tb-more" aria-current="' + (inMore || !!S.moreOpen) + '" aria-expanded="' + !!S.moreOpen + '">' + I('grip') + '<span>More</span></button></nav>';
+}
 function bellMenu() {
   const v = viewer(), all = S.feed.filter(e => canRead(e, v)), un = all.filter(e => unreadFor(e, v)).length, only = S.bellUnread && un;
   // every unread one is listed, however old, plus the latest read ones
@@ -1294,7 +1307,7 @@ function topRight() {
 }
 function staffShell() {
   const c = client(), page = { help: helpPage, task: () => taskPage(c, c.tasks.find(x => x.id === S.tid)), clients: clientsPage, client: () => c ? clientPage(c) : clientsPage(), ws: () => c ? workspacePage(c) : clientsPage(), workspaces: workspacesPage, mytasks: myTasksPage, files: filesPage, billing: billingPage, acct: () => c ? acctPage(c) : billingPage(), import: importPage, earnings: earningsPage, templates: templatesPage, newproj: wizardPage, catalogue: cataloguePage, team: teamPage, settings: settingsPage }[S.view]();
-  return '<div class="app">' + sidebar() + '<div class="main"><header class="topbar"><div class="search">' + I('search') + '<input id="gsearch" type="search" placeholder="Search clients, deliverables, tasks, files…" value="' + esc(S.q) + '" autocomplete="off" aria-label="Search"><div id="sres"></div></div>' + topRight() + '</header><main class="page">' + page + '</main></div></div>';
+  return '<div class="app">' + sidebar() + tabbar() + '<div class="main"><header class="topbar"><div class="search">' + I('search') + '<input id="gsearch" type="search" placeholder="Search clients, deliverables, tasks, files…" value="' + esc(S.q) + '" autocomplete="off" aria-label="Search"><div id="sres"></div></div>' + topRight() + '</header><main class="page">' + page + '</main></div></div>';
 }
 
 /* ---------- client portal ---------- */
@@ -2227,7 +2240,7 @@ async function saveQuote(then, msg) {
 const ACT = {
   noop() { toast('Not available yet.'); },
   print() { window.print(); return 'skip'; },
-  nav(d) { S.view = d.v; S.menu = null; S.q = ''; if (d.v === 'billing') { S.asub = ''; S.afc = ''; } },
+  nav(d) { S.view = d.v; S.menu = null; S.moreOpen = false; S.q = ''; if (d.v === 'billing') { S.asub = ''; S.afc = ''; } },
   menu(d) { S.menu = S.menu === d.m ? null : d.m; },
   'bell-only'() { S.bellUnread = !S.bellUnread; S.menu = 'bell'; },
   'seen-all'() { return api('seen', {}, { quiet: true }); },
@@ -2236,7 +2249,8 @@ const ACT = {
   'open-client-tab'(d) { S.cid = d.id; S.view = 'client'; S.ctab = d.t; S.q = ''; },
   async 't-appr'(d) { await api('t-approve-set', { id: d.id, on: d.on === '1' }); },
   'a2hs-dev'(d) { S.a2hs = d.id; },
-  'a2hs-open'() { S.menu = null; S.modal = { kind: 'a2hs' }; },
+  'a2hs-open'() { S.menu = null; S.moreOpen = false; S.modal = { kind: 'a2hs' }; },
+  'tb-more'() { S.moreOpen = !S.moreOpen; },
   'tl-all'(d) { S.tlAll = Object.assign({}, S.tlAll, { [d.id]: !(S.tlAll || {})[d.id] }); },
   'open-ws'(d) { pickClient(d); S.ws = d.id; S.wm = +d.m || 1; S.q = ''; if (S.role === 'client') { S.ptab = 'tasks'; S.pws = d.id; S.ptg = ''; S.pwm = +d.m || 0; } else S.view = 'ws'; },
   'pwm'(d) { S.pwm = +d.m; S.ptg = ''; },
