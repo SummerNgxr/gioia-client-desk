@@ -802,3 +802,4 @@ details.manual .mbody li{margin:4px 0}
 
 .stsel{width:auto;max-width:260px;text-overflow:ellipsis;cursor:pointer}
 @media (max-width:700px){.menu.bellmenu{position:fixed;left:8px;right:8px;width:auto;max-width:none}}
+.tlic-sub{display:flex;align-items:center;gap:6px;min-width:0}.tlic-logo{flex:none;display:inline-flex}.tlic-logo img,.tlic-logo>*{flex:none}

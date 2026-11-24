@@ -482,9 +482,9 @@ const waitsClient = t => ['cdraft', 'creview', 'awaiting'].includes(t.status) ||
 function compactRow(c, t, showWho) {
   const cs = curStage(t), late = t.due && t.due < TODAY && t.status !== 'done';
   const sm2 = staged(t) && cs ? (cs.owner === 'client' ? null : member(cs.assignee)) : null, m = sm2 || member(t.assignee);
-  const bits = [cname(c), staged(t) && cs ? 'Step ' + (t.stage + 1) + ' of ' + t.stages.length + ': ' + cs.title : short(ql(c, t.svc))];
+  const bits = [pname(c), staged(t) && cs ? 'Step ' + (t.stage + 1) + ' of ' + t.stages.length + ': ' + cs.title : short(ql(c, t.svc))];
   if (showWho) bits.push(waitsClient(t) ? 'Client' : m ? m.name : 'Unassigned');
-  return '<div class="tli tlic" data-a="task" data-id="' + t.id + '" data-cid="' + c.id + '"><span class="ticon sm">' + I(svcIcon(t.svc), 'sm') + '</span><span class="tlic-main"><b>' + esc(t.title) + '</b><span class="small muted clamp1">' + esc(bits.join(' · ')) + '</span></span>' +
+  return '<div class="tli tlic" data-a="task" data-id="' + t.id + '" data-cid="' + c.id + '"><span class="ticon sm">' + I(svcIcon(t.svc), 'sm') + '</span><span class="tlic-main"><b>' + esc(t.title) + '</b><span class="small muted tlic-sub"><span class="tlic-logo" title="' + esc(c.company) + '">' + logoTile(c.company, c.logo, 'width:20px;height:20px;font-size:8px;border-radius:5px') + '</span><span class="clamp1">' + esc(bits.join(' · ')) + '</span></span></span>' +
     '<span class="tlic-av">' + (showWho ? whoAv(c, t, 'sm') : '') + '</span><span class="tlic-st">' + stCtl(c, t) + '</span><span class="small tlic-due' + (late ? ' late' : '') + '">' + (t.due ? dshort(t.due) : '<span class="muted">No date</span>') + '</span>' + I('chev', 'sm') + '</div>';
 }
 function simpleTasks(rows, showWho) {
