@@ -69,7 +69,7 @@ const I = (k, cls) => '<svg class="ico ' + (cls || '') + '" viewBox="0 0 24 24" 
 
 /* ---------- statuses ---------- */
 STATUS.progress = 'In progress'; STATUS.todo = 'Pending action'; STATUS.done = 'Completed';
-const statusOpts = t => L.statusOptions(t);
+const statusOpts = t => L.statusOptions(t).filter(k => !(S.role !== 'client' && L.needsApproval(t) && ['approved', 'done'].includes(k)) || k === t.status);
 const staged = t => L.staged(t), curStage = t => L.curStage(t);
 const GROUPS = [['todo', 'Pending action', ['todo'], 'circle'], ['progress', 'In progress', ['progress', 'changes', 'submitted'], 'refresh'], ['client', 'Pending client', ['cdraft', 'creview'], 'user'], ['awaiting', 'Awaiting approval', ['awaiting'], 'clock'], ['approved', 'Approved', ['approved'], 'tick'], ['done', 'Completed', ['done'], 'tick']];
 const groupOf = st => GROUPS.find(g => g[2].includes(st))[0];
@@ -455,10 +455,11 @@ function withNow(c, t) {
 }
 // status (or current step) changeable straight from a task list, for the team; clients and vendors see the pill
 function stCtl(c, t) {
-  if (!(staff() && !vendorMe()) || !taskOpen(c, t)) return pill(t.status, cLabel(t));
+  const me = D.me && D.me.id, mine = t.assignee === me || (t.stages || []).some(z => z.assignee === me);
+  if (!staff() || (vendorMe() && !mine) || !taskOpen(c, t)) return pill(t.status, cLabel(t));
   if (staged(t)) {
-    const n = t.stages.length, cur = Math.min(t.stage || 0, n);
-    return '<select class="inl pill stsel ' + (TONE[t.status] || '') + '" data-lstage="' + t.id + '" data-lcid="' + c.id + '" aria-label="Current step" title="Current step">' + t.stages.map((z, i) => '<option value="' + i + '"' + (i === cur ? ' selected' : '') + '>Step ' + (i + 1) + ' of ' + n + ': ' + esc(z.title) + (z.owner === 'client' ? ' (client)' : '') + '</option>').join('') + '<option value="' + n + '"' + (cur >= n ? ' selected' : '') + '>All steps completed</option></select>';
+    const n = t.stages.length, cur = Math.min(t.stage || 0, n), gate = L.stepGate(t);
+    return '<select class="inl pill stsel ' + (TONE[t.status] || '') + '" data-lstage="' + t.id + '" data-lcid="' + c.id + '" aria-label="Current step" title="Current step">' + t.stages.map((z, i) => '<option value="' + i + '"' + (i === cur ? ' selected' : '') + (i > gate ? ' disabled' : '') + '>Step ' + (i + 1) + ' of ' + n + ': ' + esc(z.title) + (z.owner === 'client' ? ' (client)' : '') + '</option>').join('') + '<option value="' + n + '"' + (cur >= n ? ' selected' : '') + (n > gate ? ' disabled' : '') + '>All steps completed</option></select>';
   }
   const opts = statusOpts(t);
   if (opts.length < 2) return pill(t.status, cLabel(t));
@@ -892,6 +893,7 @@ const MANUAL = {
 | Revisions | Each piece of work includes **2 rounds of changes**. The client's second request is labelled "Request final changes". After that the button is greyed out and further changes are quoted separately. |
 | Requesting changes | The client must write a comment saying what to change. Approving needs no comment. |
 | Undoing a step | Anyone can undo a step they marked done by mistake, but **must give a reason**. It is recorded and sent to the others involved. |
+| Client approval | The team can't skip it: a task can't be moved past a client step, or marked approved or completed, until the client acts. Admins can still use Done for client when the client approved outside the portal. |
 | Months | Each month unlocks for the client only when that month's invoice is paid. |
 | Starting work | After the first invoice or deposit is paid, click Start preparation. |
 | Team-only comments | Tick Team only and the client never sees the comment, in the app or by email. |
@@ -962,6 +964,8 @@ The bell shows the latest 40 plus every unread. Tap one to open it and mark it r
     ['Key rules to remember', `| Area | Rule |
 | Revisions | Each piece of work includes **2 rounds of changes** for the client. The second is labelled "Request final changes", so get it right that round. |
 | Undoing a step | You can undo a step you marked done by mistake, but **must give a reason**. Others on the task are told. |
+| Client approval | A task can't be moved past a client step, or completed before the client approves. |
+| Quick changes | Change a task's status, or its current step, straight from the task list. |
 | Team-only comments | Tick Team only and the client never sees the comment, in the app or by email. |
 | Tagging | Type @ to notify someone. Admins are told about every comment. |
 | Reminders | Each morning after 9am, if you have tasks due tomorrow or overdue, you get one email. |
@@ -1440,7 +1444,7 @@ function taskPage(c, t) {
   const cs = curStage(t);
   const status = '';
   const stepsEdit = E && S.editSteps === t.id ? '<div class="card stack"><div class="field"><label for="dr-steps">Steps, one per line. Start each with <b>Client:</b>, <b>Client reviews:</b>, <b>Client approves:</b>, <b>Team:</b> or a team member\'s name, such as <b>' + esc((S.team[1] || S.team[0] || { name: 'Jo' }).name.split(' ')[0]) + ':</b></label><textarea id="dr-steps" rows="9" placeholder="Client: Send the draft&#10;Jo: Edit and optimise&#10;Client approves: Approve the final version&#10;Team: Publish">' + esc(staged(t) ? L.stepsText(t.stages, S.team) : '') + '</textarea></div>' + tplBar('dr-steps') + '<p class="small muted" style="margin:0">' + (staged(t) ? 'Steps already completed stay completed. Clear the box to remove the steps.' : 'The task will start at step 1, and its status will follow whose step it is. The client sees the steps too.') + '</p><div class="row">' + btn('Save steps', 't-steps-save', { id: t.id }) + btn('Cancel', 'steps-cancel', {}, 'quiet') + '</div></div>' : '';
-  const stepsBox = stepsEdit ? '<div class="stack" style="gap:8px"><h2>Steps</h2>' + stepsEdit + '</div>' : !staged(t) ? (E ? '<div class="row between card"><span><b>No steps yet.</b> <span class="muted small">Add steps when this work passes back and forth with the client.</span></span>' + btn(I('plus', 'sm') + 'Add steps', 'steps-edit', { id: t.id }, 'ghost') + '</div>' : '') : staged(t) ? '<div class="stack" id="steps" style="gap:8px;scroll-margin-top:90px"><div class="row between"><h2>Steps</h2>' + (E ? '<span class="row small" style="gap:8px"><label for="dr-stage" class="muted">Current step</label><select id="dr-stage" data-stage="' + t.id + '" style="width:auto">' + t.stages.map((x, i) => '<option value="' + i + '"' + (t.stage === i ? ' selected' : '') + '>' + (i + 1) + '. ' + esc(x.title) + '</option>').join('') + '<option value="' + t.stages.length + '"' + (t.stage >= t.stages.length ? ' selected' : '') + '>All completed</option></select><button class="link" data-a="steps-edit" data-id="' + t.id + '">Edit steps</button></span>' : '<span class="small muted">Step ' + Math.min(t.stage + 1, t.stages.length) + ' of ' + t.stages.length + '</span>') + '</div><div class="card steps">' +
+  const stepsBox = stepsEdit ? '<div class="stack" style="gap:8px"><h2>Steps</h2>' + stepsEdit + '</div>' : !staged(t) ? (E ? '<div class="row between card"><span><b>No steps yet.</b> <span class="muted small">Add steps when this work passes back and forth with the client.</span></span>' + btn(I('plus', 'sm') + 'Add steps', 'steps-edit', { id: t.id }, 'ghost') + '</div>' : '') : staged(t) ? '<div class="stack" id="steps" style="gap:8px;scroll-margin-top:90px"><div class="row between"><h2>Steps</h2>' + (E ? '<span class="row small" style="gap:8px"><label for="dr-stage" class="muted">Current step</label><select id="dr-stage" data-stage="' + t.id + '" style="width:auto">' + t.stages.map((x, i) => '<option value="' + i + '"' + (t.stage === i ? ' selected' : '') + (i > L.stepGate(t) ? ' disabled' : '') + '>' + (i + 1) + '. ' + esc(x.title) + (x.owner === 'client' ? ' (client)' : '') + '</option>').join('') + '<option value="' + t.stages.length + '"' + (t.stage >= t.stages.length ? ' selected' : '') + (t.stages.length > L.stepGate(t) ? ' disabled' : '') + '>All completed</option></select><button class="link" data-a="steps-edit" data-id="' + t.id + '">Edit steps</button></span>' : '<span class="small muted">Step ' + Math.min(t.stage + 1, t.stages.length) + ' of ' + t.stages.length + '</span>') + '</div><div class="card steps">' +
     t.stages.map((x, i) => { const who = x.owner === 'client' ? (cl ? 'You' : esc(c.contact || 'Client')) + (x.kind === 'approve' ? ' · approval' : x.kind === 'review' ? ' · review' : '') : esc((member(x.assignee) || {}).name || 'Team'), late = x.due && !x.done && x.due < TODAY;
       const ctl = E && !x.done ? '<div class="stpctl">' + (x.owner === 'gioia' ? '<select data-sas="' + t.id + '|' + i + '" aria-label="Step ' + (i + 1) + ' assignee"><option value="">Team (unassigned)</option>' + teamOpts(x.assignee) + '</select>' : '') + '<input type="date" data-sdue="' + t.id + '|' + i + '" value="' + esc(x.due || '') + '" aria-label="Step ' + (i + 1) + ' due date"' + (late ? ' class="late"' : '') + '></div>' : '';
       const now = i === t.stage ? (A && x.owner === 'gioia' ? btn(I('tick', 'sm') + 'Mark done', 't-step', { id: t.id }, 'sm') : A ? btn('Done for client', 'stage-next', { id: t.id }, 'quiet sm') : cl && x.owner === 'client' && x.kind !== 'approve' ? btn(I('tick', 'sm') + 'Done', 't-step', { id: t.id }, 'sm') : '<span class="pill gold">Now</span>') : '';
@@ -2247,7 +2251,7 @@ const ACT = {
   't-step'(d) { return api('t-step', { id: d.id, text: val('cm-text') }); },
   't-step-undo'(d) { S.modal = { kind: 'undo', id: d.id, cid: (client() || {}).id }; },
   async 'undo-go'() { const why = val('un-why').trim(); if (!why) { toast('Please give a reason for undoing this step.'); const el = document.getElementById('un-why'); if (el) el.focus(); return 'skip'; } const M = S.modal, r = await api('t-step-undo', { id: M.id, reason: why }, { cid: M.cid, msg: 'Step undone. It is back where it was.' }); if (r) S.modal = null; },
-  'stage-next'(d) { const t = task(d.id); return api('t-stage-set', { id: d.id, stage: t.stage + 1 }); },
+  'stage-next'(d) { const t = task(d.id); return api('t-stage-set', { id: d.id, stage: t.stage + 1, behalf: true }); },
   'svc-steps'(d) { syncSvc(); const x = S.drawer.draft; x.open = x.open || []; if (!x.open.includes(+d.i)) x.open.push(+d.i); },
   'imp-preview'() { const plan = readPlan(); if (!plan) return; S.imp.plan = plan; return api('import-preview', { plan }, { quiet: true }).then(r => { if (r) S.imp.preview = r.out; }); },
   'imp-clear'() { S.imp.preview = null; },
