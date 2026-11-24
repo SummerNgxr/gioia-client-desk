@@ -545,9 +545,9 @@ function feeWhere(f) {
   if (!c) return { c, label: f.item || 'Removed project', when: '' };
   if (f.kind === 'item') return { c, label: f.item, when: 'One-off item' };
   if (f.kind === 'task') { const t = c.tasks.find(x => x.id === f.taskId), st = t && f.stage !== null && f.stage !== undefined && f.stage !== '' && t.stages ? t.stages[f.stage] : null, s = t ? ql(c, t.svc) : null;
-    return { c, t, label: t ? t.title : 'Removed task', step: st ? 'Step ' + (+f.stage + 1) + ': ' + st.title : '', when: (s ? short(s) : '') + (t && t.m ? ' · ' + mName(c, t.m) : '') }; }
+    return { c, t, label: t ? t.title : 'Removed task', step: st ? 'Step ' + (+f.stage + 1) + ': ' + st.title : '', when: (s ? short(s) : '') + (t && mOther(c, t.m) ? ' · ' + mOther(c, t.m) : '') }; }
   const s = f.svc ? ql(c, f.svc) : null;
-  return { c, s, label: s ? short(s) : 'Removed deliverable', when: !s ? '' : s.adhoc ? 'Added service' : s.billing === 'once' ? 'One-off' : mName(c, f.m) };
+  return { c, s, label: s ? short(s) : 'Removed deliverable', when: !s ? '' : s.adhoc ? 'Added service' : s.billing === 'once' ? 'One-off' : (mOther(c, f.m) || 'This month') };
 }
 function feeBase(c, s) { return !s ? 0 : s.adhoc ? (adhocOf(c, s.adhoc) || {}).amount || s.price : s.price; }
 const fx = f => { const c = S.clients.find(x => x.id === f.cid), earned = L.feeEarned(c, f), paid = f.paid || 0; return { c, earned, paid, owed: Math.max(0, earned - paid), state: L.feeState(c, f) }; };
@@ -560,8 +560,13 @@ function feeHow(f) {
 }
 const feePill = f => { const k = fx(f); return k.state === 'paid' ? '<span class="pill ok">' + I('tick', 'sm') + 'Paid</span>' : k.state === 'owed' ? '<span class="pill gold">' + I('hourglass', 'sm') + sm(k.owed) + ' owing</span>' : '<span class="pill lock" title="Not earned yet">' + I('cal', 'sm') + (k.paid ? 'Part paid' : 'Upcoming') + '</span>'; };
 function feeRowHtml(f, mode) {
-  const w = feeWhere(f), m = member(f.member), k = fx(f);
-  return '<div class="tli ft-row" data-a="' + (mode === 'mine' ? 'fee-view' : 'fee-edit') + '" data-id="' + f.id + '"><span class="ticon">' + (mode === 'mine' ? I('building') : avatar(f.member)) + '</span><span><b>' + esc(mode === 'mine' ? (w.c ? w.c.company : '') : (m ? m.name : 'Removed member')) + '</b><br><span class="small muted">' + esc(mode === 'mine' ? pname(w.c) : cname(w.c)) + '</span></span><span><span class="chip">' + KIND[f.kind] + '</span> ' + esc(w.label) + '<br><span class="small muted">' + esc([w.step, w.when, f.note].filter(Boolean).join(' · ')) + '</span></span><span class="right num"><b>' + sm(f.amount) + '</b><br><span class="small muted">' + (f.kind === 'item' ? '' : sm(k.earned) + ' earned') + (f.pct ? ' · ' + f.pct + '%' : '') + '</span></span><span>' + feePill(f) + '<br><span class="small muted">' + esc(feeHow(f)) + '</span></span>' + I('chev', 'sm') + '</div>';
+  const w = feeWhere(f), m = member(f.member), k = fx(f), part = f.kind !== 'item' && k.earned > 0 && k.earned < f.amount;
+  const icon = mode === 'mine' ? (w.c ? '<span title="' + esc(w.c.company) + '">' + logoTile(w.c.company, w.c.logo, 'width:36px;height:36px;font-size:12px;border-radius:9px') + '</span>' : I('building')) : avatar(f.member);
+  return '<div class="tli ft-row" data-a="' + (mode === 'mine' ? 'fee-view' : 'fee-edit') + '" data-id="' + f.id + '"><span class="ticon ftic">' + icon + '</span>' +
+    '<span class="ftwho"><b>' + esc(mode === 'mine' ? (w.c ? w.c.company : '') : (m ? m.name : 'Removed member')) + '</b><br><span class="small muted">' + esc(mode === 'mine' ? pname(w.c) : cname(w.c)) + '</span></span>' +
+    '<span class="ftfor"><b class="ftlabel">' + esc(w.label) + '</b> <span class="chip ftkind">' + KIND[f.kind] + '</span><br><span class="small muted">' + esc([mode === 'mine' ? '' : (m ? m.name : ''), w.step, w.when, f.note].filter(Boolean).join(' · ')) + '</span></span>' +
+    '<span class="right num ftamt"><b>' + sm(f.amount) + '</b>' + (part || f.pct ? '<br><span class="small muted">' + (part ? sm(k.earned) + ' earned' : '') + (f.pct ? (part ? ' · ' : '') + f.pct + '%' : '') + '</span>' : '') + '</span>' +
+    '<span class="ftst">' + feePill(f) + '<br><span class="small muted fthow">' + esc(feeHow(f)) + '</span></span>' + I('chev', 'sm') + '</div>';
 }
 function feeTable(list, mode) {
   return '<div class="tlist"><div class="tlh ft-row"><span></span><span>' + (mode === 'mine' ? 'Client' : 'Team member') + '</span><span>For</span><span class="right">Fee</span><span>Payment</span><span></span></div>' + (list.map(f => feeRowHtml(f, mode)).join('') || '<p class="muted" style="padding:16px;margin:0">No fees match.</p>') + '</div>';
