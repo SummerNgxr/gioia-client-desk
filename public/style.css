@@ -890,3 +890,12 @@ details.manual .mbody li{margin:4px 0}
   .tli.ft-row .ftst br,.tli.ft-row .fthow{display:none}
   .tli.ft-row .ftlabel{font-weight:600}
 }
+
+.lst-mob{display:none}
+@media (max-width:820px){
+  .lst-desk{display:none}.lst-mob{display:block}
+  .tli .tli-wname{display:none}
+  .wmtabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .wmtabs::-webkit-scrollbar{display:none}
+  .wmtabs button{flex:none;white-space:nowrap;padding:10px 14px}
+}
