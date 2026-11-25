@@ -417,7 +417,7 @@ function trashHtml(c) {
   const keep = Date.now() - 30 * 864e5, list = (c.trash || []).filter(z => Date.parse(z.at) > keep).slice().reverse();
   const want = S.trashFor; S.trashFor = '';
   // arrived from a "Deleted the task" notification: say plainly if that task can't be recovered
-  const note = want && !list.some(z => z.task.title === want) ? '<p class="small" style="margin:0;padding:10px 12px;border-radius:10px;background:var(--warn-bg,#f8ecd6)">"' + esc(want) + '" can\'t be recovered here. Deleted tasks are kept for 30 days, but only those deleted from 25 Nov 2026, 11am, when recovery was added.</p>' : '';
+  const note = want && !list.some(z => z.task.title === want) ? '<p class="small" style="margin:0;padding:10px 12px;border-radius:10px;background:var(--warn-bg,#f8ecd6)">"' + esc(want) + '" can\'t be recovered here. Deleted tasks are kept for 30 days, but only those deleted from 25 Nov 2026, 11am, when recovery was added. If it was deleted since last night\'s backup, the backup still has it.</p>' + btn(I('download', 'sm') + 'Check last night\'s backup', 'trash-backup', {}, 'ghost') : '';
   if (!list.length) return note ? '<section class="stack" id="trash" style="gap:8px;margin-bottom:14px"><h2 style="margin:0">Recently deleted</h2>' + note + '</section>' : '';
   return '<section class="stack" id="trash" style="gap:8px;margin-bottom:14px"><h2 style="margin:0">Recently deleted</h2>' + note + '<p class="small muted" style="margin:0">Kept for 30 days, then removed for good. Recovering puts a task back as it was, with its steps, comments and unpaid fees.</p><div class="card" style="padding:4px 14px">' +
     list.map(z => { const left = Math.max(1, 30 - Math.floor((Date.now() - Date.parse(z.at)) / 864e5)), s = ql(c, z.task.svc); return '<div class="row between" style="padding:10px 0;gap:12px;border-bottom:1px solid var(--line)"><span style="min-width:0"><b>' + esc(z.task.title) + '</b><br><span class="small muted">' + esc([s ? short(s) : '', mOther(c, z.task.m), 'deleted by ' + z.by + ' ' + fmtAt(z.at), left + ' day' + (left === 1 ? '' : 's') + ' left'].filter(Boolean).join(' · ')) + '</span></span>' + btn(I('back', 'sm') + 'Recover', 't-restore', { id: z.task.id }, 'ghost') + '</div>'; }).join('') + '</div></section>';
@@ -2287,6 +2287,13 @@ const ACT = {
   'a2hs-dev'(d) { S.a2hs = d.id; },
   'a2hs-open'() { S.menu = null; S.moreOpen = false; S.modal = { kind: 'a2hs' }; },
   'tb-more'() { S.moreOpen = !S.moreOpen; },
+  async 'trash-backup'() {
+    toast('Checking last night\'s backup…');
+    const r = await fetch('/api/recover-from-backup', { method: 'POST' }).then(r => r.json()).catch(() => ({ error: 'Could not reach the server.' }));
+    if (r.error) return toast(r.error);
+    await load(); S.focus = 'trash'; render();
+    toast(r.found.length ? r.found.length + ' task' + (r.found.length > 1 ? 's' : '') + ' found in the ' + r.day + ' backup. Tap Recover to bring ' + (r.found.length > 1 ? 'them' : 'it') + ' back.' : 'Nothing deleted since the ' + r.day + ' backup was found in it.');
+  },
   async 't-restore'(d) { await api('t-restore', { id: d.id }, { msg: 'Task recovered.' }); },
   'tl-all'(d) { S.tlAll = Object.assign({}, S.tlAll, { [d.id]: !(S.tlAll || {})[d.id] }); },
   'open-ws'(d) { pickClient(d); S.ws = d.id; S.wm = +d.m || 1; S.q = ''; if (S.role === 'client') { S.ptab = 'tasks'; S.pws = d.id; S.ptg = ''; S.pwm = +d.m || 0; } else S.view = 'ws'; },

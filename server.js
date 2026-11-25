@@ -202,6 +202,17 @@ setInterval(() => nightlyBackup().catch(e => console.error('backup', e)), 30 * 6
 // daily reminders: checked every 15 minutes, sent once a day after 9am Singapore time
 const remindTick = () => Core.runReminders(false).then(r => { if (r) console.log('reminders sent: ' + r.mails + ' emails, ' + r.notes + ' notifications'); }).catch(e => console.error('reminders', e));
 setInterval(remindTick, 15 * 60 * 1000); setTimeout(remindTick, 60 * 1000);
+// put tasks deleted since the latest backup into Recently deleted, so they can be recovered
+app.post('/api/recover-from-backup', async (req, res) => {
+  try {
+    const me = await identify(pool, req.session.email).catch(() => null);
+    if (!me || me.role !== 'admin') return res.status(403).json({ error: 'Admins only.' });
+    const last = await getKV(pool, 'lastBackup', null);
+    if (!G.driveReady || !last || !last.ok || !last.file) return res.status(400).json({ error: 'There is no backup to look in yet.' });
+    const backup = await (await G.download(last.file)).json();
+    res.json(Object.assign({ day: last.day }, await Core.trashFromBackup(req.session.email, backup)));
+  } catch (e) { if (e instanceof Core.Refuse) return res.status(403).json({ error: e.message }); console.error('recover', e); res.status(500).json({ error: 'Could not read the backup.' }); }
+});
 app.post('/api/backup-now', async (req, res) => {
   const me = await identify(pool, req.session.email).catch(() => null);
   if (!me || me.role !== 'admin') return res.status(403).json({ error: 'Admins only.' });
