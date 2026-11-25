@@ -411,6 +411,14 @@ function feedAv(e, st) {
   return m && m.pic ? '<span class="av pic"' + st + ' title="' + esc(m.name) + '">' + picImg(m.pic, m.name) + '</span>' : '<span class="av"' + st + '>' + esc(initials(e.who)) + '</span>';
 }
 const feedWho = e => e.client ? ((S.clients.find(x => x.id === e.cid) || {}).contact || 'Client') : e.who;
+// admins: tasks deleted in the last 30 days, each with a Recover button
+function trashHtml(c) {
+  if (!isAdmin()) return '';
+  const keep = Date.now() - 30 * 864e5, list = (c.trash || []).filter(z => Date.parse(z.at) > keep).slice().reverse();
+  if (!list.length) return '';
+  return '<section class="stack" id="trash" style="gap:8px;margin-bottom:14px"><h2 style="margin:0">Recently deleted</h2><p class="small muted" style="margin:0">Kept for 30 days, then removed for good. Recovering puts a task back as it was, with its steps, comments and unpaid fees.</p><div class="card" style="padding:4px 14px">' +
+    list.map(z => { const left = Math.max(1, 30 - Math.floor((Date.now() - Date.parse(z.at)) / 864e5)), s = ql(c, z.task.svc); return '<div class="row between" style="padding:10px 0;gap:12px;border-bottom:1px solid var(--line)"><span style="min-width:0"><b>' + esc(z.task.title) + '</b><br><span class="small muted">' + esc([s ? short(s) : '', mOther(c, z.task.m), 'deleted by ' + z.by + ' ' + fmtAt(z.at), left + ' day' + (left === 1 ? '' : 's') + ' left'].filter(Boolean).join(' · ')) + '</span></span>' + btn(I('back', 'sm') + 'Recover', 't-restore', { id: z.task.id }, 'ghost') + '</div>'; }).join('') + '</div></section>';
+}
 function feedHtml(list) {
   if (!list.length) return '<p class="muted">Nothing yet.</p>';
   const v = viewer();
@@ -419,7 +427,7 @@ function feedHtml(list) {
 function clientPage(c) {
   let tabs = [['overview', 'Overview'], ['work', 'Deliverables'], ['files', 'Files'], ['activity', 'Activity'], ['quote', 'Quotation'], ['invoices', 'Invoices']];
   if (!isAdmin()) { tabs = tabs.filter(t => !['quote', 'invoices'].includes(t[0])); if (['quote', 'invoices'].includes(S.ctab)) S.ctab = 'overview'; }
-  const body = { overview: overviewTab, work: wsCards, files: filesTab, activity: c => '<div class="card">' + feedHtml(S.feed.filter(e => e.cid === c.id && canRead(e, viewer()))) + '</div>', quote: quoteTab, invoices: c => invoicesTab(c, false) }[S.ctab](c);
+  const body = { overview: overviewTab, work: wsCards, files: filesTab, activity: c => trashHtml(c) + '<div class="card">' + feedHtml(S.feed.filter(e => e.cid === c.id && canRead(e, viewer()))) + '</div>', quote: quoteTab, invoices: c => invoicesTab(c, false) }[S.ctab](c);
   return '<div class="row between"><div class="crumbs"><button data-a="nav" data-v="clients">Clients</button>' + I('chev', 'sm') + '<b>' + esc(c.company) + '</b></div></div>' + clientHeader(c, tabs, S.ctab, 'ctab') + body;
 }
 
@@ -935,6 +943,7 @@ const MANUAL = {
 | Fee summary | On the last day of each month, anyone with fees ready to invoice gets one email with the total and a list. |
 | Due soon | Tasks due within the next 3 days. |
 | Deleting files | Only the person who added it, or an admin. Uploads go to the shared drive's trash. |
+| Deleting tasks | A deleted task is kept for 30 days in the project's Activity tab, under Recently deleted. Recover puts it back with its steps, comments and unpaid fees. The Deleted notification opens that list. |
 | Fees | Earned when the task or step is marked done. Fee activity never shows in task timelines. |
 | Activity timeline | Admins: every task. Team: tasks on their projects. Clients: never. |`],
     ['Roles and access', `| | Admin | Team member | Client |
@@ -1658,6 +1667,8 @@ function noteGo(e) {
     return to(fee ? 'earnings' : 'mytasks');
   }
   S.cid = c.id; if (!cl) S.view = 'client';
+  // a deleted task: the project's Recently deleted list, where it can be recovered
+  if (!cl && /^deleted the task/i.test(t0)) { tab('activity'); S.focus = 'trash'; return; }
   const quoted = [...t0.matchAll(/"([^"]+)"/g)].map(m => m[1]), t = (e.tid && c.tasks.find(x => x.id === e.tid)) || c.tasks.find(x => quoted.includes(x.title));
   const prep = () => { if (c.prep === 'open' || cl) { ACT['open-ws']({ cid: c.id, id: 'prep', m: 1 }); if (cl) S.ptab = 'tasks'; } else tab('work', 'workspaces'); };
   // fees: the team member's own fees page; admins see the project's fees in Accounts
@@ -2273,6 +2284,7 @@ const ACT = {
   'a2hs-dev'(d) { S.a2hs = d.id; },
   'a2hs-open'() { S.menu = null; S.moreOpen = false; S.modal = { kind: 'a2hs' }; },
   'tb-more'() { S.moreOpen = !S.moreOpen; },
+  async 't-restore'(d) { await api('t-restore', { id: d.id }, { msg: 'Task recovered.' }); },
   'tl-all'(d) { S.tlAll = Object.assign({}, S.tlAll, { [d.id]: !(S.tlAll || {})[d.id] }); },
   'open-ws'(d) { pickClient(d); S.ws = d.id; S.wm = +d.m || 1; S.q = ''; if (S.role === 'client') { S.ptab = 'tasks'; S.pws = d.id; S.ptg = ''; S.pwm = +d.m || 0; } else S.view = 'ws'; },
   'pwm'(d) { S.pwm = +d.m; S.ptg = ''; },
