@@ -415,8 +415,11 @@ const feedWho = e => e.client ? ((S.clients.find(x => x.id === e.cid) || {}).con
 function trashHtml(c) {
   if (!isAdmin()) return '';
   const keep = Date.now() - 30 * 864e5, list = (c.trash || []).filter(z => Date.parse(z.at) > keep).slice().reverse();
-  if (!list.length) return '';
-  return '<section class="stack" id="trash" style="gap:8px;margin-bottom:14px"><h2 style="margin:0">Recently deleted</h2><p class="small muted" style="margin:0">Kept for 30 days, then removed for good. Recovering puts a task back as it was, with its steps, comments and unpaid fees.</p><div class="card" style="padding:4px 14px">' +
+  const want = S.trashFor; S.trashFor = '';
+  // arrived from a "Deleted the task" notification: say plainly if that task can't be recovered
+  const note = want && !list.some(z => z.task.title === want) ? '<p class="small" style="margin:0;padding:10px 12px;border-radius:10px;background:var(--warn-bg,#f8ecd6)">"' + esc(want) + '" can\'t be recovered here. Deleted tasks are kept for 30 days, but only those deleted from 25 Nov 2026, 11am, when recovery was added.</p>' : '';
+  if (!list.length) return note ? '<section class="stack" id="trash" style="gap:8px;margin-bottom:14px"><h2 style="margin:0">Recently deleted</h2>' + note + '</section>' : '';
+  return '<section class="stack" id="trash" style="gap:8px;margin-bottom:14px"><h2 style="margin:0">Recently deleted</h2>' + note + '<p class="small muted" style="margin:0">Kept for 30 days, then removed for good. Recovering puts a task back as it was, with its steps, comments and unpaid fees.</p><div class="card" style="padding:4px 14px">' +
     list.map(z => { const left = Math.max(1, 30 - Math.floor((Date.now() - Date.parse(z.at)) / 864e5)), s = ql(c, z.task.svc); return '<div class="row between" style="padding:10px 0;gap:12px;border-bottom:1px solid var(--line)"><span style="min-width:0"><b>' + esc(z.task.title) + '</b><br><span class="small muted">' + esc([s ? short(s) : '', mOther(c, z.task.m), 'deleted by ' + z.by + ' ' + fmtAt(z.at), left + ' day' + (left === 1 ? '' : 's') + ' left'].filter(Boolean).join(' · ')) + '</span></span>' + btn(I('back', 'sm') + 'Recover', 't-restore', { id: z.task.id }, 'ghost') + '</div>'; }).join('') + '</div></section>';
 }
 function feedHtml(list) {
@@ -1668,7 +1671,7 @@ function noteGo(e) {
   }
   S.cid = c.id; if (!cl) S.view = 'client';
   // a deleted task: the project's Recently deleted list, where it can be recovered
-  if (!cl && /^deleted the task/i.test(t0)) { tab('activity'); S.focus = 'trash'; return; }
+  if (!cl && /^deleted the task/i.test(t0)) { tab('activity'); S.focus = 'trash'; S.trashFor = (t0.match(/"([^"]+)"/) || [])[1] || ''; return; }
   const quoted = [...t0.matchAll(/"([^"]+)"/g)].map(m => m[1]), t = (e.tid && c.tasks.find(x => x.id === e.tid)) || c.tasks.find(x => quoted.includes(x.title));
   const prep = () => { if (c.prep === 'open' || cl) { ACT['open-ws']({ cid: c.id, id: 'prep', m: 1 }); if (cl) S.ptab = 'tasks'; } else tab('work', 'workspaces'); };
   // fees: the team member's own fees page; admins see the project's fees in Accounts
