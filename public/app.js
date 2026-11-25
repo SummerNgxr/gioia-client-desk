@@ -1312,6 +1312,16 @@ function sidebar() {
   return '<aside class="side"><div class="logo">' + logoImg('white', 46) + '<span class="desk">Dashboard</span></div><div class="sidelab">' + (isAdmin() ? 'Admin' : 'Team') + '</div>' + nav.filter(x => !x[3] || (x[3] === 'admin' ? isAdmin() : !isAdmin())).map(([k, l, ic]) => '<button class="nav" data-a="nav" data-v="' + k + '" aria-current="' + (cur === k) + '">' + I(ic) + '<span class="lbl">' + l + '</span>' + (k === 'mytasks' && n ? '<span class="badge">' + n + '</span>' : '') + (k === 'billing' && billsWaiting() ? '<span class="badge">' + billsWaiting() + '</span>' : '') + '</button>').join('') +
     (isAdmin() ? '<div class="foot"><button class="nav" data-a="nav" data-v="settings" aria-current="' + (cur === 'settings') + '">' + I('cog') + '<span class="lbl">Settings</span></button></div>' : '') + '</aside>';
 }
+// the client portal's own tabs on phones: the first four, then More
+let PTABS = [];
+function portalTabbar() {
+  const short = { overview: 'Overview', workspaces: 'Deliverables', tasks: 'Tasks', files: 'Files', invoices: 'Invoices', proposal: 'Proposal', details: 'My details', help: 'Help', renewal: 'Renewal' };
+  const pref = ['overview', 'workspaces', 'tasks', 'files'], main = PTABS.length <= 5 ? PTABS : pref.map(k => PTABS.find(x => x[0] === k)).filter(Boolean), more = PTABS.filter(x => !main.includes(x));
+  const inMore = more.some(x => x[0] === S.ptab);
+  return (S.moreOpen && more.length ? '<div class="tbsheet-bg" data-a="tb-more"></div><div class="tbsheet" role="menu">' + more.map(([k, l, ic]) => '<button class="tbrow" role="menuitem" data-a="ptab" data-t="' + k + '" aria-current="' + (S.ptab === k) + '">' + I(ic) + '<span>' + esc(l) + '</span>' + I('chev', 'sm') + '</button>').join('') + '<button class="tbrow" data-a="a2hs-open">' + I('download') + '<span>Add to home screen</span>' + I('chev', 'sm') + '</button></div>' : '') +
+    '<nav class="tabbar" aria-label="Main" style="grid-template-columns:repeat(' + (main.length + (more.length ? 1 : 0)) + ',1fr)">' + main.map(([k, l, ic]) => '<button data-a="ptab" data-t="' + k + '" aria-current="' + (S.ptab === k) + '">' + I(ic) + '<span>' + esc(short[k] || l) + '</span></button>').join('') +
+    (more.length ? '<button data-a="tb-more" aria-current="' + (inMore || !!S.moreOpen) + '" aria-expanded="' + !!S.moreOpen + '">' + I('grip') + '<span>More</span></button>' : '') + '</nav>';
+}
 // phones: a bottom tab bar with names; "More" opens the rest
 function tabbar() {
   const bv = ['import', 'newproj'].includes(S.view) ? 'clients' : S.view === 'task' ? (S.back || {}).view : S.view, cur = bv === 'acct' ? 'billing' : ['client', 'ws', 'workspaces'].includes(bv) ? 'clients' : bv, n = myOpenCount();
@@ -1422,6 +1432,7 @@ function portalShell() {
   if (!hasAccess(c)) {
     if (!['proposal', 'details', 'help'].includes(S.ptab)) S.ptab = 'proposal';
     const ptabs = [['proposal', c.quote.status === 'accepted' ? 'Proposal and invoices' : 'Your proposal', 'doc'], ['details', 'My details', 'user'], ['help', 'Help', 'help']];
+    PTABS = ptabs.map(x => x.slice(0, 3));
     const pbody = S.ptab === 'help' ? helpPage() : S.ptab === 'details' ? '<h1>My details</h1><div class="card stack" style="max-width:560px">' + field('d-company', 'Company', c.company) + field('d-contact', 'Contact person', c.contact) + field('d-phone', 'Phone', c.phone) + field('d-website', 'Website', c.website) + '<p class="small muted" style="margin:0">Signed in with Google.</p><div>' + btn('Save details', 'save-details') + '</div></div>' + emailPrefCard() : proposalPage(c);
     return '<div class="app"><aside class="side"><div class="logo">' + logoImg('white', 46) + '<span class="desk">Client portal</span></div><div class="sidelab">' + esc(c.company) + '</div>' + ptabs.map(([k, l, ic]) => '<button class="nav" data-a="ptab" data-t="' + k + '" aria-current="' + (S.ptab === k) + '">' + I(ic) + '<span class="lbl">' + l + '</span></button>').join('') + '</aside><div class="main"><header class="topbar"><div class="row" style="gap:10px">' + logoTile(c.company, c.logo, 'width:36px;height:36px;font-size:13px;border-radius:8px') + '<b>' + esc(c.company) + '</b>' + (S.clients.length > 1 ? projectSwitch(c) : '') + '</div>' + topRight() + '</header><main class="page">' + pbody + '</main></div></div>';
   }
@@ -1429,6 +1440,7 @@ function portalShell() {
   const rp = L.renewals(c).find(r => ['sent', 'changes', 'declined'].includes(r.status)) || (S.ptab === 'renewal' && L.renewals(c).filter(r => r.status === 'accepted').pop());
   if (S.ptab === 'renewal' && !rp) S.ptab = 'overview';
   const tabs = [['overview', 'Overview', 'home'], ...(rp ? [['renewal', 'Renewal proposal', 'refresh']] : []), ['workspaces', 'Deliverables', 'layers'], ['tasks', 'Tasks', 'check'], ['files', 'Files', 'folder'], ['invoices', 'Invoices', 'receipt'], ...(c.quote.status === 'accepted' ? [['proposal', 'Proposal', 'doc']] : []), ['details', 'My details', 'user'], ['help', 'Help', 'help']];
+  PTABS = tabs.map(x => x.slice(0, 3));
   const curTab = S.ptab === 'task' ? 'tasks' : S.ptab;
   let body;
   if (S.ptab === 'task') body = taskPage(c, c.tasks.find(x => x.id === S.tid));
@@ -1858,8 +1870,8 @@ function render() {
   // each new page becomes a step in the browser history, so Back and Forward work
   try { if (!S.popping) { if (!prevRoute) history.replaceState(navSnap(), ''); else if (!same) { const cur = Object.assign({}, history.state || {}, { scroll: mEl ? keepTop : keepY }); history.replaceState(cur, ''); history.pushState(navSnap(), ''); } } } catch (x) {}
   // the phone tab bar sits above the app and sticks to the top of the screen
-  { let tb = document.getElementById('tabbar-root'); if (!tb) { tb = document.createElement('div'); tb.id = 'tabbar-root'; const app = document.getElementById('app'); app.parentNode.insertBefore(tb, app); } tb.innerHTML = S.role === 'client' ? '' : tabbar(); }
   document.getElementById('app').innerHTML = (S.role === 'client' ? portalShell() : staffShell()) + overlay + (S.toast ? '<div class="toast" role="status">' + I('tick', 'sm') + esc(S.toast) + '</div>' : '');
+  { let tb = document.getElementById('tabbar-root'); if (!tb) { tb = document.createElement('div'); tb.id = 'tabbar-root'; const app = document.getElementById('app'); app.parentNode.insertBefore(tb, app); } tb.innerHTML = S.role === 'client' ? portalTabbar() : tabbar(); }
   { const m2 = document.querySelector('.main'), back = S.popping ? (S.popScroll || 0) : null; S.popping = false; S.popScroll = 0; if (m2) m2.scrollTop = back != null ? back : same ? keepTop : 0; window.scrollTo(0, back != null ? back : same ? keepY : 0); }
   // on narrow screens the notifications panel spans the screen just under the bell, so nothing is cut off
   { const bm = document.querySelector('.menu.bellmenu'); if (bm && innerWidth <= 700) { const r = bm.parentElement.getBoundingClientRect(), top = Math.round(r.bottom + 8); bm.style.top = top + 'px'; bm.style.maxHeight = (innerHeight - top - 12) + 'px'; } }
@@ -2298,7 +2310,7 @@ const ACT = {
   'tl-all'(d) { S.tlAll = Object.assign({}, S.tlAll, { [d.id]: !(S.tlAll || {})[d.id] }); },
   'open-ws'(d) { pickClient(d); S.ws = d.id; S.wm = +d.m || 1; S.q = ''; if (S.role === 'client') { S.ptab = 'tasks'; S.pws = d.id; S.ptg = ''; S.pwm = +d.m || 0; } else S.view = 'ws'; },
   'pwm'(d) { S.pwm = +d.m; S.ptg = ''; },
-  ctab(d) { S.ctab = d.t; }, ptab(d) { S.ptab = d.t; if (d.t === 'tasks' && S.role === 'client') { const c = client(), open = c ? c.tasks.filter(t => canSee(c, t)) : []; S.ptg = open.some(t => tGroup(t) === 'client') ? 'client' : open.some(t => tGroup(t) === 'awaiting') ? 'awaiting' : ''; } }, qtab(d) { S.qtab = d.t; }, ifilter(d) { S.ifilter = d.f; },
+  ctab(d) { S.ctab = d.t; }, ptab(d) { S.ptab = d.t; S.moreOpen = false; if (d.t === 'tasks' && S.role === 'client') { const c = client(), open = c ? c.tasks.filter(t => canSee(c, t)) : []; S.ptg = open.some(t => tGroup(t) === 'client') ? 'client' : open.some(t => tGroup(t) === 'awaiting') ? 'awaiting' : ''; } }, qtab(d) { S.qtab = d.t; }, ifilter(d) { S.ifilter = d.f; },
   ws(d) { S.ws = d.id; }, wm(d) { S.wm = +d.m; }, mode(d) { S.mode = d.m; },
   task(d) { S.editSteps = null; pickClient(d); S.back = { view: S.view, ptab: S.ptab }; S.tid = d.id; S.confirm = null; S.q = ''; if (staff()) S.view = 'task'; else S.ptab = 'task'; const mn = document.querySelector('.main'); if (mn) mn.scrollTop = 0; window.scrollTo(0, 0); },
   'task-back'() { const b = S.back || {}; S.confirm = null; if (staff()) S.view = b.view && b.view !== 'task' ? b.view : 'mytasks'; else S.ptab = b.ptab && b.ptab !== 'task' ? b.ptab : 'tasks'; },
